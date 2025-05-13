@@ -128,20 +128,6 @@ All API routes are backed by unit tests to maintain 100% code coverage.
 
 SonarQube is used for code quality scanning. Set up SonarQube according to your environment and run scans regularly to maintain code quality.
 
-## Key Jira Issues
-
-| Issue Key | Summary | Description |
-|-----------|---------|-------------|
-| DAPA-1 | Create README.md for DevDox AI Portal API | Documentation for the backend API |
-
-## Contributing
-
-When contributing to this repository, please follow these guidelines:
-1. Create a branch for each feature or bugfix
-2. Write tests for your changes
-3. Reference the Jira issue key in your commit messages (e.g., "Implemented user auth endpoints (DAPA-5)")
-4. Submit a pull request for review
-
 ## License
 
 This project is open source and available under the [MIT License](LICENSE).
