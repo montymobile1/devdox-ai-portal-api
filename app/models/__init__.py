@@ -2,4 +2,6 @@
 Models package initializer.
 """
 
-# Import models as needed
+from app.models.example import Example, ExampleCreate, ExampleUpdate, ExampleInDB
+
+__all__ = ["Example", "ExampleCreate", "ExampleUpdate", "ExampleInDB"]
