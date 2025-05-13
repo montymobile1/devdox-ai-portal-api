@@ -1,6 +1,6 @@
 # DevDox AI Portal API
 
-A backend API service for the DevDox AI Portal, built with Flask and Supabase.
+A backend API service for the DevDox AI Portal, built with FastAPI and Supabase.
 
 ## Project Overview
 
@@ -16,7 +16,7 @@ This repository contains the backend API service for the portal, which handles:
 ## Architecture
 
 DevDox AI Portal API is built with:
-- **Flask**: Python web framework for API endpoints
+- **FastAPI**: Python web framework for API endpoints with automatic OpenAPI documentation
 - **Supabase**: Backend-as-a-Service for data storage, accessed via REST API
 - **Clerk**: Authentication and authorization service
 - **SonarQube**: Code quality scanning tool
@@ -43,23 +43,23 @@ The DevDox AI Portal API communicates with:
 
 ```
 my_flask_supabase_app/
-├── app/                            # Application package (actual Flask app code)
-│   ├── __init__.py                 # Initialize Flask app, Supabase client, config
+├── app/                            # Application package (actual FastAPI app code)
+│   ├── __init__.py                 # Initialize FastAPI app, Supabase client, config
 │   ├── config.py                   # Configuration settings (e.g., Supabase URL, API keys, etc.)
-│   ├── routes/                     # Route definitions (Flask view functions)
-│   │   ├── __init__.py             # Initialize blueprints for routes
+│   ├── routes/                     # Route definitions (FastAPI route functions)
+│   │   ├── __init__.py             # Initialize API routers
 │   │   └── example_routes.py       # Example route module (e.g., endpoints for one feature)
 │   ├── services/                   # Service layer (business logic and external API calls)
 │   │   ├── __init__.py
 │   │   └── supabase_client.py      # Supabase API interaction logic (REST/RPC calls via HTTP)
-│   ├── models/                     # Data models or schema definitions
+│   ├── models/                     # Data models using Pydantic
 │   │   └── __init__.py
 │   ├── utils/                      # Utility functions (helpers, etc.)
 │   │   └── __init__.py
-│   └── main.py                     # Application entry point (creates Flask app and registers routes)
+│   └── main.py                     # Application entry point (creates FastAPI app and registers routes)
 ├── tests/                          # Test suite for TDD (mirrors app structure for clarity)
 │   ├── __init__.py
-│   ├── test_routes.py              # Tests for Flask endpoints (routes)
+│   ├── test_routes.py              # Tests for FastAPI endpoints (routes)
 │   └── test_services.py            # Tests for service logic (including Supabase integration)
 ├── .env                            # Environment variables (Supabase URL, keys, secrets; not in version control)
 ├── requirements.txt                # Python dependencies
@@ -96,8 +96,6 @@ my_flask_supabase_app/
 
 4. Create a `.env` file in the root directory with your credentials:
    ```
-   FLASK_APP=app.main
-   FLASK_ENV=development
    SUPABASE_URL=https://your-supabase-project.supabase.co
    SUPABASE_KEY=your-supabase-key
    CLERK_API_KEY=your-clerk-api-key
@@ -106,7 +104,7 @@ my_flask_supabase_app/
 ### Running the Application
 
 ```
-flask run
+uvicorn app.main:app --reload
 ```
 
 ### Running Tests
