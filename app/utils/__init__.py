@@ -2,4 +2,6 @@
 Utils package initializer.
 """
 
-# Import utility functions and classes as needed
+from app.utils.auth import get_current_user, CurrentUser
+
+__all__ = ["get_current_user", "CurrentUser"]
