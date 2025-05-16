@@ -12,16 +12,15 @@ class Settings(BaseSettings):
     # API configuration
     API_ENV: str = "development"
     API_DEBUG: bool = True
-    SECRET_KEY: str
-    
-    # Supabase configuration
-    SUPABASE_URL: str
-    SUPABASE_KEY: str
-    
-    # Clerk configuration
-    CLERK_API_KEY: str
+    SECRET_KEY: str = "dev-secret-key"  # Only for local/testing
+
+    #supbase settings
+    SUPABASE_URL: str = "https://localhost"
+    SUPABASE_KEY: str = "test-supabase-key"
+    CLERK_API_KEY: str = "test-clerk-key"
+
     CLERK_JWT_PUBLIC_KEY: Optional[str] = None
-    
+
     # CORS settings
     CORS_ORIGINS: List[str] = ["http://localhost:3000"]
     
