@@ -1,5 +1,4 @@
 name: Build
-
 on:
   push:
     branches:
@@ -9,7 +8,7 @@ on:
 
 jobs:
   sonarqube:
-    name: SonarCloud
+    name: SonarQube
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -19,7 +18,7 @@ jobs:
       - name: Set up Python
         uses: actions/setup-python@v5
         with:
-          python-version: 3.12
+          python-version: 3.12  # or your actual version
 
       - name: Install dependencies
         run: |
@@ -32,7 +31,7 @@ jobs:
           coverage run -m unittest discover tests
           coverage xml
 
-      - name: SonarCloud Scan
-        uses: SonarSource/sonarcloud-github-action@v2
+      - name: SonarQube Scan
+        uses: SonarSource/sonarqube-scan-action@v5
         env:
           SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
