@@ -4,10 +4,10 @@ Routes module initialization.
 
 from fastapi import APIRouter
 
-from app.routes.example_routes import router as example_router
+from app.routes.git_tokens import router as git_tokens
 
 # Create main router
 router = APIRouter()
 
 # Include sub-routers
-router.include_router(example_router, prefix="/examples", tags=["Examples"])
+router.include_router(git_tokens, prefix="/git_tokens", tags=["GitTokens"])
