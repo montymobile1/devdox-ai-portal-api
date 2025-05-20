@@ -30,6 +30,7 @@ class TestHealthCheck(unittest.TestCase):
         data = response.json()
         self.assertEqual(data["status"], "healthy")
         self.assertEqual(data["message"], "DevDox AI Portal API is running!")
+        self.assertIsNotNone(data["version"])
 
 if __name__ == "__main__":
     unittest.main()

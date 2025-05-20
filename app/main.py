@@ -31,9 +31,10 @@ app.add_middleware(
 app.include_router(api_router, prefix="/api/v1")
 
 @app.get("/", tags=["Health"])
+@app.get("/health_check", tags=["Health"])
 async def health_check():
     """Health check endpoint."""
-    return {"status": "healthy", "message": "DevDox AI Portal API is running!"}
+    return {"status": "healthy", "message": "DevDox AI Portal API is running!", "version": settings.VERSION}
 
 if __name__ == "__main__":
     """Run the application with uvicorn."""
