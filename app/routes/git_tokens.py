@@ -10,7 +10,6 @@ from typing import List, Dict, Any
 from app.services.supabase_client import SupabaseClient
 from app.utils.encryption import EncryptionHelper
 
-
 def mask_token(token: str) -> str:
     """
     Masks a token string by revealing only the first and last four characters.
@@ -39,7 +38,7 @@ def format_token_response(token_data: Dict[str, Any]) -> Dict[str, Any]:
     If the token value is present, returns a dictionary containing the token's metadata and a masked version of the decrypted token value. Returns False if the token value is missing.
     """
 
-    if (token_data.get("token_value")):
+    if token_data and token_data.get("token_value"):
         return {
             "id": token_data.get("id"),
             "label": token_data.get("label"),
@@ -72,10 +71,13 @@ async def get_tokens() -> List[Dict[str, Any]]:
         formatted_tokens = [t for t in (format_token_response(token) for token in res) if t]
         return formatted_tokens
 
+
     except Exception as e:
+
         raise HTTPException(
-                    status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
-                detail = "Service temporarily unavailable. Please try again later." )
+            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+            detail="Service temporarily unavailable. Please try again later."
+        ) from e
 
 
 @router.get("/{label}",  response_model=List[Dict[str, Any]],
@@ -92,8 +94,14 @@ async def get_token_by_label(label:str) ->List[Dict[str, Any]]:
     Returns:
         A list containing the formatted token dictionary with masked token value. The list is empty if no matching token is found.
     """
-    client = SupabaseClient()
-    res = client.filter(table="git_label",filters={"label": label}, limit=1)
-    formatted_tokens = [format_token_response(token) for token in res]
-    return formatted_tokens
+    try:
+        client = SupabaseClient()
+        res = client.filter(table="git_label",filters={"label": label}, limit=1)
+        formatted_tokens = [format_token_response(token) for token in res]
+        return formatted_tokens
+    except Exception as e:
+        raise HTTPException(
+            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+            detail="Service temporarily unavailable. Please try again later."
+        ) from e
 
