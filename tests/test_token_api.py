@@ -2,7 +2,6 @@
 Test cases for token retrieval and creation API endpoints.
 """
 
-import pytest
 from fastapi import status
 from app.routes.git_tokens import mask_token, format_token_response
 
@@ -123,10 +122,8 @@ class TestGetTokensEndpoint:
         response = client.get("/api/v1/git_tokens/")
 
         # Verify response
-        print("mock_supabase_select.filter.return_value ", mock_supabase_select.select.return_value)
         assert response.status_code == status.HTTP_200_OK
         data = response.json()
-        print("data ", data)
         assert len(data) == 2
 
         # Verify first token
@@ -210,8 +207,6 @@ class TestGetTokensEndpoint:
 
         # Make request
         response = client.get("/api/v1/git_tokens/")
-        print("response.status_code  ", response.status_code )
-        print("data ", response.json())
 
         # Verify error response
         assert response.status_code == status.HTTP_503_SERVICE_UNAVAILABLE
@@ -307,7 +302,6 @@ class TestGetTokenByLabelEndpoint:
         assert response.status_code == status.HTTP_200_OK
 
         data = response.json()
-        print("data line 310 ", data)
 
         # Since format_token_response returns None for invalid data, we should get an empty list
 

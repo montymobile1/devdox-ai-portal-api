@@ -4,7 +4,7 @@ Pytest fixtures for token API endpoint tests.
 
 import pytest
 from fastapi.testclient import TestClient
-from unittest.mock import MagicMock, patch
+from unittest.mock import patch
 
 from app.main import app  # Assuming your FastAPI app is in app.main
 
