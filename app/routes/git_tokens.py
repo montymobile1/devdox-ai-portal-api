@@ -79,3 +79,25 @@ async def get_tokens() -> List[Dict[str, Any]]:
     res = client.select(table="git_label", columns="label, id, git_hosting,token_value, created_at")
     formatted_tokens = [format_token_response(token) for token in res]
     return formatted_tokens
+
+
+
+@router.get("/{label}",  response_model=List[Dict[str, Any]],
+            status_code=status.HTTP_200_OK,
+            summary="Get all tokens",
+            description="Retrieve a list of all tokens with masked values")
+async def get_token_by_label(label:str) ->List[Dict[str, Any]]:
+    """
+    Get a token by label
+
+    Returns:
+        List[Dict[str, Any]]: A list of token items with masked values
+
+    Raises:
+        HTTPException: 500 if database error occurs
+    """
+    client = SupabaseClient()
+    res = client.filter(table="git_label",filters={"label": label}, limit=1)
+    formatted_tokens = [format_token_response(token) for token in res]
+    return formatted_tokens
+

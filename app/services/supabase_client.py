@@ -3,7 +3,7 @@ Supabase API interaction logic for the DevDox AI Portal API.
 """
 
 import requests
-from typing import Dict, List, Any, Optional
+from typing import Dict, List, Any, Optional, Union
 from app.config import settings
 
 class SupabaseClient:
@@ -81,6 +81,59 @@ class SupabaseClient:
         if response.status_code == 200 and response.json():
             return response.json()[0]
         return None
+
+    def filter(self,
+               table: str,
+               filters: Dict[str, Any],
+               columns: str = "*",
+               single: bool = False,
+               order_by: str = None,
+               limit: int = None) -> Union[List[Dict[str, Any]], Optional[Dict[str, Any]]]:
+        """
+        Filter data from a table based on multiple conditions.
+
+        Args:
+            table (str): Table name.
+            filters (Dict[str, Any]): Dictionary of column-value pairs to filter by.
+            columns (str, optional): Columns to select. Defaults to "*".
+            single (bool, optional): If True, return only the first result. Defaults to False.
+            order_by (str, optional): Column to order results by. Format: "column.asc" or "column.desc".
+            limit (int, optional): Maximum number of results to return.
+
+        Returns:
+            Union[List[Dict[str, Any]], Optional[Dict[str, Any]]]:
+                List of records, a single record if single=True, or None if no results found.
+        """
+        url = self._build_url(table)
+        params = {"select": columns}
+
+        # Add filter parameters
+        for column, value in filters.items():
+            params[column] = f"eq.{value}"
+
+        # Add order parameter if provided
+        if order_by:
+            params["order"] = order_by
+
+        # Add limit parameter if provided
+        if limit:
+            params["limit"] = limit
+
+        response = requests.get(url, headers=self.headers, params=params)
+
+        if response.status_code == 200:
+            result = response.json()
+
+            if single:
+                if result:
+                    return result[0]
+                return None
+
+            return result
+
+        response.raise_for_status()
+        return [] if not single else None
+
     
     def insert(self, table: str, data: Dict[str, Any]) -> Dict[str, Any]:
         """
