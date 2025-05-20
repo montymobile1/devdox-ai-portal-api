@@ -76,12 +76,141 @@ def token_data_list():
     ]
 
 @pytest.fixture
+
+def invalid_token_data_list():
+
+    """
+
+    Return a list of token data with missing or invalid fields for testing.
+
+    """
+
+    return [
+
+        {
+
+            "id": "3",
+
+            # Missing token_value field
+
+            "label": "Missing Token Value",
+
+            "git_hosting": "github",
+
+            "created_at": "2024-01-01T10:00:00Z"
+
+        },
+
+        {
+
+            # Missing id field
+
+            "label": "Missing ID",
+
+            "git_hosting": "gitlab",
+
+            "token_value": TOKEN_ENCRYPTED_2,
+
+            "created_at": "2024-01-03T10:00:00Z"
+
+        },
+
+        {
+
+            "id": "5",
+
+            "label": "Empty Token Value",
+
+            "git_hosting": "github",
+
+            "token_value": "",  # Empty token
+
+            "created_at": "2024-01-05T10:00:00Z"
+
+        }
+
+    ]
+
+
+
+@pytest.fixture
 def mock_supabase_select(mock_supabase, token_data_list):
     """
     Setup the mock Supabase client to return token data list.
     """
-    print("mock_supabase_select", token_data_list)
     mock_instance = mock_supabase.return_value
     mock_instance.select.return_value = token_data_list
     return mock_instance
 
+
+@pytest.fixture
+def mock_supabase_filter(mock_supabase, token_data_list):
+    """
+
+    Setup the mock Supabase client to return filtered token data using filter method.
+
+    """
+
+    mock_instance = mock_supabase.return_value
+
+    # Configure filter method to return specific results based on filters
+
+    def side_effect_filter(table, filters=None, columns=None, limit=None):
+
+        if not filters:
+            return token_data_list
+
+        # Filter by label
+
+        if 'label' in filters:
+            label = filters['label']
+
+            return [token for token in token_data_list if token.get('label') == label]
+
+        return []
+
+    mock_instance.filter.side_effect = side_effect_filter
+
+    return mock_instance
+
+
+@pytest.fixture
+def mock_supabase_empty(mock_supabase):
+    """
+
+    Setup the mock Supabase client to return empty results.
+
+    """
+
+    mock_instance = mock_supabase.return_value
+
+    mock_instance.select.return_value = []
+
+    mock_instance.filter.return_value = []
+
+    return mock_instance
+
+
+@pytest.fixture
+def mock_supabase_invalid_data(mock_supabase, invalid_token_data_list):
+    """
+
+    Setup the mock Supabase client to return invalid token data.
+
+    """
+
+    mock_instance = mock_supabase.return_value
+
+    mock_instance.filter.return_value = invalid_token_data_list
+
+    def side_effect_filter(table, filters=None, columns=None, limit=None):
+        if filters and 'label' in filters:
+            # Return the first invalid token data
+
+            return [invalid_token_data_list[0]]
+
+        return invalid_token_data_list
+
+    mock_instance.filter.side_effect = side_effect_filter
+
+    return mock_instance

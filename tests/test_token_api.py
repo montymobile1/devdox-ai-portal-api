@@ -35,6 +35,28 @@ class TestTokenMasking:
         result = mask_token(token)
         assert result == ""
 
+    def test_mask_token_exact_eight_chars(self):
+        """Test masking for a token of exactly 8 characters."""
+
+        token = "12345678"
+
+        result = mask_token(token)
+
+        assert result == "********"
+
+        assert len(result) == 8
+
+    def test_mask_token_nine_chars(self):
+        """Test masking for a token of exactly 9 characters."""
+
+        token = "123456789"
+
+        result = mask_token(token)
+
+        assert result == "1234*6789"
+
+        assert len(result) == 9
+
 
 class TestTokenFormatting:
     """Test cases for token response formatting."""
@@ -59,7 +81,37 @@ class TestTokenFormatting:
         }
 
         result = format_token_response(token_data)
-        assert not result
+        assert result is None
+
+        def test_format_token_response_empty_token(self, mock_encryption_helper):
+            """Test formatting with empty token value."""
+
+            token_data = {
+
+                "id": "123",
+
+                "label": "Test Token",
+
+                "git_hosting": "github",
+
+                "token_value": "",  # Empty token
+
+                "created_at": "2024-01-01T10:00:00Z"
+
+            }
+
+            result = format_token_response(token_data)
+
+            assert result is not None
+
+            assert result["token_value"] == ""
+
+        def test_format_token_response_none_input(self):
+            """Test formatting with None input."""
+
+            result = format_token_response(None)
+
+            assert result is None
 
 
 class TestGetTokensEndpoint:
@@ -97,6 +149,25 @@ class TestGetTokensEndpoint:
             table="git_label",
             columns="label, id, git_hosting,token_value, created_at"
         )
+
+    def test_invalid_token_data(self, client, mock_supabase_invalid_data, mock_encryption_helper):
+        """Test handling of invalid token data."""
+
+        # Make request
+
+        response = client.get("/api/v1/git_tokens/")
+
+        # Verify response
+
+        assert response.status_code == status.HTTP_200_OK
+
+        data = response.json()
+
+        # Since format_token_response returns None for invalid data, we should get an empty list
+
+        assert isinstance(data, list)
+
+        assert len(data) == 0
 
     def test_empty_token_list(self, client, mock_supabase):
         """Test retrieval when no tokens exist."""
@@ -147,3 +218,99 @@ class TestGetTokensEndpoint:
         data = response.json()
         assert "Service temporarily unavailable. Please try again later" in data["detail"]
 
+
+class TestGetTokenByLabelEndpoint:
+    """Test cases for GET /api/v1/git_tokens/{label} endpoint."""
+
+    def test_get_token_by_label_success(self, client, mock_supabase_filter, mock_encryption_helper):
+        """Test successful retrieval of token by label."""
+
+        # Make the request for a known label
+
+        response = client.get("/api/v1/git_tokens/GitHub%20Production")
+
+        # Verify response
+
+        assert response.status_code == status.HTTP_200_OK
+
+        data = response.json()
+
+        assert len(data) == 1
+
+        token = data[0]
+
+        assert token["id"] == "1"
+
+        assert token["label"] == "GitHub Production"
+
+        assert token["git_hosting"] == "github"
+
+        assert token["token_value"] == "ghp_************cdef"
+
+        # Verify filter was called with correct parameters
+
+        mock_supabase_filter.filter.assert_called_once_with(
+
+            table="git_label",
+
+            filters={"label": "GitHub Production"},
+
+            limit=1
+
+        )
+
+    def test_get_token_by_nonexistent_label(self, client, mock_supabase_empty):
+        """Test getting token with label that doesn't exist."""
+
+        # Make request for a non-existent label
+
+        response = client.get("/api/v1/git_tokens/NonExistentLabel")
+
+        # Verify response
+
+        assert response.status_code == status.HTTP_200_OK
+
+        data = response.json()
+
+        assert data == []
+
+    def test_get_token_by_label_database_error(self, client, mock_supabase):
+        """Test error handling when database query fails."""
+
+        # Mock database error
+
+        mock_instance = mock_supabase.return_value
+
+        mock_instance.filter.side_effect = Exception("Database error")
+
+        # Make request
+
+        response = client.get("/api/v1/git_tokens/SomeLabel")
+
+        # Verify error response
+
+        assert response.status_code == status.HTTP_503_SERVICE_UNAVAILABLE
+
+        data = response.json()
+
+        assert "Service temporarily unavailable" in data["detail"]
+
+    def test_get_token_by_label_invalid_data(self, client, mock_supabase_invalid_data, mock_encryption_helper):
+        """Test handling of invalid token data when filtering by label."""
+
+        # Make request for a label that returns invalid data
+
+        response = client.get("/api/v1/git_tokens/Missing%20Token%20Value")
+
+        # Verify response
+
+        assert response.status_code == status.HTTP_200_OK
+
+        data = response.json()
+        print("data line 310 ", data)
+
+        # Since format_token_response returns None for invalid data, we should get an empty list
+
+        assert isinstance(data, list)
+
+        assert len(data) == 0

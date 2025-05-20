@@ -97,7 +97,8 @@ async def get_token_by_label(label:str) ->List[Dict[str, Any]]:
     try:
         client = SupabaseClient()
         res = client.filter(table="git_label",filters={"label": label}, limit=1)
-        formatted_tokens = [format_token_response(token) for token in res]
+        formatted_tokens = [t for t in (format_token_response(token) for token in res) if t]
+
         return formatted_tokens
     except Exception as e:
         raise HTTPException(
