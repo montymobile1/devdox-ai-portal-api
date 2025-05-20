@@ -60,15 +60,15 @@ class SupabaseClient:
     
     def get_by_id(self, table: str, id_value: str, columns: str = "*") -> Optional[Dict[str, Any]]:
         """
-        Get a record by ID.
+        Retrieves a single record from a table by its ID.
         
         Args:
-            table (str): Table name.
-            id_value (str): ID value to search for.
-            columns (str, optional): Columns to select. Defaults to "*".
-            
+            table: Name of the table to query.
+            id_value: The ID value to match.
+            columns: Comma-separated list of columns to select (default is all).
+        
         Returns:
-            Optional[Dict[str, Any]]: Record if found, None otherwise.
+            The matching record as a dictionary if found, otherwise None.
         """
         url = self._build_url(table)
         params = {
@@ -90,20 +90,19 @@ class SupabaseClient:
                order_by: str = None,
                limit: int = None) -> Union[List[Dict[str, Any]], Optional[Dict[str, Any]]]:
         """
-        Filter data from a table based on multiple conditions.
-
-        Args:
-            table (str): Table name.
-            filters (Dict[str, Any]): Dictionary of column-value pairs to filter by.
-            columns (str, optional): Columns to select. Defaults to "*".
-            single (bool, optional): If True, return only the first result. Defaults to False.
-            order_by (str, optional): Column to order results by. Format: "column.asc" or "column.desc".
-            limit (int, optional): Maximum number of results to return.
-
-        Returns:
-            Union[List[Dict[str, Any]], Optional[Dict[str, Any]]]:
-                List of records, a single record if single=True, or None if no results found.
-        """
+               Retrieves records from a table that match specified filter conditions.
+               
+               Args:
+                   table: Name of the table to query.
+                   filters: Dictionary mapping column names to values for filtering results.
+                   columns: Comma-separated list of columns to select. Defaults to all columns.
+                   single: If True, returns only the first matching record or None if no match.
+                   order_by: Optional ordering for results, e.g., "column.asc" or "column.desc".
+                   limit: Optional maximum number of records to return.
+               
+               Returns:
+                   A list of matching records, a single record if single=True, or None if no results are found and single=True.
+               """
         url = self._build_url(table)
         params = {"select": columns}
 
@@ -137,14 +136,14 @@ class SupabaseClient:
     
     def insert(self, table: str, data: Dict[str, Any]) -> Dict[str, Any]:
         """
-        Insert a new record.
+        Inserts a new record into the specified table and returns the inserted record.
         
         Args:
-            table (str): Table name.
-            data (Dict[str, Any]): Data to insert.
-            
+            table: Name of the table to insert into.
+            data: Dictionary containing the data for the new record.
+        
         Returns:
-            Dict[str, Any]: Inserted record.
+            The inserted record as a dictionary.
         """
         url = self._build_url(table)
         headers = {**self.headers, "Prefer": "return=representation"}

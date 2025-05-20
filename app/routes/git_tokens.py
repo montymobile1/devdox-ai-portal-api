@@ -10,15 +10,9 @@ from app.utils.encryption import EncryptionHelper
 
 def mask_token(token: str) -> str:
     """
-    Mask a token value for security purposes.
-    Shows first 4 and last 4 characters, masks the middle with asterisks.
-    Maintains the same total length as the original token.
-
-    Args:
-        token (str): The token to mask
-
-    Returns:
-        str: Masked token string
+    Masks a token string by revealing only the first and last four characters.
+    
+    If the token is 8 characters or fewer, the entire token is replaced with asterisks. Returns an empty string if the input is empty.
     """
     if not token:
         return ""
@@ -37,13 +31,9 @@ def mask_token(token: str) -> str:
 
 def format_token_response(token_data: Dict[str, Any]) -> Dict[str, Any]:
     """
-    Format token data for API response.
-
-    Args:
-        token_data (Dict[str, Any]): Raw token data from database
-
-    Returns:
-        Dict[str, Any]: Formatted token data for response
+    Formats raw token data by decrypting and masking the token value for API responses.
+    
+    If the token value is present, returns a dictionary containing the token's metadata and a masked version of the decrypted token value. Returns False if the token value is missing.
     """
 
     if (token_data.get("token_value")):
@@ -67,13 +57,10 @@ router = APIRouter()
             description="Retrieve a list of all tokens with masked values")
 async def get_tokens() -> List[Dict[str, Any]]:
     """
-    Get a list of all tokens.
-
+    Retrieves all stored tokens with masked values for API response.
+    
     Returns:
-        List[Dict[str, Any]]: A list of token items with masked values
-
-    Raises:
-        HTTPException: 500 if database error occurs
+        A list of dictionaries containing token metadata and masked token values.
     """
     client = SupabaseClient()
     res = client.select(table="git_label", columns="label, id, git_hosting,token_value, created_at")
@@ -88,13 +75,13 @@ async def get_tokens() -> List[Dict[str, Any]]:
             description="Retrieve a list of all tokens with masked values")
 async def get_token_by_label(label:str) ->List[Dict[str, Any]]:
     """
-    Get a token by label
-
+    Retrieves a token matching the specified label with its value masked.
+    
+    Args:
+        label: The label identifying the token to retrieve.
+    
     Returns:
-        List[Dict[str, Any]]: A list of token items with masked values
-
-    Raises:
-        HTTPException: 500 if database error occurs
+        A list containing the formatted token dictionary with masked token value. The list is empty if no matching token is found.
     """
     client = SupabaseClient()
     res = client.filter(table="git_label",filters={"label": label}, limit=1)
