@@ -13,7 +13,7 @@ from app.routes import router as api_router
 app = FastAPI(
     title="DevDox AI Portal API",
     description="Backend API service for the DevDox AI Portal.",
-    version="0.1.0",
+    version=settings.VERSION,
     docs_url="/docs",
     redoc_url="/redoc",
 )
