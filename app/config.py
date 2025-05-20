@@ -4,7 +4,13 @@ Configuration settings for the DevDox AI Portal API.
 
 import os
 from pydantic_settings import BaseSettings
+from enum import Enum
 from typing import List, Optional
+
+
+class GitHosting(str, Enum):
+    GITLAB = "gitlab"
+    GITHUB = "github"
 
 class Settings(BaseSettings):
     """Application settings."""
@@ -36,6 +42,7 @@ class Settings(BaseSettings):
         """Pydantic config class."""
         env_file = ".env"
         case_sensitive = True
+        git_hosting: Optional[GitHosting] = None
 
 # Initialize settings instance
 settings = Settings()

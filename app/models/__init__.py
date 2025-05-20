@@ -2,6 +2,6 @@
 Models package initializer.
 """
 
-from app.models.example import Example, ExampleCreate, ExampleUpdate, ExampleInDB
+from app.models.git_label import AddGitlab
 
-__all__ = ["Example", "ExampleCreate", "ExampleUpdate", "ExampleInDB"]
+__all__ = ["AddGitlab"]
