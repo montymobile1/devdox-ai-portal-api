@@ -1,8 +1,11 @@
 """
 Token routes for the DevDox AI Portal API.
+
+This module provides endpoints for retrieving Git tokens with their values masked
+for security. It supports retrieving all tokens or filtering by a specific label.
 """
 
-from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi import APIRouter, status, HTTPException
 from typing import List, Dict, Any
 from app.services.supabase_client import SupabaseClient
 from app.utils.encryption import EncryptionHelper
@@ -56,7 +59,7 @@ def format_token_response(token_data: Dict[str, Any]) -> Dict[str, Any]:
             "updated_at": token_data.get("updated_at")
         }
     else:
-        return False
+        return None
 # Create router
 router = APIRouter()
 
@@ -75,16 +78,22 @@ async def get_tokens() -> List[Dict[str, Any]]:
     Raises:
         HTTPException: 500 if database error occurs
     """
-    client = SupabaseClient()
-    res = client.select(table="git_label", columns="label, id, git_hosting,token_value, created_at")
-    formatted_tokens = [format_token_response(token) for token in res]
-    return formatted_tokens
+    try:
+        client = SupabaseClient()
+        res = client.select(table="git_label", columns="label, id, git_hosting,token_value, created_at")
 
+        formatted_tokens = [t for t in (format_token_response(token) for token in res) if t]
+        return formatted_tokens
+
+    except Exception as e:
+        raise HTTPException(
+                    status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+                detail = "Service temporarily unavailable. Please try again later." )
 
 
 @router.get("/{label}",  response_model=List[Dict[str, Any]],
             status_code=status.HTTP_200_OK,
-            summary="Get all tokens",
+            summary="Get tokens by label",
             description="Retrieve a list of all tokens with masked values")
 async def get_token_by_label(label:str) ->List[Dict[str, Any]]:
     """

@@ -10,4 +10,4 @@ from app.routes.git_tokens import router as git_tokens
 router = APIRouter()
 
 # Include sub-routers
-router.include_router(git_tokens, prefix="/git_tokens", tags=[""])
+router.include_router(git_tokens, prefix="/git_tokens", tags=["GitTokens"])
