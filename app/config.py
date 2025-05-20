@@ -37,6 +37,9 @@ class Settings(BaseSettings):
     # SonarQube configuration
     SONARQUBE_URL: Optional[str] = None
     SONARQUBE_TOKEN: Optional[str] = None
+
+    #Version
+    VERSION: str = "0.1.0"
     
     class Config:
         """Pydantic config class."""
