@@ -1,8 +1,8 @@
 #!/usr/bin/env python
-import unittest
 import coverage
 import os
 import sys
+import pytest
 
 # Start code coverage collection
 cov = coverage.Coverage(
@@ -15,16 +15,15 @@ cov = coverage.Coverage(
 )
 cov.start()
 
-# Discover and run tests
-loader = unittest.TestLoader()
-start_dir = "tests"
-pattern = "test_*.py"
+# Run pytest
+pytest_args = [
+    "tests",               # test directory
+    "-v",                  # verbose
+    "--tb=short",          # shorter traceback
+]
+exit_code = pytest.main(pytest_args)
 
-suite = loader.discover(start_dir, pattern=pattern)
-runner = unittest.TextTestRunner(verbosity=2)
-result = runner.run(suite)
-
-# Stop coverage and generate report
+# Stop coverage and generate reports
 cov.stop()
 cov.save()
 
@@ -38,15 +37,15 @@ if not os.path.exists(cov_dir):
     os.makedirs(cov_dir)
 cov.html_report(directory=cov_dir)
 
-# Generate XML report for SonarQube - removed unsupported parameter
+# Generate XML report for SonarQube
 cov.xml_report(outfile="coverage.xml")
 
 print(f"\nHTML coverage report generated in {cov_dir}/")
 print(f"XML coverage report generated in coverage.xml")
 
-# Show coverage path for debugging
+# Show absolute path for debugging
 coverage_file = os.path.abspath("coverage.xml")
 print(f"Absolute path to coverage report: {coverage_file}")
 
-# Return non-zero exit code if tests failed
-sys.exit(not result.wasSuccessful())
+# Exit with pytest's exit code
+sys.exit(exit_code)
