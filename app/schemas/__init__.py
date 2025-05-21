@@ -2,6 +2,6 @@
 Models package initializer.
 """
 
-from app.schemas.git_label import AddGitlabSchema
+from app.schemas.git_label import AddGitTokenSchema
 
-__all__ = ["AddGitlabSchema"]
+__all__ = ["AddGitTokenSchema"]

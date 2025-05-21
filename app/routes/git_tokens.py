@@ -13,10 +13,10 @@ from app.utils.github_manager import GitHubManager
 from app.utils.encryption import EncryptionHelper
 from app.utils.api_response import APIResponse
 from app.config import GitHosting
-from app.schemas.git_label import AddGitlabSchema
+from app.schemas.git_label import AddGitTokenSchema
 
 
-async def handle_gitlab(payload: AddGitlabSchema, encrypted_token: str):
+async def handle_gitlab(payload: AddGitTokenSchema, encrypted_token: str):
     gitlab = GitLabManager(base_url="https://gitlab.com", access_token=payload.token_value)
 
     if not gitlab.auth_status:
@@ -44,7 +44,7 @@ async def handle_gitlab(payload: AddGitlabSchema, encrypted_token: str):
     return APIResponse.error(message="Failed to save GitLab token")
 
 
-async def handle_github(payload: AddGitlabSchema, encrypted_token: str):
+async def handle_github(payload: AddGitTokenSchema, encrypted_token: str):
     github = GitHubManager(access_token=payload.token_value)
     user = github.get_user()
 
@@ -173,7 +173,7 @@ async def get_token_by_label(label:str) ->List[Dict[str, Any]]:
 
 
 @router.post("/", response_model=Dict[str, Any])
-async def add_token(request: Request, payload: AddGitlabSchema = Body(...)):
+async def add_token(request: Request, payload: AddGitTokenSchema = Body(...)):
     token = payload.token_value.replace(" ", "")
     encrypted_token = EncryptionHelper.encrypt(token.replace(" ", "")) if token else ""
     if payload.git_hosting == GitHosting.GITLAB:
