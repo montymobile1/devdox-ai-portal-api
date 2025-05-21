@@ -130,10 +130,9 @@ async def get_tokens() -> List[Dict[str, Any]]:
     """
     try:
         client = SupabaseClient()
-        res = client.select(table="git_label", columns="label, id, git_hosting,token_value, created_at")
+        res = client.select(table="git_label", columns="label, id, git_hosting,masked_token, created_at")
 
-        formatted_tokens = [t for t in (format_token_response(token) for token in res) if t]
-        return formatted_tokens
+        return res
 
 
     except Exception as e:

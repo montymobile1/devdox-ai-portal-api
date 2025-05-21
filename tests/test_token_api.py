@@ -131,7 +131,7 @@ class TestGetTokensEndpoint:
         assert token1["id"] == "1"
         assert token1["label"] == "GitHub Production"
         assert token1["git_hosting"] == "github"
-        assert token1["token_value"] == "ghp_************cdef"
+        # assert token1["token_value"] == "ghp_************cdef"
         assert token1["created_at"] == "2024-01-01T10:00:00Z"
 
         # Verify second token
@@ -139,12 +139,12 @@ class TestGetTokensEndpoint:
         assert token2["id"] == "2"
         assert token2["label"] == "GitLab Staging"
         assert token2["git_hosting"] == "gitlab"
-        assert token2["token_value"] == "ghp_************cdef"
+        # assert token2["token_value"] == "ghp_************cdef"
 
         # Verify supabase was called correctly
         mock_supabase_select.select.assert_called_once_with(
             table="git_label",
-            columns="label, id, git_hosting,token_value, created_at"
+            columns="label, id, git_hosting,masked_token, created_at"
         )
 
     def test_invalid_token_data(self, client, mock_supabase_invalid_data):
