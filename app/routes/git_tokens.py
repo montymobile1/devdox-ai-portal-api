@@ -107,7 +107,7 @@ def format_token_response(token_data: Dict[str, Any]) -> Dict[str, Any]:
             "id": token_data.get("id"),
             "label": token_data.get("label"),
             "git_hosting": token_data.get("git_hosting"),
-            "token_value": mask_token(EncryptionHelper.decrypt(token_data.get("token_value", ""))),
+            "token_value": mask_token(decrypt_data),
             "created_at": token_data.get("created_at"),
             "updated_at": token_data.get("updated_at")
         }
