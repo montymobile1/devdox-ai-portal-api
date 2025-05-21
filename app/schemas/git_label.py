@@ -6,8 +6,18 @@ class AddGitlabSchema(BaseModel):
     """
     Base model for an example entity.
     """
-    label: str = Field(..., description="Token label")
+    label: str = Field(
+       ..., 
+       description="Token label",
+       min_length=1,
+       max_length=50
+   )
     git_hosting: Optional[GitHosting] = Field(None, description="Git hosting provider")
-    token_value: Optional[str] = Field(None, description="Token value of git hosting")
+    token_value: str = Field(
+               ...,
+               description = "Token value of git hosting",
+           min_length = 5,
+           max_length = 255,
+                       )
     user_id: Optional[str] = Field(None, description="User ID")
 

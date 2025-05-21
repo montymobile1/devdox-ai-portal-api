@@ -530,11 +530,6 @@ class TestAddTokenEndpoint:
 
     def test_add_token_empty_token(self, client, mock_github_manager, mock_supabase_insert):
         """Test creation with empty token."""
-        # Mock GitHub user response
-        mock_github_manager.return_value.get_user.return_value = {"login": "testuser"}
-
-        # Mock successful insert
-        mock_supabase_insert.return_value = {"id": "999"}
 
         # Create payload with empty token
         payload = {
@@ -547,5 +542,5 @@ class TestAddTokenEndpoint:
         # Make the request
         response = client.post("/api/v1/git_tokens/", json=payload)
 
-        # Verify GitHub manager was initialized with empty token
-        mock_github_manager.assert_called_once_with(access_token="")
+        assert response.status_code == status.HTTP_422_UNPROCESSABLE_ENTITY
+

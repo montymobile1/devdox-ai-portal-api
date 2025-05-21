@@ -25,7 +25,7 @@ class GitLabManager:
         if self.project_id !="":
             return self.gl.projects.get(self.project_id)
         else:
-            None
+            return None
 
     def get_user(self):
         try:

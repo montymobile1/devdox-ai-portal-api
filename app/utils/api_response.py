@@ -24,23 +24,23 @@ class APIResponse:
         response = {
             "success": False,
             "message": message,
-            "status_code": status_code
+            "status_code": status_code,
+            "error_code":status_code
         }
         if details is not None:
             response["details"] = details
 
-
         return JSONResponse(content=response, status_code=status_code)
 
     @staticmethod
-    def validation_error(message: str, errors: Optional[list] = None) -> Dict[str, Any]:
+    def validation_error(message: str, details: Optional[list] = None) -> Dict[str, Any]:
         """Generate a validation error response."""
         response = {
             "success": False,
             "message": message,
             "status_code": 422
         }
-        if errors is not None:
-            response["validation_errors"] = errors
+        if details is not None:
+            response["validation_errors"] = details
         return JSONResponse(content=response, status_code=422)
 

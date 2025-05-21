@@ -34,7 +34,7 @@ async def handle_gitlab(payload: AddGitlabSchema, encrypted_token: str):
             "user_id": payload.user_id,
             "git_hosting": payload.git_hosting,
             "token_value": encrypted_token,
-            "masked_token":mask_token(payload.token_value),
+            "masked_token": mask_token(payload.token_value),
             "username": user.get("username", "")
         }
     )
@@ -50,7 +50,7 @@ async def handle_github(payload: AddGitlabSchema, encrypted_token: str):
 
     if not user:
         return APIResponse.error(message="Failed to authenticate with GitHub", status_code=status.HTTP_400_BAD_REQUEST)
-    print("mask token ",mask_token(payload.token_value))
+
     client = SupabaseClient()
     res = client.insert(
         "git_label",
@@ -174,8 +174,7 @@ async def get_token_by_label(label:str) ->List[Dict[str, Any]]:
 
 @router.post("/", response_model=Dict[str, Any])
 async def add_token(request: Request, payload: AddGitlabSchema = Body(...)):
-    token = payload.token_value
-    token = token.replace(" ", "")
+    token = payload.token_value.replace(" ", "")
     encrypted_token = EncryptionHelper.encrypt(token.replace(" ", "")) if token else ""
     if payload.git_hosting == GitHosting.GITLAB:
         return await handle_gitlab(payload, encrypted_token)

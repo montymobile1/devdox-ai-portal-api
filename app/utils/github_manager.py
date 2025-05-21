@@ -1,6 +1,5 @@
 from github import Github
 from github.GithubException import GithubException
-import base64
 import traceback
 
 
