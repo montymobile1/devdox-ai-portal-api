@@ -5,10 +5,69 @@ This module provides endpoints for retrieving Git tokens with their values maske
 for security. It supports retrieving all tokens or filtering by a specific label.
 """
 
-from fastapi import APIRouter, status, HTTPException
+from fastapi import APIRouter, status, HTTPException, Body, Request
 from typing import List, Dict, Any
 from app.services.supabase_client import SupabaseClient
+from app.utils.gitlab_manager import GitLabManager
+from app.utils.github_manager import GitHubManager
 from app.utils.encryption import EncryptionHelper
+from app.utils.api_response import APIResponse
+from app.config import GitHosting
+from app.schemas.git_label import AddGitTokenSchema
+
+
+async def handle_gitlab(payload: AddGitTokenSchema, encrypted_token: str):
+    gitlab = GitLabManager(base_url="https://gitlab.com", access_token=payload.token_value)
+
+    if not gitlab.auth_status:
+        return APIResponse.error(message="Failed to authenticate with GitLab")
+
+    user = gitlab.get_user()
+    if not user:
+        return APIResponse.error(message="Could not retrieve GitLab user")
+
+    client = SupabaseClient()
+    res = client.insert(
+        "git_label",
+        {
+            "label": payload.label,
+            "user_id": payload.user_id,
+            "git_hosting": payload.git_hosting,
+            "token_value": encrypted_token,
+            "masked_token": mask_token(payload.token_value),
+            "username": user.get("username", "")
+        }
+    )
+
+    if res:
+        return APIResponse.success(message="Token saved successfully", data={"id": str(res["id"])})
+    return APIResponse.error(message="Failed to save GitLab token")
+
+
+async def handle_github(payload: AddGitTokenSchema, encrypted_token: str):
+    github = GitHubManager(access_token=payload.token_value)
+    user = github.get_user()
+
+    if not user:
+        return APIResponse.error(message="Failed to authenticate with GitHub", status_code=status.HTTP_400_BAD_REQUEST)
+
+    client = SupabaseClient()
+    res = client.insert(
+        "git_label",
+        {
+            "label": payload.label,
+            "user_id": payload.user_id,
+            "git_hosting": payload.git_hosting,
+            "token_value": encrypted_token,
+            "masked_token": mask_token(payload.token_value),
+            "username": user.get("login", "")
+        }
+    )
+
+    if res:
+        return APIResponse.success(message="Token saved successfully",data={"id": str(res["id"])})
+    return APIResponse.error(message="Failed to save GitHub token")
+
 
 def mask_token(token: str) -> str:
     """
@@ -39,11 +98,16 @@ def format_token_response(token_data: Dict[str, Any]) -> Dict[str, Any]:
     """
 
     if token_data and token_data.get("token_value"):
+        try:
+            decrypt_data = EncryptionHelper.decrypt(token_data.get("token_value", ""))
+        except Exception as e:
+            print(f"Error decrypting token value: {e}")
+            return False
         return {
             "id": token_data.get("id"),
             "label": token_data.get("label"),
             "git_hosting": token_data.get("git_hosting"),
-            "token_value": mask_token(EncryptionHelper.decrypt(token_data.get("token_value", ""))),
+            "token_value": mask_token(decrypt_data),
             "created_at": token_data.get("created_at"),
             "updated_at": token_data.get("updated_at")
         }
@@ -106,3 +170,16 @@ async def get_token_by_label(label:str) ->List[Dict[str, Any]]:
             detail="Service temporarily unavailable. Please try again later."
         ) from e
 
+
+
+@router.post("/", response_model=Dict[str, Any])
+async def add_token(request: Request, payload: AddGitTokenSchema = Body(...)):
+    token = payload.token_value.replace(" ", "")
+    encrypted_token = EncryptionHelper.encrypt(token.replace(" ", "")) if token else ""
+    if payload.git_hosting == GitHosting.GITLAB:
+        return await handle_gitlab(payload, encrypted_token)
+
+    if payload.git_hosting == GitHosting.GITHUB:
+        return await handle_github(payload, encrypted_token)
+
+    return APIResponse.error(message="Unsupported git hosting provider", status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,)
