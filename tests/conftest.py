@@ -4,13 +4,36 @@ Pytest fixtures for token API endpoint tests.
 
 import pytest
 from fastapi.testclient import TestClient
-from unittest.mock import patch
+from unittest.mock import patch, MagicMock
 
 from app.main import app  # Assuming your FastAPI app is in app.main
 
 # Sample encrypted token values for testing
-TOKEN_ENCRYPTED_1 = "gAAAAABoLCptgspZg0h7yQRjfAJhWWKHLsKl5IL8qKnP4mH4TDq-6TlZI_94TMWCftEUU65eYAlz0e0_gQI4pKwOIEoqHEqtxOuzHEIvwTJRtaVi1nQZm4Y="
-TOKEN_ENCRYPTED_2 = "gAAAAABoLCptgspZg0h7yQRjfAJhWWKHLsKl5IL8qKnP4mH4TDq-6TlZI_94TMWCftEUU65eYAlz0e0_gQI4pKwOIEoqHEqtxOuzHEIvwTJRtaVi1nQZm4Y="
+#TOKEN_ENCRYPTED_1 = "gAAAAABoLCptgspZg0h7yQRjfAJhWWKHLsKl5IL8qKnP4mH4TDq-6TlZI_94TMWCftEUU65eYAlz0e0_gQI4pKwOIEoqHEqtxOuzHEIvwTJRtaVi1nQZm4Y="
+TOKEN_ENCRYPTED_1 = "gAAAAABoLY1xN44144aj4hoqxlP1A385SKuWONI-ydywxS2M8UHpxMu71CHXhu3rDruewrLeAV-jMiQAp0F8i5a5f9yv06QScbeV0yqI_rFN6B3HYsIZnMs="
+TOKEN_ENCRYPTED_2 = "gAAAAABoLY1VLHmjiBQ1QMt1nG9PcKxdGHjDK1QzsZHwo7-7WZv8uFfTbZikYZcizmkHWl9SwEcuSYXVogoCABLXfrIvmD3u3hnUxVqw9fo6eZeB8TrJDNE="
+
+
+
+@pytest.fixture
+def token_decrypted1_masked():
+    return "ghp_************cdef"
+
+@pytest.fixture
+def token_decrypted1():
+    return "ghp_1234567890abcdef"
+
+@pytest.fixture
+def token_encrypted1():
+    return TOKEN_ENCRYPTED_1
+
+@pytest.fixture
+def token_gitlab_decrypted1():
+    return "glpat-1234567890abcdef"
+
+@pytest.fixture
+def token_gitlab_decrypted1_masked():
+    return "glpa**************cdef"
 
 @pytest.fixture
 def client():
@@ -27,15 +50,8 @@ def mock_supabase():
     with patch('app.routes.git_tokens.SupabaseClient') as mock:
         yield mock
 
-@pytest.fixture
-def mock_encryption_helper():
-    """
-    Create a mocked EncryptionHelper.
-    """
-    with patch('app.routes.git_tokens.EncryptionHelper') as mock:
-        # Configure decrypt method to return predictable values for tests
-        mock.decrypt.side_effect = lambda token: "ghp_1234567890abcdef" if token else ""
-        yield mock
+
+
 
 @pytest.fixture
 def token_data_single():
@@ -214,3 +230,128 @@ def mock_supabase_invalid_data(mock_supabase, invalid_token_data_list):
     mock_instance.filter.side_effect = side_effect_filter
 
     return mock_instance
+
+
+@pytest.fixture
+def mock_github_manager():
+    """Mock for GitHubManager."""
+    with patch("app.routes.git_tokens.GitHubManager") as mock:
+        yield mock
+
+@pytest.fixture
+def mock_gitlab_manager():
+    """Mock for GitLabManager."""
+    with patch("app.routes.git_tokens.GitLabManager") as mock:
+        yield mock
+
+
+@pytest.fixture
+def mock_github_manager_success():
+    """Mock for successful GitHubManager authentication."""
+    with patch("app.routes.git_tokens.GitHubManager") as mock_class:
+        mock_instance = MagicMock()
+        mock_instance.auth_status = True
+        mock_instance.get_user.return_value = {"login": "testuser"}
+        mock_class.return_value = mock_instance
+
+        yield mock_class
+
+@pytest.fixture
+def mock_github_manager_failure():
+    """Mock for failed GitHubManager authentication."""
+    with patch("app.routes.git_tokens.GitHubManager") as mock_class:
+        mock_instance = MagicMock()
+        mock_instance.auth_status = False
+        mock_instance.get_user.return_value = None
+        mock_class.return_value = mock_instance
+        yield mock_class
+
+@pytest.fixture
+def mock_gitlab_manager_success():
+    with patch("app.routes.git_tokens.GitLabManager") as mock_class:
+        mock_instance = MagicMock()
+        mock_instance.auth_status = True
+        mock_instance.get_user.return_value = {"username": "testuser"}
+        mock_class.return_value = mock_instance
+        yield mock_class
+
+
+@pytest.fixture
+def mock_gitlab_manager_auth_failure():
+    """Mock for GitLabManager with authentication failure."""
+    with patch("app.routes.git_tokens.GitLabManager") as mock_class:
+        mock_instance = MagicMock()
+        mock_instance.auth_status = False
+        mock_class.return_value = mock_instance
+        yield mock_class
+
+@pytest.fixture
+def mock_gitlab_manager_user_failure():
+    """Mock for GitLabManager with user fetch failure."""
+    with patch("app.routes.git_tokens.GitLabManager") as mock_class:
+        mock_instance = MagicMock()
+        mock_instance.auth_status = True
+        mock_instance.get_user.return_value = None
+        mock_class.return_value = mock_instance
+        yield mock_class
+
+
+@pytest.fixture
+def mock_supabase_insert():
+    """Mock for SupabaseClient insert operation."""
+    with patch("app.routes.git_tokens.SupabaseClient") as mock:
+        mock_instance = MagicMock()
+        mock_instance.insert.return_value = {"id": "999"}
+        mock.return_value = mock_instance
+        yield mock_instance
+
+@pytest.fixture
+def mock_supabase_insert_success():
+    """Mock for successful SupabaseClient insert operation."""
+    with patch("app.routes.git_tokens.SupabaseClient") as mock_class:
+        mock_instance = MagicMock()
+        mock_instance.insert.return_value = {"id": "999"}
+        mock_class.return_value = mock_instance
+        yield mock_instance
+
+
+@pytest.fixture
+def token_payload_github():
+    """Sample GitHub token payload."""
+    return {
+        "label": "Test GitHub Token",
+        "user_id": "user123",
+        "git_hosting": "github",
+        "token_value": "ghp_1234567890abcdef"
+    }
+
+@pytest.fixture
+def token_payload_gitlab():
+    """Sample GitLab token payload."""
+    return {
+        "label": "Test GitLab Token",
+        "user_id": "user123",
+        "git_hosting": "gitlab",
+        "token_value": "glpat-1234567890abcdef"
+    }
+
+
+@pytest.fixture
+def mock_api_response():
+    """Mock for APIResponse utility class."""
+    with patch("app.routes.git_tokens.APIResponse") as mock:
+        # Set up success method
+        mock.success = MagicMock(return_value={
+            "success": True,
+            "message": "Operation successful",
+            "data": {}
+        })
+
+        # Set up error method
+        mock.error = MagicMock(return_value={
+            "success": False,
+            "message": "Operation failed",
+            "data": None
+        })
+
+        yield mock
