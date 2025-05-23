@@ -13,7 +13,7 @@ from app.main import app  # Assuming your FastAPI app is in app.main
 #TOKEN_ENCRYPTED_1 = "gAAAAABoLCptgspZg0h7yQRjfAJhWWKHLsKl5IL8qKnP4mH4TDq-6TlZI_94TMWCftEUU65eYAlz0e0_gQI4pKwOIEoqHEqtxOuzHEIvwTJRtaVi1nQZm4Y="
 TOKEN_ENCRYPTED_1 = "gAAAAABoMFiNIvAc7WIFnoKXBjkpAVrdiTFrhlmZtG8BBwvmy1dtvfEFmupm0fcvDUo3unosoAQz5eclP2QFMnPMLG4Hj21MBt-xTdWL661JnWP-wQarnLI="
 TOKEN_ENCRYPTED_2 = "gAAAAABoMFiNIvAc7WIFnoKXBjkpAVrdiTFrhlmZtG8BBwvmy1dtvfEFmupm0fcvDUo3unosoAQz5eclP2QFMnPMLG4Hj21MBt-xTdWL661JnWP-wQarnLI="
-
+decrypted1_masked=decrypted2_masked="ghp_************cdef"
 
 
 
@@ -80,6 +80,7 @@ def token_data_list():
             "label": "GitHub Production",
             "git_hosting": "github",
             "token_value": TOKEN_ENCRYPTED_1,
+            "masked_token": decrypted1_masked,
             "created_at": "2024-01-01T10:00:00Z",
             "updated_at": "2024-01-02T10:00:00Z"
         },
@@ -88,6 +89,7 @@ def token_data_list():
             "label": "GitLab Staging",
             "git_hosting": "gitlab",
             "token_value": TOKEN_ENCRYPTED_2,
+            "masked_token":decrypted2_masked,
             "created_at": "2024-01-03T10:00:00Z",
             "updated_at": "2024-01-04T10:00:00Z"
         }
@@ -233,6 +235,11 @@ def mock_supabase_invalid_data(mock_supabase, invalid_token_data_list):
 
     return mock_instance
 
+
+@pytest.fixture()
+def mock_supabase_invalid_label(mock_supabase):
+    mock_supabase.filter.return_value = []
+    return mock_supabase
 
 @pytest.fixture
 def mock_github_manager():

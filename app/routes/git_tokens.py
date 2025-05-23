@@ -91,29 +91,6 @@ def mask_token(token: str) -> str:
     return f"{prefix}{middle_mask}{suffix}"
 
 
-def format_token_response(token_data: Dict[str, Any]) -> Dict[str, Any]:
-    """
-    Formats raw token data by decrypting and masking the token value for API responses.
-    
-    If the token value is present, returns a dictionary containing the token's metadata and a masked version of the decrypted token value. Returns False if the token value is missing.
-    """
-
-    if token_data and token_data.get("token_value"):
-        try:
-            decrypt_data = EncryptionHelper.decrypt(token_data.get("token_value", ""))
-        except Exception as e:
-            print(f"Error decrypting token value: {e}")
-            return False
-        return {
-            "id": token_data.get("id"),
-            "label": token_data.get("label"),
-            "git_hosting": token_data.get("git_hosting"),
-            "token_value": mask_token(decrypt_data),
-            "created_at": token_data.get("created_at"),
-            "updated_at": token_data.get("updated_at")
-        }
-    else:
-        return None
 # Create router
 router = APIRouter()
 
@@ -160,10 +137,8 @@ async def get_token_by_label(label:str) ->List[Dict[str, Any]]:
     """
     try:
         client = SupabaseClient()
-        res = client.filter(table="git_label",filters={"label": label}, limit=1)
-        formatted_tokens = [t for t in (format_token_response(token) for token in res) if t]
-
-        return formatted_tokens
+        res = client.filter(table="git_label",filters={"label": label}, columns="label, id, git_hosting, masked_token, created_at")
+        return res
     except Exception as e:
         raise HTTPException(
             status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
