@@ -5,8 +5,9 @@ This module provides endpoints for retrieving and adding Repos with their inform
 """
 
 from fastapi import APIRouter, status, HTTPException
-from typing import List, Dict, Any
+from typing import List, Dict, Any, Optional
 from app.services.supabase_client import SupabaseClient
+from app.schemas.basic import PaginationParams
 from app.utils import constants
 
 
@@ -19,9 +20,11 @@ router = APIRouter()
     response_model=List[Dict[str, Any]],
     status_code=status.HTTP_200_OK,
     summary="Get all repos",
-    description="Retrieve a list of all repos",
+    description="Retrieve a paginated list of repositories for a user",
 )
-async def get_repos(user_id) -> List[Dict[str, Any]]:
+async def get_repos(
+    user_id: str, pagination: PaginationParams = PaginationParams()
+) -> List[Dict[str, Any]]:
     """
     Retrieves all repos based on user_id for API response.
 
@@ -30,7 +33,12 @@ async def get_repos(user_id) -> List[Dict[str, Any]]:
     """
     try:
         client = SupabaseClient()
-        res = client.filter(table="repo", filters={"user_id": user_id})
+        res = client.filter(
+            table="repo",
+            filters={"user_id": user_id},
+            limit=pagination.limit,
+            order_by="created_at.desc",
+        )
 
         return res
 

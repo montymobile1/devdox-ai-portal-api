@@ -1,6 +1,6 @@
 import pytest
 from fastapi import status
-from unittest.mock import  patch
+from unittest.mock import patch
 from app.utils import constants
 
 
@@ -23,25 +23,6 @@ def sample_repos():
     ]
 
 
-@pytest.fixture
-def sample_repos():
-    return [
-        {
-            "repo_id": "uuid-123",
-            "user_id": "user-1",
-            "repo_name": "test-repo",
-            "description": "Repo description",
-            "last_commit": "abc123",
-            "star_count": 10,
-            "commit_count": 20,
-            "fork_count": 3,
-            "branch_default": "main",
-            "created_at": "2024-01-01T00:00:00Z",
-            "updated_at": "2024-01-01T00:00:00Z",
-        }
-    ]
-
-
 @patch("app.routes.repos.SupabaseClient")
 def test_get_repos_by_user_success(mock_supabase_client, client, sample_repos):
     user_id = "user-1"
@@ -56,7 +37,7 @@ def test_get_repos_by_user_success(mock_supabase_client, client, sample_repos):
     assert len(data) == 1
     assert data[0]["user_id"] == user_id
     mock_instance.filter.assert_called_once_with(
-        table="repo", filters={"user_id": user_id}
+        table="repo", filters={"user_id": user_id}, limit=20, order_by="created_at.desc"
     )
 
 
