@@ -22,7 +22,7 @@ class Settings(BaseSettings):
 
     #supbase settings
     SUPABASE_URL: str = "https://localhost"
-    SUPABASE_KEY: str = "test-supabase-key"
+    SUPABASE_SECRET_KEY: str = "test-supabase-key"
     CLERK_API_KEY: str = "test-clerk-key"
 
     CLERK_JWT_PUBLIC_KEY: Optional[str] = None
