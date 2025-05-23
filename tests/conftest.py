@@ -11,8 +11,9 @@ from app.main import app  # Assuming your FastAPI app is in app.main
 
 # Sample encrypted token values for testing
 #TOKEN_ENCRYPTED_1 = "gAAAAABoLCptgspZg0h7yQRjfAJhWWKHLsKl5IL8qKnP4mH4TDq-6TlZI_94TMWCftEUU65eYAlz0e0_gQI4pKwOIEoqHEqtxOuzHEIvwTJRtaVi1nQZm4Y="
-TOKEN_ENCRYPTED_1 = "gAAAAABoLY1xN44144aj4hoqxlP1A385SKuWONI-ydywxS2M8UHpxMu71CHXhu3rDruewrLeAV-jMiQAp0F8i5a5f9yv06QScbeV0yqI_rFN6B3HYsIZnMs="
-TOKEN_ENCRYPTED_2 = "gAAAAABoLY1VLHmjiBQ1QMt1nG9PcKxdGHjDK1QzsZHwo7-7WZv8uFfTbZikYZcizmkHWl9SwEcuSYXVogoCABLXfrIvmD3u3hnUxVqw9fo6eZeB8TrJDNE="
+TOKEN_ENCRYPTED_1 = "gAAAAABoMFiNIvAc7WIFnoKXBjkpAVrdiTFrhlmZtG8BBwvmy1dtvfEFmupm0fcvDUo3unosoAQz5eclP2QFMnPMLG4Hj21MBt-xTdWL661JnWP-wQarnLI="
+TOKEN_ENCRYPTED_2 = "gAAAAABoMFiNIvAc7WIFnoKXBjkpAVrdiTFrhlmZtG8BBwvmy1dtvfEFmupm0fcvDUo3unosoAQz5eclP2QFMnPMLG4Hj21MBt-xTdWL661JnWP-wQarnLI="
+
 
 
 
