@@ -12,7 +12,7 @@ from version import __version__
 
 # Initialize FastAPI app
 app = FastAPI(
-    title=f"DevDox AI Portal API",
+    title="DevDox AI Portal API",
     description="Backend API service for the DevDox AI Portal.",
     version=__version__,
     docs_url="/docs",
@@ -35,7 +35,7 @@ app.include_router(api_router, prefix="/api/v1")
 @app.get("/health_check", tags=["Health"])
 async def health_check():
     """Health check endpoint."""
-    return {"status": "healthy", "message": "DevDox AI Portal API is running!", "version": settings.VERSION}
+    return {"status": "healthy", "message": "DevDox AI Portal API is running!", "version": __version__}
 
 if __name__ == "__main__":
     """Run the application with uvicorn."""
