@@ -8,12 +8,13 @@ from fastapi.middleware.cors import CORSMiddleware
 
 from app.config import settings
 from app.routes import router as api_router
+from version import __version__
 
 # Initialize FastAPI app
 app = FastAPI(
-    title="DevDox AI Portal API",
+    title=f"DevDox AI Portal API",
     description="Backend API service for the DevDox AI Portal.",
-    version=settings.VERSION,
+    version=__version__,
     docs_url="/docs",
     redoc_url="/redoc",
 )
