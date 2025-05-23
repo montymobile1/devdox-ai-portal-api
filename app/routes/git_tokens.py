@@ -12,6 +12,7 @@ from app.utils.gitlab_manager import GitLabManager
 from app.utils.github_manager import GitHubManager
 from app.utils.encryption import EncryptionHelper
 from app.utils.api_response import APIResponse
+from app.utils import constants
 from app.config import GitHosting
 from app.schemas.git_label import AddGitTokenSchema
 
@@ -20,11 +21,11 @@ async def handle_gitlab(payload: AddGitTokenSchema, encrypted_token: str):
     gitlab = GitLabManager(base_url="https://gitlab.com", access_token=payload.token_value)
 
     if not gitlab.auth_status:
-        return APIResponse.error(message="Failed to authenticate with GitLab")
+        return APIResponse.error(message=constants.GITLAB_AUTH_FAILED)
 
     user = gitlab.get_user()
     if not user:
-        return APIResponse.error(message="Could not retrieve GitLab user")
+        return APIResponse.error(message=constants.GITLAB_USER_RETRIEVE_FAILED)
 
     client = SupabaseClient()
     res = client.insert(
@@ -40,8 +41,8 @@ async def handle_gitlab(payload: AddGitTokenSchema, encrypted_token: str):
     )
 
     if res:
-        return APIResponse.success(message="Token saved successfully", data={"id": str(res["id"])})
-    return APIResponse.error(message="Failed to save GitLab token")
+        return APIResponse.success(message=constants.TOKEN_SAVED_SUCCESSFULLY, data={"id": str(res["id"])})
+    return APIResponse.error(message=constants.GITLAB_TOKEN_SAVE_FAILED)
 
 
 async def handle_github(payload: AddGitTokenSchema, encrypted_token: str):
@@ -49,7 +50,7 @@ async def handle_github(payload: AddGitTokenSchema, encrypted_token: str):
     user = github.get_user()
 
     if not user:
-        return APIResponse.error(message="Failed to authenticate with GitHub", status_code=status.HTTP_400_BAD_REQUEST)
+        return APIResponse.error(message=constants.GITHUB_AUTH_FAILED, status_code=status.HTTP_400_BAD_REQUEST)
 
     client = SupabaseClient()
     res = client.insert(
@@ -65,8 +66,8 @@ async def handle_github(payload: AddGitTokenSchema, encrypted_token: str):
     )
 
     if res:
-        return APIResponse.success(message="Token saved successfully",data={"id": str(res["id"])})
-    return APIResponse.error(message="Failed to save GitHub token")
+        return APIResponse.success(message=constants.TOKEN_SAVED_SUCCESSFULLY,data={"id": str(res["id"])})
+    return APIResponse.error(message=constants.GITHUB_TOKEN_SAVE_FAILED)
 
 
 def mask_token(token: str) -> str:
@@ -139,7 +140,7 @@ async def get_tokens() -> List[Dict[str, Any]]:
 
         raise HTTPException(
             status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
-            detail="Service temporarily unavailable. Please try again later."
+            detail=constants.SERVICE_UNAVAILABLE
         ) from e
 
 
@@ -181,4 +182,40 @@ async def add_token(request: Request, payload: AddGitTokenSchema = Body(...)):
     if payload.git_hosting == GitHosting.GITHUB:
         return await handle_github(payload, encrypted_token)
 
-    return APIResponse.error(message="Unsupported git hosting provider", status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,)
+    return APIResponse.error(message=constants.UNSUPPORTED_GIT_PROVIDER, status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,)
+
+
+@router.delete("/{id}", response_model=Dict[str, Any],
+            status_code=status.HTTP_200_OK,
+            summary="Delete token by id",
+            description="Delete token by id")
+async def delete_token(id: str) -> Dict[str, Any]:
+    """
+     Deletes a token with the specified ID.
+
+    Args:
+         id: The unique identifier of the token to delete.
+
+    Returns:
+       A success response if the token was deleted, or an error response if the token was not found.
+    """
+    try:
+        client = SupabaseClient()
+        res = client.get_by_id(table="git_label",id_value=id )
+        if res :
+            client.delete(table="git_label",id_value=id )
+            return APIResponse.success(
+                message=constants.TOKEN_DELETED_SUCCESSFULLY
+            )
+        else:
+            return APIResponse.error(
+                message=constants.TOKEN_NOT_FOUND,
+                status_code=status.HTTP_404_NOT_FOUND
+            )
+
+
+    except Exception as e:
+        raise HTTPException(
+            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+            detail=constants.SERVICE_UNAVAILABLE
+        ) from e

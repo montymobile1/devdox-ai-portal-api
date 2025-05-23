@@ -4,7 +4,8 @@ Pytest fixtures for token API endpoint tests.
 
 import pytest
 from fastapi.testclient import TestClient
-from unittest.mock import patch, MagicMock
+from unittest.mock import Mock, patch, MagicMock
+
 
 from app.main import app  # Assuming your FastAPI app is in app.main
 
@@ -314,6 +315,22 @@ def mock_supabase_insert_success():
         mock_class.return_value = mock_instance
         yield mock_instance
 
+@pytest.fixture
+def sample_token_id():
+    """Simple sample token ID for testing"""
+    return "test-token-id-123"
+
+@pytest.fixture
+def sample_token_data():
+    """Basic sample token data"""
+    return {
+        "id": "test-token-id-123",
+        "label": "test-token-label",
+        "value": "masked-token-value",
+        "created_at": "2024-01-01T00:00:00Z",
+        "updated_at": "2024-01-01T00:00:00Z"
+    }
+
 
 @pytest.fixture
 def token_payload_github():
@@ -355,3 +372,24 @@ def mock_api_response():
         })
 
         yield mock
+
+
+@pytest.fixture
+def mock_supabase_client():
+    """
+    Basic mock SupabaseClient fixture that returns a mocked client instance.
+    Use this for simple test cases where you just need to mock return values.
+    """
+    with patch('app.routes.git_tokens.SupabaseClient') as mock_client_class:  # Adjust import path
+        mock_client = Mock()
+        mock_client_class.return_value = mock_client
+
+        # Set default return values
+        mock_client.get_by_id.return_value = None
+        mock_client.delete.return_value = True
+        mock_client.create.return_value = {"id": "new-id", "created": True}
+        mock_client.update.return_value = {"id": "updated-id", "updated": True}
+        mock_client.get_all.return_value = []
+
+        yield mock_client
+

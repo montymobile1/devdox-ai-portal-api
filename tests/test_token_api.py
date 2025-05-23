@@ -3,6 +3,9 @@ Test cases for token retrieval and creation API endpoints.
 """
 
 from fastapi import status
+import pytest
+from unittest.mock import patch
+from urllib.parse import quote
 from app.routes.git_tokens import mask_token, format_token_response
 from app.config import GitHosting
 
@@ -543,4 +546,179 @@ class TestAddTokenEndpoint:
         response = client.post("/api/v1/git_tokens/", json=payload)
 
         assert response.status_code == status.HTTP_422_UNPROCESSABLE_ENTITY
+
+
+class TestDeleteToken:
+    """Test cases for delete_token endpoint"""
+
+    def test_delete_token_success(self, client, mock_supabase_client, sample_token_id, sample_token_data):
+        """Test successful token deletion"""
+        # Arrange
+        mock_supabase_client.get_by_id.return_value = sample_token_data
+        mock_supabase_client.delete.return_value = True
+
+        # Act
+        response = client.delete(f"/api/v1/git_tokens/{sample_token_id}")
+
+        # Assert
+        assert response.status_code == status.HTTP_200_OK
+        response_data = response.json()
+        assert response_data["success"] is True
+        assert response_data["message"] == "Token deleted successfully"
+
+        # Verify the correct methods were called
+        mock_supabase_client.get_by_id.assert_called_once_with(
+            table="git_label",
+            id_value=sample_token_id
+        )
+        mock_supabase_client.delete.assert_called_once_with(
+            table="git_label",
+            id_value=sample_token_id
+        )
+
+    def test_delete_token_not_found(self, client, mock_supabase_client, sample_token_id):
+        """Test deletion when token doesn't exist"""
+        # Arrange
+        mock_supabase_client.get_by_id.return_value = None
+
+        # Act
+        response = client.delete(f"/api/v1/git_tokens/{sample_token_id}")
+
+        # Assert
+        assert response.status_code == status.HTTP_404_NOT_FOUND
+        response_data = response.json()
+        assert response_data["message"] == "Token not found"
+
+        # Verify get_by_id was called but delete was not
+        mock_supabase_client.get_by_id.assert_called_once_with(
+            table="git_label",
+            id_value=sample_token_id
+        )
+        mock_supabase_client.delete.assert_not_called()
+
+    def test_delete_token_empty_response(self, client, mock_supabase_client, sample_token_id):
+        """Test deletion when get_by_id returns empty dict or falsy value"""
+        # Arrange
+        mock_supabase_client.get_by_id.return_value = {}
+
+        # Act
+        response = client.delete(f"/api/v1/git_tokens/{sample_token_id}")
+
+        # Assert
+        assert response.status_code == status.HTTP_404_NOT_FOUND
+        response_data = response.json()
+        assert response_data["message"] == "Token not found"
+
+    def test_delete_token_database_error_on_get(self, client, mock_supabase_client, sample_token_id):
+        """Test handling of database error during get operation"""
+        # Arrange
+        mock_supabase_client.get_by_id.side_effect = Exception("Database connection failed")
+
+        # Act
+        response = client.delete(f"/api/v1/git_tokens/{sample_token_id}")
+
+        # Assert
+        assert response.status_code == status.HTTP_503_SERVICE_UNAVAILABLE
+        response_data = response.json()
+        assert response_data["detail"] == "Service temporarily unavailable. Please try again later."
+
+    def test_delete_token_database_error_on_delete(self, client, mock_supabase_client, sample_token_id,
+                                                   sample_token_data):
+        """Test handling of database error during delete operation"""
+        # Arrange
+        mock_supabase_client.get_by_id.return_value = sample_token_data
+        mock_supabase_client.delete.side_effect = Exception("Delete operation failed")
+
+        # Act
+        response = client.delete(f"/api/v1/git_tokens/{sample_token_id}")
+
+        # Assert
+        assert response.status_code == status.HTTP_503_SERVICE_UNAVAILABLE
+        response_data = response.json()
+        assert response_data["detail"] == "Service temporarily unavailable. Please try again later."
+
+    def test_delete_token_with_special_characters_in_id(self, client, mock_supabase_client, sample_token_data):
+        """Test deletion with special characters in token ID"""
+        # Arrange
+        special_id = "token-with-special-chars!@#$%"
+        encoded_id = quote(special_id, safe='')
+        mock_supabase_client.get_by_id.return_value = sample_token_data
+        mock_supabase_client.delete.return_value = True
+
+        # Act
+        response = client.delete(f"/api/v1/git_tokens/{encoded_id}")
+
+        # Assert
+        assert response.status_code == status.HTTP_200_OK
+        mock_supabase_client.get_by_id.assert_called_once_with(
+            table="git_label",
+            id_value=special_id
+        )
+
+    def test_delete_token_supabase_client_initialization_error(self, client, sample_token_id):
+        """Test handling of SupabaseClient initialization error"""
+        # Arrange
+        with patch('app.routes.git_tokens.SupabaseClient') as mock_client_class:  # Adjust import path
+            mock_client_class.side_effect = Exception("Failed to initialize client")
+
+            # Act
+            response = client.delete(f"/api/v1/git_tokens/{sample_token_id}")
+
+            # Assert
+            assert response.status_code == status.HTTP_503_SERVICE_UNAVAILABLE
+            response_data = response.json()
+            assert response_data["detail"] == "Service temporarily unavailable. Please try again later."
+
+    @pytest.mark.parametrize("token_id", [
+        "simple-id",
+        "123456789",
+        "uuid-like-id-with-dashes",
+        "very-long-token-id-with-many-characters-that-should-still-work"
+    ])
+    def test_delete_token_various_id_formats(self, client, mock_supabase_client, sample_token_data, token_id):
+        """Test deletion with various token ID formats"""
+        # Arrange
+        mock_supabase_client.get_by_id.return_value = sample_token_data
+        mock_supabase_client.delete.return_value = True
+
+        # Act
+        response = client.delete(f"/api/v1/git_tokens/{token_id}")
+
+        # Assert
+        assert response.status_code == status.HTTP_200_OK
+        mock_supabase_client.get_by_id.assert_called_once_with(
+            table="git_label",
+            id_value=token_id
+        )
+
+    def test_delete_token_response_structure(self, client, mock_supabase_client, sample_token_id, sample_token_data):
+        """Test that the response follows the expected structure"""
+        # Arrange
+        mock_supabase_client.get_by_id.return_value = sample_token_data
+        mock_supabase_client.delete.return_value = True
+
+        # Act
+        response = client.delete(f"/api/v1/git_tokens/{sample_token_id}")
+
+        # Assert
+        assert response.status_code == status.HTTP_200_OK
+        response_data = response.json()
+
+        # Check response structure (assuming APIResponse.success returns this structure)
+        assert "success" in response_data
+        assert "message" in response_data
+        assert isinstance(response_data["success"], bool)
+        assert isinstance(response_data["message"], str)
+
+
+# Additional integration-style tests if needed
+class TestDeleteTokenIntegration:
+    """Integration tests for delete_token endpoint"""
+
+    def test_delete_token_endpoint_exists(self, client):
+        """Test that the delete endpoint exists and is accessible"""
+        # This will return 404 or 503 depending on the mock, but not 405 (Method Not Allowed)
+        response = client.delete("/api/v1/git_tokens/test-id")
+        assert response.status_code != status.HTTP_405_METHOD_NOT_ALLOWED
+
 
