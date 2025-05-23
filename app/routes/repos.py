@@ -1,11 +1,11 @@
 """
-Token routes for the DevDox AI Portal API.
+Repository routes for the DevDox AI Portal API
 
 This module provides endpoints for retrieving and adding Repos with their information.
 """
 
-from fastapi import APIRouter, status, HTTPException, Depends
-from typing import List, Dict, Any, Optional
+from fastapi import APIRouter, status, HTTPException, Depends, Path
+from typing import List, Dict, Any
 from app.services.supabase_client import SupabaseClient
 from app.schemas.basic import PaginationParams
 from app.utils import constants
@@ -23,7 +23,10 @@ router = APIRouter()
     description="Retrieve a paginated list of repositories for a user",
 )
 async def get_repos(
-    user_id: str, pagination: PaginationParams = Depends()
+    user_id: str = Path(
+        ..., description="The ID of the user to retrieve repositories for"
+    ),
+    pagination: PaginationParams = Depends(),
 ) -> List[Dict[str, Any]]:
     """
     Retrieves all repos based on user_id for API response.
