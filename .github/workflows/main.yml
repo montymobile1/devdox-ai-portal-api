@@ -74,9 +74,9 @@ jobs:
   
             sed -i "s/__version__ = \".*\"/__version__ = \"$NEW_VERSION\"/" "$FILE"
   
-            git config user.name "github-actions"
+            git config user.name "Hayat55"
   
-            git config user.email "github-actions@github.com"
+            git config user.email "hayat.bourgi@montyholding.com"
   
             git add "$FILE"
   
@@ -86,5 +86,5 @@ jobs:
 
           env:
 
-            GITHUB_TOKEN: ${{ secrets.PERSONAL_ACCESS_TOKEN }} # requires a PAT with repo write access
+            GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }} # requires a PAT with repo write access
 
