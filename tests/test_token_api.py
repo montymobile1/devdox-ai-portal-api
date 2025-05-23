@@ -718,7 +718,7 @@ class TestDeleteTokenIntegration:
     def test_delete_token_endpoint_exists(self, client):
         """Test that the delete endpoint exists and is accessible"""
         # This will return 404 or 503 depending on the mock, but not 405 (Method Not Allowed)
-        response = client.delete("/tokens/test-id")
+        response = client.delete("/api/v1/git_tokens/test-id")
         assert response.status_code != status.HTTP_405_METHOD_NOT_ALLOWED
 
 
