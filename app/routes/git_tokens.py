@@ -137,7 +137,7 @@ async def get_token_by_label(label:str) ->List[Dict[str, Any]]:
     """
     try:
         client = SupabaseClient()
-        res = client.filter(table="git_label",filters={"label": label}, columns="label, id, git_hosting,masked_token, created_at")
+        res = client.filter(table="git_label",filters={"label": label}, columns="label, id, git_hosting, masked_token, created_at")
         return res
     except Exception as e:
         raise HTTPException(

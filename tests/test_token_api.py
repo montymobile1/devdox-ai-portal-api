@@ -6,7 +6,7 @@ from fastapi import status
 import pytest
 from unittest.mock import patch
 from urllib.parse import quote
-from app.routes.git_tokens import mask_token, format_token_response
+from app.routes.git_tokens import mask_token
 from app.config import GitHosting
 
 class TestTokenMasking:
@@ -59,61 +59,6 @@ class TestTokenMasking:
         assert result == "1234*6789"
 
         assert len(result) == 9
-
-
-class TestTokenFormatting:
-    """Test cases for token response formatting."""
-
-    def test_format_token_response_complete(self, token_data_single,token_decrypted1_masked):
-        """Test formatting with all fields present."""
-        result = format_token_response(token_data_single)
-        assert result["id"] == "123"
-        assert result["label"] == "Production GitHub"
-        assert result["git_hosting"] == "github"
-        assert result["token_value"] == token_decrypted1_masked
-        assert result["created_at"] == "2024-01-01T10:00:00Z"
-        assert result["updated_at"] == "2024-01-02T10:00:00Z"
-
-    def test_format_token_response_missing_fields(self):
-        """Test formatting with missing fields."""
-        token_data = {
-            "id": "123",
-            "label": "Test Token"
-            # Missing token_value field
-        }
-
-        result = format_token_response(token_data)
-        assert result is None
-
-    def test_format_token_response_empty_token(self):
-            """Test formatting with empty token value."""
-
-            token_data = {
-
-                "id": "123",
-
-                "label": "Test Token",
-
-                "git_hosting": "github",
-
-                "token_value": "",  # Empty token
-
-                "created_at": "2024-01-01T10:00:00Z"
-
-            }
-
-            result = format_token_response(token_data)
-
-            assert result is  None
-
-
-
-    def test_format_token_response_none_input(self):
-            """Test formatting with None input."""
-
-            result = format_token_response(None)
-
-            assert result is None
 
 
 class TestGetTokensEndpoint:
@@ -243,7 +188,7 @@ class TestGetTokenByLabelEndpoint:
 
         assert token["git_hosting"] == "github"
 
-        assert token["token_value"] == "ghp_************cdef"
+        assert token["masked_token"] == "ghp_************cdef"
 
         # Verify filter was called with correct parameters
 
@@ -253,7 +198,7 @@ class TestGetTokenByLabelEndpoint:
 
             filters={"label": "GitHub Production"},
 
-            limit=1
+            columns='label, id, git_hosting, masked_token, created_at'
 
         )
 
@@ -293,11 +238,12 @@ class TestGetTokenByLabelEndpoint:
 
         assert "Service temporarily unavailable" in data["detail"]
 
-    def test_get_token_by_label_invalid_data(self, client, mock_supabase_invalid_data):
+    def test_get_token_by_label_invalid_data(self, client, mock_supabase_invalid_label):
         """Test handling of invalid token data when filtering by label."""
 
-        # Make request for a label that returns invalid data
+        mock_supabase_invalid_label.filter.return_value = None
 
+        # Make request for a label that returns invalid data
         response = client.get("/api/v1/git_tokens/Missing%20Token%20Value")
 
         # Verify response
