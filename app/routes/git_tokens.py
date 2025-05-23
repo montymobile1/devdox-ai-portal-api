@@ -191,13 +191,13 @@ async def add_token(request: Request, payload: AddGitTokenSchema = Body(...)):
             description="Delete token by id")
 async def delete_token(id: str) -> Dict[str, Any]:
     """
-    Retrieves a token matching the specified label with its value masked.
+     Deletes a token with the specified ID.
 
     Args:
-        label: The label identifying the token to retrieve.
+         id: The unique identifier of the token to delete.
 
     Returns:
-        A list containing the formatted token dictionary with masked token value. The list is empty if no matching token is found.
+       A success response if the token was deleted, or an error response if the token was not found.
     """
     try:
         client = SupabaseClient()
