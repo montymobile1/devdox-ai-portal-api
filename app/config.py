@@ -18,7 +18,7 @@ class Settings(BaseSettings):
     # API configuration
     API_ENV: str = "development"
     API_DEBUG: bool = True
-    SECRET_KEY: str = "dev-secret-key"  # Only for local/testing
+    SECRET_KEY: str = "f2hCPmuCDiBpAmuZD00ZX4fEXFb-H0WoReklDhJD3bA="  # Only for local/testing
 
     #supbase settings
     SUPABASE_URL: str = "https://localhost"
@@ -37,6 +37,8 @@ class Settings(BaseSettings):
     # SonarQube configuration
     SONARQUBE_URL: Optional[str] = None
     SONARQUBE_TOKEN: Optional[str] = None
+
+    LAUNCHDARKLY_SDK_KEY: Optional[str] = None
 
     #Version
     VERSION: str = "0.1.0"
