@@ -182,3 +182,39 @@ async def add_token(request: Request, payload: AddGitTokenSchema = Body(...)):
         return await handle_github(payload, encrypted_token)
 
     return APIResponse.error(message="Unsupported git hosting provider", status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,)
+
+
+@router.delete("/{id}", response_model=Dict[str, Any],
+            status_code=status.HTTP_200_OK,
+            summary="Delete token by id",
+            description="Delete token by id")
+async def delete_token(id: str) -> Dict[str, Any]:
+    """
+    Retrieves a token matching the specified label with its value masked.
+
+    Args:
+        label: The label identifying the token to retrieve.
+
+    Returns:
+        A list containing the formatted token dictionary with masked token value. The list is empty if no matching token is found.
+    """
+    try:
+        client = SupabaseClient()
+        res = client.get_by_id(table="git_label",id_value=id )
+        if res :
+            client.delete(table="git_label",id_value=id )
+            return APIResponse.success(
+                message="Token deleted successfully"
+            )
+        else:
+            return APIResponse.error(
+                message="Token not found",
+                status_code=status.HTTP_404_NOT_FOUND
+            )
+
+
+    except Exception as e:
+        raise HTTPException(
+            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+            detail="Service temporarily unavailable. Please try again later."
+        ) from e
