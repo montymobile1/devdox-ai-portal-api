@@ -97,7 +97,7 @@ my_flask_supabase_app/
 4. Create a `.env` file in the root directory with your credentials:
    ```
    SUPABASE_URL=https://your-supabase-project.supabase.co
-   SUPABASE_KEY=your-supabase-key
+   SUPABASE_SECRET_KEY=your-supabase-key
    CLERK_API_KEY=your-clerk-api-key
    ```
 

@@ -17,10 +17,10 @@ class SupabaseClient:
         
         Args:
             url (str, optional): Supabase project URL. Defaults to settings.SUPABASE_URL.
-            key (str, optional): Supabase API key. Defaults to settings.SUPABASE_KEY.
+            key (str, optional): Supabase API key. Defaults to settings.SUPABASE_SECRET_KEY.
         """
         self.url = url or settings.SUPABASE_URL
-        self.key = key or settings.SUPABASE_KEY
+        self.key = key or settings.SUPABASE_SECRET_KEY
         self.headers = {
             "apikey": self.key,
             "Authorization": f"Bearer {self.key}",
