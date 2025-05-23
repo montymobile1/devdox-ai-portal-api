@@ -118,24 +118,24 @@ my_flask_supabase_app/
    > If you're on Windows, installation may fail or silently skip `uvloop`. The application will still run, but without
    the performance optimizations provided by `uvloop`.
 
-    4. Create a `.env` file in the root directory with your credentials:
+4. Create a `.env` file in the root directory with your credentials:
 
-       | Variable Name             | Required | Deprecated | Description                                                                 |
-       |---------------------------|----------|------------|-----------------------------------------------------------------------------|
-       | `API_ENV`                 | ✅ Yes   | ❌ No      | Set to `development`, `staging`, or `production`                           |
-       | `API_DEBUG`               | ✅ Yes   | ❌ No      | Set to `true` or `false` to enable or disable debug mode                   |
-       | `SECRET_KEY`              | ✅ Yes   | ❌ No      | A random string used for cryptographic operations (e.g., sessions)         |
-       |                           |          |            |                                                                             |
-       | `SUPABASE_URL`            | ✅ Yes   | ❌ No      | Your Supabase project URL (from Supabase dashboard → Project Settings)     |
-       | `SUPABASE_SECRET_KEY`     | ✅ Yes   | ❌ No      | Supabase service role key (backend use only, not for frontend)             |
-       |                           |          |            |                                                                             |
-       | `CLERK_API_KEY`           | ✅ Yes   | ❌ No      | Clerk backend API key (Configure → Developers → API Keys)                 |
-       | `CLERK_JWT_PUBLIC_KEY`    | ✅ Yes   | ❌ No      | Clerk public key string (under Publishable Key → Public Key)               |
-       |                           |          |            |                                                                             |
-       | `CORS_ORIGINS`            | ✅ Yes   | ❌ No      | A JSON array of allowed origins, e.g. `["http://localhost:3000"]`          |
-       |                           |          |            |                                                                             |
-       | `HOST`                    | ✅ Yes   | ❌ No      | The host address to bind the server to                                     |
-       | `PORT`                    | ✅ Yes   | ❌ No      | The port for the FastAPI server                                            |
+   | Variable Name             | Required | Deprecated | Description                                                                 |
+   |---------------------------|----------|------------|-----------------------------------------------------------------------------|
+   | `API_ENV`                 | ✅ Yes   | ❌ No      | Set to `development`, `staging`, or `production`                           |
+   | `API_DEBUG`               | ✅ Yes   | ❌ No      | Set to `true` or `false` to enable or disable debug mode                   |
+   | `SECRET_KEY`              | ✅ Yes   | ❌ No      | A random string used for cryptographic operations (e.g., sessions)         |
+   |                           |          |            |                                                                             |
+   | `SUPABASE_URL`            | ✅ Yes   | ❌ No      | Your Supabase project URL (from Supabase dashboard → Project Settings)     |
+   | `SUPABASE_SECRET_KEY`     | ✅ Yes   | ❌ No      | Supabase service role key (backend use only, not for frontend)             |
+   |                           |          |            |                                                                             |
+   | `CLERK_API_KEY`           | ✅ Yes   | ❌ No      | Clerk backend API key (Configure → Developers → API Keys)                 |
+   | `CLERK_JWT_PUBLIC_KEY`    | ✅ Yes   | ❌ No      | Clerk public key string (under Publishable Key → Public Key)               |
+   |                           |          |            |                                                                             |
+   | `CORS_ORIGINS`            | ✅ Yes   | ❌ No      | A JSON array of allowed origins, e.g. `["http://localhost:3000"]`          |
+   |                           |          |            |                                                                             |
+   | `HOST`                    | ✅ Yes   | ❌ No      | The host address to bind the server to                                     |
+   | `PORT`                    | ✅ Yes   | ❌ No      | The port for the FastAPI server                                            |
 
 # Running the Application
 
