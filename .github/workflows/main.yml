@@ -30,7 +30,8 @@ jobs:
         run: |
           coverage run -m pytest tests
           coverage xml
-
+      - name : Run Bandit Security Scan
+         bandit -r . -f json -o bandit-report.json || true
       - name: SonarQube Scan
         uses: SonarSource/sonarqube-scan-action@v5
         env:
