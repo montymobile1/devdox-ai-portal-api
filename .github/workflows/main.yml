@@ -36,6 +36,14 @@ jobs:
             
             bandit -r . -f json -o bandit-report.json || true
 
+      - name: Upload Bandit Report  # Added step to upload artifact
+        uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: bandit-security-report
+          path: bandit-report.json
+          retention-days: 30
+
       - name: SonarQube Scan
         uses: SonarSource/sonarqube-scan-action@v5
         env:
