@@ -28,6 +28,11 @@ This repository contains the backend API service for the portal, which handles:
 - User preference storage
 - Token usage tracking and analytics
 
+
+[![Quality Gate Status](https://sonarcloud.io/api/project_badges/measure?project=montymobile1_devdox-ai-portal-api&metric=alert_status)](https://sonarcloud.io/dashboard?id=montymobile1_devdox-ai-portal-api)
+
+
+
 ## Architecture
 
 DevDox AI Portal API is built with:
