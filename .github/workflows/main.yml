@@ -18,20 +18,24 @@ jobs:
       - name: Set up Python
         uses: actions/setup-python@v5
         with:
-          python-version: 3.12  # or your actual version
+          python-version: 3.12
 
       - name: Install dependencies
         run: |
           python -m pip install --upgrade pip
           pip install -r requirements.txt
-          pip install coverage
+          pip install coverage bandit
 
       - name: Run tests and generate coverage
         run: |
           coverage run -m pytest tests
           coverage xml
-      - name : Run Bandit Security Scan
-         bandit -r . -f json -o bandit-report.json || true
+      - name: Run Bandit Security Scan  # Fixed spacing
+
+        run: |  # Added proper run block
+            
+            bandit -r . -f json -o bandit-report.json || true
+
       - name: SonarQube Scan
         uses: SonarSource/sonarqube-scan-action@v5
         env:
