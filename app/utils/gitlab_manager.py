@@ -20,9 +20,8 @@ class GitLabManager:
             self.gl = None
             self.auth_status = False
 
-
     def get_project(self):
-        if self.project_id !="":
+        if self.project_id != "":
             return self.gl.projects.get(self.project_id)
         else:
             return None
@@ -37,9 +36,19 @@ class GitLabManager:
             print(f"Error fetching repos: {e}")
             return False
 
+    def get_repos(self, page=1, per_page=20):
+        try:
+            url = f"{self.base_url}/api/v4/projects?membership=true&min_access_level=30&per_page={per_page}&page={page}"
+            response = self.session.get(url, headers=self.headers)
+            response.raise_for_status()
+            return response.json()
+        except requests.exceptions.RequestException as e:
+            print(f"Error fetching repos: {e}")
+            return []
+
     def log_error(self, message, exception):
         """Logs an error with traceback details."""
         print(f"{message}: {exception}")
         import traceback
-        traceback.print_exc()
 
+        traceback.print_exc()
