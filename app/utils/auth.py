@@ -28,22 +28,19 @@ class AuthenticatedUserDTO:
 	}
 	
 	@classmethod
-	def from_clerk_payload(cls, payload: Dict) -> "AuthenticatedUserDTO":
-		missing_fields = [
+	def from_clerk_payload(cls, payload: Dict) -> tuple[list[str], "AuthenticatedUserDTO"]:
+		missing_payload_fields = [
 			clerk_key
 			for clerk_key in cls._clerk_payload_mapping
 			if clerk_key not in payload
 		]
 		
-		if missing_fields:
-			raise ValueError(f"{missing_fields}")
-		
 		mapped_fields = {
-			cls._clerk_payload_mapping[clerk_key]: payload[clerk_key]
+			cls._clerk_payload_mapping[clerk_key]: payload.get(clerk_key)
 			for clerk_key in cls._clerk_payload_mapping
 		}
 		
-		return cls(**mapped_fields)
+		return missing_payload_fields, cls(**mapped_fields)
 
 
 def get_current_user(
@@ -100,14 +97,14 @@ def get_current_user(
 	
 	# Extract user information from the JWT payload
 	
-	try:
-		user_dto = AuthenticatedUserDTO.from_clerk_payload(payload)
-	except ValueError as ve:
+	missing_payload_fields, user_dto = AuthenticatedUserDTO.from_clerk_payload(payload)
+	
+	if missing_payload_fields:
 		# TODO: Replace with real logger
 		print(
 			f"[ERROR] | "
 			f"[Payload Validation From Clerk Failure] Reason: Missing required payload fields | "
-			f"Message: Fields from clerk Payload are missing: {ve} | "
+			f"Message: Fields from clerk Payload are missing: {missing_payload_fields} | "
 			f"Path: {request_from_context.url.path}"
 		)
 		
