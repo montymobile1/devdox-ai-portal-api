@@ -1,0 +1,18 @@
+[importlinter]
+root_package = app
+
+[contract: layered-architecture]
+type = layers
+layers =
+    app.models
+    app.routes
+    app.schemas
+    app.services
+    app.utils
+
+forbidden_dependencies =
+    app.schemas -> app.encrypt
+    app.schemas -> app.models
+    app.services -> app.models
+    app.services -> app.utils
+
