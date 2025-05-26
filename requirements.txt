@@ -47,4 +47,5 @@ python-gitlab==5.6.0
 GitPython==3.1.44
 PyGithub==2.6.1
 requests==2.32.0
+PyJWT<3.0.0,>=2.6.0
 clerk-backend-api==2.2.0
