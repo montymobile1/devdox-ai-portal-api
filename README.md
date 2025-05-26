@@ -28,6 +28,11 @@ This repository contains the backend API service for the portal, which handles:
 - User preference storage
 - Token usage tracking and analytics
 
+
+[![Quality Gate Status](https://sonarcloud.io/api/project_badges/measure?project=montymobile1_devdox-ai-portal-api&metric=alert_status)](https://sonarcloud.io/dashboard?id=montymobile1_devdox-ai-portal-api)
+
+
+
 ## Architecture
 
 DevDox AI Portal API is built with:
@@ -35,7 +40,7 @@ DevDox AI Portal API is built with:
 - **FastAPI**: Python web framework for API endpoints with automatic OpenAPI documentation
 - **Supabase**: Backend-as-a-Service for data storage, accessed via REST API
 - **Clerk**: Authentication and authorization service
-- **SonarQube**: Code quality scanning tool
+- **SonarCloud**: Code quality scanning tool
 
 The API service is part of a larger system:
 
@@ -90,7 +95,7 @@ my_flask_supabase_app/
 - Python **&ge;** 3.12
 - Supabase account with API credentials
 - Clerk account with API credentials
-- SonarQube for code quality scanning
+- SonarCloud for code quality scanning
 
 ### Installation
 
@@ -360,7 +365,7 @@ All API routes are backed by unit tests to maintain 100% code coverage.
 
 ## Quality Assurance
 
-SonarQube is used for code quality scanning. Set up SonarQube according to your environment and run scans regularly to
+SonarCloud is used for code quality scanning. Set up SonarCloud according to your environment and run scans regularly to
 maintain code quality.
 
 ## License

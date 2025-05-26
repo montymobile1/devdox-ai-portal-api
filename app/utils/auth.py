@@ -1,97 +1,124 @@
 """
 Clerk authentication utility for the DevDox AI Portal API.
 """
+from dataclasses import dataclass
+from typing import ClassVar, Dict
 
-import jwt
+from clerk_backend_api import authenticate_request, AuthenticateRequestOptions
 from fastapi import Depends, HTTPException, Request, status
-from typing import Dict, Optional
+from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
 
 from app.config import settings
+from app.utils.system_messages import INVALID_BEARER_TOKEN_SCHEMA
 
-def get_clerk_jwt_from_headers(request: Request) -> Optional[str]:
-    """
-    Extract JWT token from Authorization header.
-    
-    Args:
-        request (Request): FastAPI request object.
-        
-    Returns:
-        Optional[str]: JWT token if present, None otherwise.
-    """
-    auth_header = request.headers.get("Authorization")
-    if not auth_header or not auth_header.startswith("Bearer "):
-        return None
-    return auth_header.replace("Bearer ", "")
+http_bearer_security_schema = HTTPBearer(auto_error=False)
 
-def decode_clerk_jwt(token: str) -> Dict:
-    """
-    Decode and verify JWT token issued by Clerk.
-    
-    Args:
-        token (str): JWT token.
-        
-    Returns:
-        Dict: Decoded JWT payload.
-        
-    Raises:
-        HTTPException: If token is invalid.
-    """
-    try:
-        # In production, you would use the public key from Clerk to verify
-        # For now, we'll use the SECRET_KEY for simplicity
-        payload = jwt.decode(
-            token,
-            settings.CLERK_JWT_PUBLIC_KEY or settings.SECRET_KEY,
-            algorithms=["RS256", "HS256"],
-            audience="example.com",
-            options={"verify_signature": settings.API_ENV == "production"}
-        )
-        return payload
-    except jwt.PyJWTError as e:
-        raise HTTPException(
-            status_code=status.HTTP_401_UNAUTHORIZED,
-            detail=f"Invalid authentication token: {str(e)}",
-            headers={"WWW-Authenticate": "Bearer"},
-        )
 
-def get_current_user(request: Request) -> Dict:
-    """
-    Get the current authenticated user from JWT token.
-    
-    Args:
-        request (Request): FastAPI request object.
-        
-    Returns:
-        Dict: User information.
-        
-    Raises:
-        HTTPException: If token is missing or invalid.
-    """
-    token = get_clerk_jwt_from_headers(request)
-    if not token:
-        raise HTTPException(
-            status_code=status.HTTP_401_UNAUTHORIZED,
-            detail="Missing authentication token",
-            headers={"WWW-Authenticate": "Bearer"},
-        )
-    
-    payload = decode_clerk_jwt(token)
-    
-    # Extract user information from the JWT payload
-    user_id = payload.get("sub")
-    if not user_id:
-        raise HTTPException(
-            status_code=status.HTTP_401_UNAUTHORIZED,
-            detail="Invalid authentication token: Missing user ID",
-            headers={"WWW-Authenticate": "Bearer"},
-        )
-    
-    return {
-        "id": user_id,
-        "email": payload.get("email"),
-        "name": payload.get("name"),
-        # Add other user fields as needed
-    }
+@dataclass
+class AuthenticatedUserDTO:
+	id: str
+	email: str
+	name: str
+	# Add other user fields as needed, and dont forget to add the mapping in _clerk_payload_mapping
+	
+	_clerk_payload_mapping: ClassVar[Dict[str, str]] = {
+		"sub": "id",
+		"email": "email",
+		"name": "name"
+	}
+	
+	@classmethod
+	def from_clerk_payload(cls, payload: Dict) -> "AuthenticatedUserDTO":
+		missing_fields = [
+			clerk_key
+			for clerk_key in cls._clerk_payload_mapping
+			if clerk_key not in payload
+		]
+		
+		if missing_fields:
+			raise ValueError(f"{missing_fields}")
+		
+		mapped_fields = {
+			cls._clerk_payload_mapping[clerk_key]: payload[clerk_key]
+			for clerk_key in cls._clerk_payload_mapping
+		}
+		
+		return cls(**mapped_fields)
+
+
+def get_current_user(
+		request_from_context: Request,
+		auth_header: HTTPAuthorizationCredentials = Depends(http_bearer_security_schema),
+) -> AuthenticatedUserDTO:
+	"""
+	Get the current authenticated user from JWT token.
+	
+	Args:
+		request (Request): FastAPI request object.
+		
+	Returns:
+		Dict: User information.
+		
+	Raises:
+		HTTPException: If token is missing or invalid.
+	"""
+	if auth_header is None or auth_header.scheme.lower() != "bearer":
+		raise HTTPException(
+			status_code=status.HTTP_401_UNAUTHORIZED,
+			detail=INVALID_BEARER_TOKEN_SCHEMA,
+			headers={"WWW-Authenticate": "Bearer"},
+		)
+	
+	auth_result = authenticate_request(
+		request_from_context,
+		AuthenticateRequestOptions(secret_key=settings.CLERK_API_KEY)
+	)
+	
+	if not auth_result.is_signed_in:
+		reason = auth_result.reason.name if auth_result.reason else "UNKNOWN"
+		message = auth_result.message or "Authentication failed for unknown reasons."
+		
+		# TODO: WILL BE REPLACED BY A LOGGER IN THE FUTURE
+		print(
+			f"[MAYBE Debug or Error]"
+			f"[Clerk Auth Failure] Reason: {auth_result.reason.name if auth_result.reason else 'UNKNOWN'} | "
+			f"Message: {auth_result.message or 'Authentication failed.'} | "
+			f"Path: {request_from_context.url.path}"
+		)
+		
+		raise HTTPException(
+			status_code=status.HTTP_401_UNAUTHORIZED,
+			detail={
+				"error": "not_authenticated",
+				"summary": "Access denied. Authentication failed.",
+				"reason": reason,
+				"debug_message": message,
+			}
+		)
+	
+	payload = auth_result.payload
+	
+	# Extract user information from the JWT payload
+	
+	try:
+		user_dto = AuthenticatedUserDTO.from_clerk_payload(payload)
+	except ValueError as ve:
+		# TODO: Replace with real logger
+		print(
+			f"[ERROR] | "
+			f"[Payload Validation From Clerk Failure] Reason: Missing required payload fields | "
+			f"Message: Fields from clerk Payload are missing: {ve} | "
+			f"Path: {request_from_context.url.path}"
+		)
+		
+		raise HTTPException(
+			status_code=status.HTTP_401_UNAUTHORIZED,
+			detail=INVALID_BEARER_TOKEN_SCHEMA,
+			headers={"WWW-Authenticate": "Bearer"},
+		)
+	
+	return user_dto
+
 
 # Dependency for authenticated routes
 CurrentUser = Depends(get_current_user)
