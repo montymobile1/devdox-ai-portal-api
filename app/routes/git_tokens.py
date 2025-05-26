@@ -8,11 +8,12 @@ for security. It supports retrieving all tokens or filtering by a specific label
 from fastapi import APIRouter, status, HTTPException, Body, Request
 from typing import List, Dict, Any
 from app.services.supabase_client import SupabaseClient
+from app.utils.auth import AuthenticatedUserDTO
 from app.utils.gitlab_manager import GitLabManager
 from app.utils.github_manager import GitHubManager
 from app.utils.encryption import EncryptionHelper
 from app.utils.api_response import APIResponse
-from app.utils import constants
+from app.utils import constants, CurrentUser
 from app.config import GitHosting
 from app.schemas.git_label import AddGitTokenSchema
 
@@ -97,9 +98,10 @@ router = APIRouter()
 
 @router.get("/",  response_model=List[Dict[str, Any]],
             status_code=status.HTTP_200_OK,
-            summary="Get all tokens",
-            description="Retrieve a list of all tokens with masked values")
-async def get_tokens() -> List[Dict[str, Any]]:
+            summary="Get all tokens for specific users",
+            description="Retrieve a list of all tokens with masked values for specific users",
+            )
+async def get_tokens(user: AuthenticatedUserDTO = CurrentUser) -> List[Dict[str, Any]]:
     """
     Retrieves all stored tokens with masked values for API response.
     
@@ -108,7 +110,12 @@ async def get_tokens() -> List[Dict[str, Any]]:
     """
     try:
         client = SupabaseClient()
-        res = client.select(table="git_label", columns="label, id, git_hosting,masked_token, created_at")
+        res = client.filter(
+            table="git_label",
+            columns="label, id, git_hosting,masked_token, created_at",
+            filters={ "user_id": user.id },
+            order_by="created_at.desc"
+        )
 
         return res
 
