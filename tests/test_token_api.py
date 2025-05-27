@@ -8,6 +8,7 @@ from urllib.parse import quote
 from app.routes.git_tokens import mask_token
 from app.config import GitHosting
 
+
 class TestTokenMasking:
     """Test cases for token masking functionality."""
 
@@ -484,7 +485,6 @@ class TestDeleteToken:
 
         # Act
         response = client.delete(f"/api/v1/git_tokens/{encoded_id}")
-        print("data ", response.json())
         # Assert
         assert response.status_code == status.HTTP_503_SERVICE_UNAVAILABLE
 
@@ -602,7 +602,6 @@ class TestTortoiseOrmIntegration:
 
         response = client.get("/api/v1/git_tokens/")
         data = response.json()
-        print("response data ", data)
         assert response.status_code == status.HTTP_200_OK
 
         assert len(data) == 1
