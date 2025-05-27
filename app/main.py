@@ -43,5 +43,5 @@ if __name__ == "__main__":
         "app.main:app",
         host=settings.HOST,
         port=settings.PORT,
-        reload=settings.API_ENV == "development",
+        reload=False,
     )
