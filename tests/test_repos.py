@@ -5,7 +5,7 @@ Fixed mocking to match actual database client usage.
 
 import pytest
 from fastapi import status
-from unittest.mock import patch, AsyncMock
+from unittest.mock import patch, AsyncMock, Mock
 from app.utils import constants
 from app.config import GitHosting
 
@@ -158,6 +158,54 @@ class TestGetReposEndpoint:
         expected_query = f"SELECT * FROM repo WHERE user_id =  '{user_id}' ORDER BY created_at DESC LIMIT {limit} OFFSET {offset}"
         mock_db_client.execute_query.assert_called_once_with(expected_query)
 
+    @patch("app.routes.repos.db_client")
+    async def test_token_not_found(self, mock_db_client, client):
+        """Test response when token is not found."""
+        user_id = "user-1"
+        token_id = "token-1"
+
+        mock_db_client.execute_query_one = AsyncMock(return_value=None)
+        response = client.get(f"/api/v1/repos/git_repos/{user_id}/{token_id}")
+        assert response.status_code == status.HTTP_503_SERVICE_UNAVAILABLE
+
+        #assert response.json()["detail"] == "Token not found"
+
+    @patch("app.routes.repos.get_git_repo_fetcher")
+    @patch("app.routes.repos.EncryptionHelper")
+    @patch("app.routes.repos.db_client")
+    async def test_successful_repo_fetch(
+            self, mock_db_client, mock_encryption_helper, mock_get_repo_fetcher, client
+    ):
+        """Test successful retrieval of repos from Git provider."""
+        user_id = "user-1"
+        token_id = "token-1"
+
+        # Mock DB return
+        mock_token_data = {
+            "token_value": "encrypted_value",
+            "git_hosting": "github"
+        }
+        mock_db_client.execute_query_one = AsyncMock(return_value=mock_token_data)
+
+        # Mock token decryption
+        mock_encryption_helper.return_value.decrypt.return_value = "decrypted_token"
+
+        # Mock repo fetcher
+        mock_fetcher = Mock(return_value=([{"id": 1, "name": "repo1"}], 1))
+        mock_get_repo_fetcher.return_value = mock_fetcher
+
+        # Perform request
+        response = client.get(f"/api/v1/repos/git_repos/{user_id}/{token_id}")
+        data = response.json()
+        print("line 203 ", data)
+        # Validate response
+        assert response.status_code == status.HTTP_200_OK
+
+        assert isinstance(data, dict)
+        assert "data" in data
+        assert len(data["data"]) == 1
+        assert data["data"][0]["total_count"] == 1
+        assert data["data"][0]["repos"] == [{"id": 1, "name": "repo1"}]
 
 class TestGetReposFromGitErrors:
     """Test error cases for the GET /repos/git_repos/{user_id}/{token_id} endpoint"""
