@@ -1,6 +1,7 @@
 """
 Clerk authentication utility for the DevDox AI Portal API.
 """
+import logging
 from dataclasses import dataclass, fields
 from typing import Any, ClassVar, Dict
 
@@ -13,6 +14,7 @@ from app.utils.system_messages import INVALID_BEARER_TOKEN_SCHEMA
 
 http_bearer_security_schema = HTTPBearer(auto_error=False)
 
+logger = logging.getLogger(__name__)
 
 @dataclass
 class AuthenticatedUserDTO:
@@ -92,12 +94,11 @@ def get_current_user(
 		reason = auth_result.reason.name if auth_result.reason else "UNKNOWN"
 		message = auth_result.message or "Authentication failed for unknown reasons."
 		
-		# TODO: WILL BE REPLACED BY A LOGGER IN THE FUTURE
-		print(
-			f"[MAYBE Debug or Error]"
-			f"[Clerk Auth Failure] Reason: {auth_result.reason.name if auth_result.reason else 'UNKNOWN'} | "
-			f"Message: {auth_result.message or 'Authentication failed.'} | "
-			f"Path: {request_from_context.url.path}"
+		logger.error(
+			f"[Clerk Auth Failure] Reason: {reason} | "
+			f"Message: {message} | "
+			f"Path: {request_from_context.url.path}",
+			exc_info=True
 		)
 		
 		raise HTTPException(
@@ -116,12 +117,11 @@ def get_current_user(
 	missing_payload_fields, user_dto = AuthenticatedUserDTO.from_clerk_payload(payload)
 	
 	if missing_payload_fields:
-		# TODO: Replace with real logger
-		print(
-			f"[ERROR] | "
+		logger.error(
 			f"[Payload Validation From Clerk Failure] Reason: Missing required payload fields | "
 			f"Message: Fields from clerk Payload are missing: {missing_payload_fields} | "
-			f"Path: {request_from_context.url.path}"
+			f"Path: {request_from_context.url.path}",
+			exc_info=True
 		)
 		
 		raise HTTPException(

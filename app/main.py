@@ -7,8 +7,11 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
 from app.config import settings
+from app.logging_config import setup_logging
 from app.routes import router as api_router
 from version import __version__
+
+logger = setup_logging()
 
 # Initialize FastAPI app
 app = FastAPI(
@@ -43,5 +46,5 @@ if __name__ == "__main__":
         "app.main:app",
         host=settings.HOST,
         port=settings.PORT,
-        reload=False,
+        reload=settings.API_ENV == "development",
     )
