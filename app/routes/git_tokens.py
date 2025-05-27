@@ -123,7 +123,7 @@ async def get_tokens() -> List[Dict[str, Any]]:
     """
     try:
 
-        query = f"SELECT label, id, git_hosting,masked_token, created_at FROM git_label   ORDER BY created_at DESC"
+        query = "SELECT label, id, git_hosting,masked_token, created_at FROM git_label   ORDER BY created_at DESC"
 
         res = await db_client.execute_query(query)
 
@@ -211,7 +211,7 @@ async def delete_token(id: str) -> Dict[str, Any]:
 
         if res:
 
-            deleted_label = await db_client.delete_rows("git_label", "id = $1", (id,))
+            _ = await db_client.delete_rows("git_label", "id = $1", (id,))
             return APIResponse.success(message=constants.TOKEN_DELETED_SUCCESSFULLY)
         else:
             return APIResponse.error(
