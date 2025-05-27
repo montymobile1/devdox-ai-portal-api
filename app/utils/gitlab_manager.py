@@ -38,12 +38,27 @@ class GitLabManager:
 
     def get_repos(self, page=1, per_page=20):
         try:
-            url = f"{self.base_url}/api/v4/projects?membership=true&min_access_level=30&per_page={per_page}&page={page}"
+            per_page = max(1, min(per_page, 100))
+            page = max(1, page)
+
+            url = (
+                f"{self.base_url}/api/v4/projects"
+                f"?membership=true&min_access_level=30&per_page={per_page}&page={page}"
+            )
             response = self.session.get(url, headers=self.headers)
             response.raise_for_status()
-            return response.json()
+
+            repos = response.json()
+            pagination = {
+                "current_page": page,
+                "per_page": per_page,
+                "total_pages": int(response.headers.get("X-Total-Pages", 1)),
+                "next_page": int(response.headers.get("X-Next-Page") or 0) or None,
+                "prev_page": int(response.headers.get("X-Prev-Page") or 0) or None,
+            }
+            return {"repositories": repos, "pagination_info": pagination}
         except requests.exceptions.RequestException as e:
-            print(f"Error fetching repos: {e}")
+            self.log_error("GitLab API request failed", e)
             return []
 
     def log_error(self, message, exception):

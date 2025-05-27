@@ -5,8 +5,7 @@ This module provides endpoints for retrieving and adding Repos with their inform
 """
 
 from fastapi import APIRouter, status, HTTPException, Depends, Path
-from typing import Callable, Tuple, List, Dict, Any
-from app.services.supabase_client import SupabaseClient
+from typing import Callable, Tuple, List, Dict, Any, Optional
 from app.schemas.basic import PaginationParams
 from app.utils.encryption import EncryptionHelper
 from app.utils.api_response import APIResponse
@@ -14,6 +13,7 @@ from app.utils.gitlab_manager import GitLabManager
 from app.utils.github_manager import GitHubManager
 from app.utils import constants
 from app.config import GitHosting
+from app.services import db_client
 
 # Create router
 router = APIRouter()
@@ -44,8 +44,48 @@ def build_repo_dict(repo_info: Dict[str, Any], platform: str) -> Dict[str, Any]:
                 "html_url": repo_info.get("html_url"),
             }
         )
-
     return common_fields
+
+
+def fetch_gitlab_repos(
+    access_token: str, pagination: PaginationParams
+) -> Tuple[List[Dict[str, Any]], int]:
+    gitlab = GitLabManager(base_url="https://gitlab.com", access_token=access_token)
+    raw_repos = gitlab.get_repos(page=pagination.offset + 1, per_page=pagination.limit)
+
+    return [
+        build_repo_dict(repo, GitHosting.GITLAB)
+        for repo in raw_repos.get("repositories", [])
+    ], raw_repos.get("pagination_info", {}).get("total_pages", 0)
+
+
+def fetch_github_repos(
+    access_token: str, pagination: PaginationParams
+) -> Tuple[List[Dict[str, Any]], int]:
+    github = GitHubManager(access_token=access_token)
+    result = github.get_user_repositories(
+        page=pagination.offset + 1, per_page=pagination.limit
+    )
+
+    repos = [
+        build_repo_dict(repo, GitHosting.GITHUB)
+        for repo in result.get("repositories", [])
+    ]
+    total_count = result.get("pagination_info", {}).get("total_count", 0)
+
+    return repos, total_count
+
+
+def get_git_repo_fetcher(
+    hosting: str,
+) -> Optional[Callable[[str, PaginationParams], Tuple[List[Dict[str, Any]], int]]]:
+    """Maps git_hosting to the appropriate repo fetcher function."""
+    provider_map = {
+        GitHosting.GITLAB: fetch_gitlab_repos,
+        GitHosting.GITHUB: fetch_github_repos,
+    }
+
+    return provider_map.get(hosting)  # returns None if unsupported
 
 
 @router.get(
@@ -68,18 +108,14 @@ async def get_repos(
         A list of dictionaries containing repo info.
     """
     try:
-        client = SupabaseClient()
-        res = client.filter(
-            table="repo",
-            filters={"user_id": user_id},
-            limit=pagination.limit,
-            order_by="created_at.desc",
-        )
 
-        return res
+        query = f"SELECT * FROM repo WHERE user_id =  '{str(user_id)}' ORDER BY created_at DESC LIMIT {pagination.limit} OFFSET {pagination.offset}"
+
+        repos = await db_client.execute_query(query)
+
+        return repos
 
     except Exception as e:
-
         raise HTTPException(
             status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
             detail=constants.SERVICE_UNAVAILABLE,
@@ -97,81 +133,42 @@ async def get_repos_from_git(
     token_id: str = Path(...),
     user_id: str = Path(...),
     pagination: PaginationParams = Depends(),
-) -> List[Dict[str, Any]]:
+) -> dict[str, Any]:
     """
     Retrieves paginated repositories from any Git provider using a strategy map.
     """
     try:
-        client = SupabaseClient()
-        token = client.get_by_id(
-            table="git_label",
-            id_value=token_id,
-            columns="token_value, git_hosting",
-        )
+        query = f"SELECT * FROM git_label WHERE id = '{str(token_id)}' AND user_id = '{str(user_id)}'"
+        token = await db_client.execute_query_one(query)
         if not token:
             raise HTTPException(status_code=404, detail="Token not found")
 
         decrypted_token = EncryptionHelper().decrypt(token["token_value"])
-        hosting = token.get("git_hosting")
+        try:
+            hosting = token["git_hosting"]
+            repos_fetcher = get_git_repo_fetcher(hosting)
 
-        fetcher = get_git_repo_fetcher(hosting)
-        print("fetcher", fetcher)
-        if fetcher:
-            repos, total_count = fetcher(decrypted_token, pagination)
+            if repos_fetcher:
+                repos, total_count = repos_fetcher(decrypted_token, pagination)
 
-            return APIResponse.success(
-                message="", data=[{"total_count": total_count, "repos": repos}]
-            )
-        else:
+                return APIResponse.success(
+                    message="",
+                    data=[{"total_count": total_count, "repos": repos}],
+                )
+            else:
+                return APIResponse.error(
+                    message=f"Unsupported Git hosting provider: {hosting}",
+                    status_code=status.HTTP_400_BAD_REQUEST,
+                )
+        except Exception as e:
+            print("Exception in get_repos_from_git:", e)
             return APIResponse.error(
-                message=f"Unsupported Git hosting provider: {hosting}",
-                status_code=status.HTTP_400_BAD_REQUEST,
+                message=constants.SERVICE_UNAVAILABLE,
+                status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
             )
 
     except Exception as e:
-        print("Exception in get_repos_from_git:", e)
         return APIResponse.error(
             message=constants.SERVICE_UNAVAILABLE,
             status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
         )
-
-
-def fetch_gitlab_repos(
-    access_token: str, pagination: PaginationParams
-) -> Tuple[List[Dict[str, Any]], int]:
-    gitlab = GitLabManager(base_url="https://gitlab.com", access_token=access_token)
-    raw_repos = gitlab.get_repos(page=pagination.offset + 1, per_page=pagination.limit)
-    return [build_repo_dict(repo, GitHosting.GITLAB) for repo in raw_repos], 0
-
-
-def fetch_github_repos(
-    access_token: str, pagination: PaginationParams
-) -> Tuple[List[Dict[str, Any]], int]:
-    github = GitHubManager(access_token=access_token)
-    result = github.get_user_repositories(
-        page=pagination.offset + 1, per_page=pagination.limit
-    )
-
-    repos = [
-        build_repo_dict(repo, GitHosting.GITHUB)
-        for repo in result.get("repositories", [])
-    ]
-    total_count = result.get("pagination_info", {}).get("total_count", 0)
-
-    return repos, total_count
-
-
-def get_git_repo_fetcher(
-    hosting: str,
-) -> Callable[[str, PaginationParams], Tuple[List[Dict[str, Any]], int]]:
-    """Maps git_hosting to the appropriate repo fetcher function."""
-    provider_map = {
-        GitHosting.GITLAB: fetch_gitlab_repos,
-        GitHosting.GITHUB: fetch_github_repos,
-    }
-
-    if hosting not in provider_map:
-        print(f"Unsupported Git hosting provider: {hosting}")
-        return False
-
-    return provider_map[hosting]

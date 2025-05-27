@@ -2,6 +2,15 @@
 Services package initializer.
 """
 
-from app.services.supabase_client import supabase
+from .supabase_client import SupabaseClient
 
-__all__ = ["supabase"]
+
+db_client = SupabaseClient()
+
+
+async def connect_db():
+    await db_client.connect()
+
+
+async def disconnect_db():
+    await db_client.disconnect()

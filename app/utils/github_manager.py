@@ -61,7 +61,7 @@ class GitHubManager:
         sort="updated",
         direction="desc",
         page=1,
-        per_page=30,
+        per_page=20,
     ):
         """
         Get list of repositories that the authenticated user has access to with pagination.
@@ -94,6 +94,7 @@ class GitHubManager:
                 sort=sort,
                 direction=direction,
             )
+            repos_paginated.per_page = per_page
 
             # Get the specific page
             repos_page = repos_paginated.get_page(
