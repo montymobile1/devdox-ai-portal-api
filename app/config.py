@@ -60,5 +60,37 @@ class Settings(BaseSettings):
         git_hosting: Optional[GitHosting] = None
 
 
+
 # Initialize settings instance
 settings = Settings()
+
+# Tortoise ORM configuration
+TORTOISE_ORM = {
+    "connections": {
+        "default": {
+            "engine": "tortoise.backends.asyncpg",
+            "credentials": {
+                "host": settings.SUPABASE_HOST,
+                "port": settings.SUPABASE_PORT,
+                "user": settings.SUPABASE_USER,
+                "password": settings.SUPABASE_PASSWORD,
+                "database": settings.SUPABASE_DB_NAME,
+                "minsize": 1,  # Minimum number of connections in the pool
+                "maxsize": 10,  # Maximum number of connections in the pool
+            }
+        }
+    },
+    "apps": {
+        "models": {
+            "models": ["app.models.git_label", "aerich.models"],
+            "default_connection": "default",
+        }
+    },
+    "use_tz": True,
+    "timezone": "UTC"
+}
+
+# Alternative connection URL format (you can use either approach)
+def get_database_url():
+    """Get the database URL for Tortoise ORM."""
+    return f"postgresql://{settings.SUPABASE_USER}:{settings.SUPABASE_PASSWORD}@{settings.SUPABASE_HOST}:{settings.SUPABASE_PORT}/{settings.SUPABASE_DB_NAME}"

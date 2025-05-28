@@ -5,8 +5,9 @@ FastAPI application entry point for DevDox AI Portal API.
 import uvicorn
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
+from contextlib import asynccontextmanager
 from app.services import connect_db, disconnect_db
-from app.config import settings
+from app.config import settings, TORTOISE_ORM
 from app.routes import router as api_router
 from version import __version__
 
@@ -18,6 +19,25 @@ app = FastAPI(
     docs_url="/docs",
     redoc_url="/redoc",
 )
+
+
+@asynccontextmanager
+async def lifespan(app: FastAPI):
+    """Application lifespan manager for startup and shutdown events."""
+    # Startup
+    from tortoise import Tortoise
+
+    await Tortoise.init(config=TORTOISE_ORM)
+
+    # Generate schemas only in development
+    if settings.API_ENV == "dev":
+        await Tortoise.generate_schemas()
+
+    yield
+
+    # Shutdown
+    await Tortoise.close_connections()
+
 
 # Configure CORS middleware
 app.add_middleware(
