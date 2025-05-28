@@ -12,8 +12,9 @@ from starlette import status
 from starlette.datastructures import Headers
 from starlette.requests import Request
 
+from app.utils import constants
 from app.utils.auth import AuthenticatedUserDTO, get_current_user
-from app.utils.system_messages import INVALID_BEARER_TOKEN_SCHEMA
+from app.utils.constants import INVALID_BEARER_TOKEN_SCHEMA
 
 base_clerk_payload_schema = {
 	"sub": "user_abc",
@@ -120,7 +121,7 @@ def test_clerk_returns_signed_out(monkeypatch, mock_clerk_signed_out):
 		)
 	
 	assert exc_info.value.status_code == status.HTTP_401_UNAUTHORIZED
-	assert exc_info.value.detail["error"] == "not_authenticated"
+	assert exc_info.value.detail == constants.AUTH_FAILED
 
 
 def test_payload_missing_required_keys_raises(monkeypatch, mock_clerk_signed_in):

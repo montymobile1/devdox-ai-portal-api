@@ -10,7 +10,8 @@ from fastapi import Depends, HTTPException, Request, status
 from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
 
 from app.config import settings
-from app.utils.system_messages import INVALID_BEARER_TOKEN_SCHEMA
+from app.utils import constants
+from app.utils.constants import INVALID_BEARER_TOKEN_SCHEMA
 
 http_bearer_security_schema = HTTPBearer(auto_error=False)
 
@@ -103,11 +104,7 @@ def get_current_user(
 		
 		raise HTTPException(
 			status_code=status.HTTP_401_UNAUTHORIZED,
-			detail={
-				"error": "not_authenticated",
-				"summary": "Access denied. Authentication failed.",
-				"reason": reason,
-			}
+			detail=constants.AUTH_FAILED
 		)
 	
 	payload = auth_result.payload

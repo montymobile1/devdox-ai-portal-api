@@ -366,14 +366,43 @@ CLERK_JWT_PUBLIC_KEY=pk_test_...
 The FastAPI backend validates Clerk JWT tokens using the `clerk_backend_api` SDK. Tokens are extracted from either the `Authorization: Bearer <token>` header or the `__session` cookie.
 
 ### Authentication Flow:
+1. Routes that require authentication depend on:  
+   ```python
+   user: AuthenticatedUserDTO = Depends(CurrentUser)
+   ```
+2. The `get_current_user()` function:
+   - Extracts the JWT token
+   - Verifies it using Clerk’s `CLERK_API_KEY` and `CLERK_JWT_PUBLIC_KEY`
+3. If valid:
+   - The token’s **payload** is parsed
+   - User data is returned as `AuthenticatedUserDTO`
+4. If invalid:
+   - A `401 Unauthorized` is raised with a structured error message
 
-- Incoming request passes through `get_current_user()` in `auth.py`
-- Token is verified via Clerk's public key and API key
-- If valid:
-  - Extracts fields like `sub`, `email`, `name`
-  - Populates `AuthenticatedUserDTO`
-- If invalid:
-  - Returns `401 Unauthorized` with a structured JSON error
+---
+
+### How to Customize JWT Payload in Clerk
+
+To make Clerk include fields like `email` and `name` or any other fields inside your JWT tokens, you must manually configure the session token template.
+
+**Location:**  
+1. Go to your Clerk dashboard → **Configure** → **Sessions** (under *Session Management*)
+2. Scroll down to the section titled **Customize session token**
+
+You'll see a form like this:
+
+```json
+{
+  "name": "{{user.full_name}}",
+  "email": "{{user.primary_email_address}}",
+   .....
+}
+```
+
+You can use any field shown in the “Insert shortcodes” sidebar, including `user.public_metadata.role`, `user.username`, and more.
+
+This configuration ensures that Clerk injects those values into the token payload, which you can decode in the backend.
+
 
 ---
 

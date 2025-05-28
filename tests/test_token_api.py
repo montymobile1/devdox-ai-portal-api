@@ -80,7 +80,7 @@ class TestAuthenticatedGetTokensEndpoint:
 		)
 		
 		assert response.status_code == status.HTTP_200_OK
-		data = response.json()
+		data = response.json()["data"]
 		assert isinstance(data, list)
 		assert all("id" in token for token in data)
 	
@@ -121,7 +121,7 @@ class TestAuthenticatedGetTokensEndpoint:
 		)
 		
 		assert response.status_code == status.HTTP_200_OK
-		assert response.json() == []
+		assert response.json()["data"] == []
 	
 	def test_different_user_filter_returns_empty(self, client, mock_clerk_signed_in, mock_supabase_filter):
 		"""Should not return tokens that belong to another user"""
@@ -144,7 +144,7 @@ class TestAuthenticatedGetTokensEndpoint:
 		)
 		
 		assert response.status_code == status.HTTP_200_OK
-		assert response.json() == []
+		assert response.json()["data"] == []
 
 
 @pytest.mark.skip(

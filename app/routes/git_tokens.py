@@ -103,7 +103,7 @@ router = APIRouter()
             summary="Get all tokens for specific users",
             description="Retrieve a list of all tokens with masked values for specific users",
             )
-async def get_tokens(user: AuthenticatedUserDTO = CurrentUser) -> List[Dict[str, Any]]:
+async def get_tokens(user: AuthenticatedUserDTO = CurrentUser) -> dict[str, Any]:
 	"""
 	Retrieves all stored tokens with masked values for API response.
 	
@@ -119,9 +119,7 @@ async def get_tokens(user: AuthenticatedUserDTO = CurrentUser) -> List[Dict[str,
 			order_by="created_at.desc"
 		)
 		
-		return res
-	
-	
+		return APIResponse.success(message=constants.GENERIC_SUCCESS, data=res)
 	except Exception as e:
 		
 		raise HTTPException(
