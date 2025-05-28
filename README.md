@@ -308,48 +308,133 @@ This behavior is part of Supabase's underlying infrastructure and not an issue w
 
 # Setting Up Clerk Authentication
 
-This guide explains how to manually set up the Clerk Auth backend for local development of the `devdoxAI` FastAPI
-project, using the hosted [https://clerk.dev](https://clerk.dev).
-> ❗️ **Important:**
-> Authentication is not yet implemented in the backend, so this is a preparatory step only.
+This guide explains how to configure Clerk authentication for the `devdoxAI` FastAPI backend using [https://clerk.dev](https://clerk.dev).
+
+✅ **Status:**  
+Clerk authentication is now **fully implemented and enforced** in the backend.
+
+All routes that require authentication use Clerk-issued JWT tokens. The backend validates these tokens using the Clerk SDK and extracts user metadata into a standardized `AuthenticatedUserDTO`.
 
 ---
 
-#### 1. Create a Clerk Account and Application
+## Step 1: Create a Clerk Account and Application
 
-1. Visit [https://clerk.dev](https://clerk.dev) and sign in or create a new account.
-2. Once logged in, click **“Create Application”** and follow the steps to set up your project (e.g., `devdox-local`).
-3. Pick Loging by email option and disable everything else
+1. Visit [https://clerk.dev](https://clerk.dev) and sign in or create an account.
+2. Click **"Create Application"** and follow the wizard (e.g., name it `devdox-local`).
+3. Under **Sign-In Methods**, enable **Email** and disable others like OAuth for now (unless needed).
 
 ---
 
-#### 2. Retrieve `CLERK_API_KEY`
+## Step 2: Retrieve Clerk Credentials
 
-1. Enter the created application
-2. In the Clerk dashboard, click **“Configure”** in the menu bar.
-3. Under the **“Developers”** section, click **“API Keys”**.
-4. Copy the value labeled **`CLERK_SECRET_KEY`**.
+Navigate to your project in the Clerk dashboard:
 
-Add it to your `.env` file:
+### 🔑 Backend API Key
+
+1. Click **"Configure"**
+2. Under **"Developers" > "API Keys"**, find the `Clerk Secret Key`
+3. Add to `.env`:
 
 ```env
-CLERK_API_KEY=sk_test_vKcJ6AZi...........RBnO8Gw1wBEHdgTO
+CLERK_API_KEY=sk_test_XXXXXXXXXXXXXXXX
+```
+
+### 🔐 Public JWT Key
+
+1. Still under **"API Keys"**, locate the **"JWT Public Key"**
+2. Add to `.env`:
+
+```env
+CLERK_JWT_PUBLIC_KEY=pk_test_XXXXXXXXXXXXXXXX
 ```
 
 ---
 
-#### 3. Retrieve `CLERK_JWT_PUBLIC_KEY`
+## Step 3: Configure Environment Variables
 
-1. Enter the created application
-2. In the Clerk dashboard, click **“Configure”** in the menu bar.
-3. Under the **“Developers”** section, click **“API Keys”**.
-4. Under that section, copy the value labeled **“Public Key”**.
-
-Add it to your `.env` file:
+Ensure your `.env` includes:
 
 ```env
-CLERK_JWT_PUBLIC_KEY=pk_test_cHJvbW90ZWQtc2..........ZXJrLmFjY291bnRzLmRldiQ
+CLERK_API_KEY=sk_test_...
+CLERK_JWT_PUBLIC_KEY=pk_test_...
 ```
+
+---
+
+## Step 4: Token Validation Logic
+
+The FastAPI backend validates Clerk JWT tokens using the `clerk_backend_api` SDK. Tokens are extracted from either the `Authorization: Bearer <token>` header or the `__session` cookie.
+
+### Authentication Flow:
+1. Routes that require authentication depend on:  
+   ```python
+   user: AuthenticatedUserDTO = Depends(CurrentUser)
+   ```
+2. The `get_current_user()` function:
+   - Extracts the JWT token
+   - Verifies it using Clerk’s `CLERK_API_KEY` and `CLERK_JWT_PUBLIC_KEY`
+3. If valid:
+   - The token’s **payload** is parsed
+   - User data is returned as `AuthenticatedUserDTO`
+4. If invalid:
+   - A `401 Unauthorized` is raised with a structured error message
+
+---
+
+### How to Customize JWT Payload in Clerk
+
+To make Clerk include fields like `email` and `name` or any other fields inside your JWT tokens, you must manually configure the session token template.
+
+**Location:**  
+1. Go to your Clerk dashboard → **Configure** → **Sessions** (under *Session Management*)
+2. Scroll down to the section titled **Customize session token**
+
+You'll see a form like this:
+
+```json
+{
+  "name": "{{user.full_name}}",
+  "email": "{{user.primary_email_address}}",
+   .....
+}
+```
+
+You can use any field shown in the “Insert shortcodes” sidebar, including `user.public_metadata.role`, `user.username`, and more.
+
+This configuration ensures that Clerk injects those values into the token payload, which you can decode in the backend.
+
+
+---
+
+## Step 5: Testing Clerk Auth (Mocked)
+
+During testing, Clerk is **fully mocked** using `pytest` fixtures. This enables:
+
+- Mocking signed-in users (`mock_clerk_signed_in`)
+- Simulating sign-out or expired tokens (`mock_clerk_signed_out`)
+- Generating valid test JWTs (`generate_test_jwt()`)
+
+Tests can validate all auth flows without hitting Clerk’s servers.
+
+See `tests/utils/test_auth.py` for examples of:
+
+- Missing/malformed headers
+- Auth failure reasons
+- Valid user DTO parsing
+
+---
+
+## Step 6: Usage in Routes
+
+```python
+@router.get("/secure", response_model=...)
+async def secure_endpoint(user: AuthenticatedUserDTO = Depends(CurrentUser)):
+    return {"user_email": user.email}
+```
+
+All routes requiring authentication should use `user: AuthenticatedUserDTO = Depends(CurrentUser)`.
+
+---
 
 ## Test-Driven Development Approach
 

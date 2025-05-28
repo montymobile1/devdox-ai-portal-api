@@ -1,8 +1,13 @@
 """
 Pytest fixtures for token API endpoint tests.
 """
+from datetime import datetime, timedelta
+from typing import Union
 
+import jwt
 import pytest
+from clerk_backend_api import RequestState
+from clerk_backend_api.jwks_helpers import AuthErrorReason, AuthStatus, TokenVerificationErrorReason
 from fastapi.testclient import TestClient
 from unittest.mock import Mock, patch, MagicMock
 
@@ -166,28 +171,24 @@ def mock_supabase_select(mock_supabase, token_data_list):
 @pytest.fixture
 def mock_supabase_filter(mock_supabase, token_data_list):
     """
-
-    Setup the mock Supabase client to return filtered token data using filter method.
-
+    Mock SupabaseClient.filter() with dynamic filtering by any field (e.g., user_id, label).
     """
-
     mock_instance = mock_supabase.return_value
 
-    # Configure filter method to return specific results based on filters
-
-    def side_effect_filter(table, filters=None, columns=None, limit=None):
-
+    def side_effect_filter(table, filters=None, columns=None, limit=None, order_by=None):
         if not filters:
             return token_data_list
 
-        # Filter by label
+        # Return only tokens that match ALL provided filters
+        def matches_all_filters(token):
+            return all(str(token.get(key)) == str(value) for key, value in filters.items())
 
-        if 'label' in filters:
-            label = filters['label']
+        filtered = [token for token in token_data_list if matches_all_filters(token)]
 
-            return [token for token in token_data_list if token.get('label') == label]
+        if limit:
+            filtered = filtered[:limit]
 
-        return []
+        return filtered
 
     mock_instance.filter.side_effect = side_effect_filter
 
@@ -401,3 +402,59 @@ def mock_supabase_client():
 
         yield mock_client
 
+
+# ==================================================
+# Clerk Fixtures
+# ==================================================
+# Fixture: Generate test JWT with custom payload overrides
+@pytest.fixture
+def generate_test_jwt():
+    def _generate(payload_overrides=None, exp_minutes=10):
+        now = datetime.utcnow()
+        payload = {
+            "sub": "user_test123",
+            "email": "test@example.com",
+            "name": "Test User",
+            "iat": now,
+            "exp": now + timedelta(minutes=exp_minutes),
+            "iss": "https://mock.clerk.dev",
+            "v": 2
+        }
+        if payload_overrides:
+            payload.update(payload_overrides)
+        return jwt.encode(payload, "test-secret", algorithm="HS256")
+    
+    return _generate
+
+
+# Fixture: Mock authenticate_request() as a signed-in Clerk user
+@pytest.fixture
+def mock_clerk_signed_in(monkeypatch):
+    def _mock(payload: dict, token: str = "fake-token"):
+        def _handler(request, options):
+            return RequestState(
+                status=AuthStatus.SIGNED_IN,
+                token=token,
+                payload=payload
+            )
+        
+        monkeypatch.setattr("app.utils.auth.authenticate_request", _handler)
+    
+    return _mock
+
+
+# Fixture: Simulate signed-out Clerk response with an error reason
+@pytest.fixture
+def mock_clerk_signed_out(monkeypatch):
+    def _mock(reason_enum: Union[AuthErrorReason, TokenVerificationErrorReason]):
+        def _handler(request, options):
+            return RequestState(
+                status=AuthStatus.SIGNED_OUT,
+                reason=reason_enum,
+                token=None,
+                payload=None
+            )
+        
+        monkeypatch.setattr("app.utils.auth.authenticate_request", _handler)
+    
+    return _mock
