@@ -94,6 +94,7 @@ my_flask_supabase_app/
 
 - Python **&ge;** 3.12
 - This project uses Tortoise ORM to interact with the PostgreSQL database hosted on Supabase.
+- Choose your preferred connection method: API-based connection using Supabase keys, or direct PostgreSQL connection using database credentials
 - Clerk account with API credentials
 - SonarCloud for code quality scanning
 
@@ -275,47 +276,49 @@ SUPABASE_SECRET_KEY=your-service-role-key
 
 ---
 
-[//]: # (### Where to Get These Values)
-
 [//]: # ()
-[//]: # (1. Go to your Supabase Dashboard)
-
-[//]: # (2. From the left-hand side Menu, Navigate to:)
-
-[//]: # (   ```)
-
-[//]: # (   Project Settings → Data API)
-
-[//]: # (   ```)
-
-[//]: # (3. Locate the following:)
-
+[//]: # ([//]: # &#40;### Where to Get These Values&#41;)
 [//]: # ()
-[//]: # (| Field                 | Value Location                      |)
-
-[//]: # (|-----------------------|-------------------------------------|)
-
-[//]: # (| `SUPABASE_URL`        | **Project URL** &#40;top of the page&#41;   |)
-
-[//]: # (| `SUPABASE_SECRET_KEY` | **Project API Keys → service_role** |)
-
----
-
-[//]: # (### ⚠️ Upcoming Change in API Key Naming &#40;Q2 2025&#41;)
-
+[//]: # ([//]: # &#40;&#41;)
+[//]: # ([//]: # &#40;1. Go to your Supabase Dashboard&#41;)
 [//]: # ()
-[//]: # (Supabase has announced that:)
-
+[//]: # ([//]: # &#40;2. From the left-hand side Menu, Navigate to:&#41;)
 [//]: # ()
-[//]: # (- `anon` → will be renamed to `publishable`)
-
-[//]: # (- `service_role` → will be renamed to `secret`)
-
+[//]: # ([//]: # &#40;   ```&#41;)
 [//]: # ()
-[//]: # (Keep this in mind when using future versions of Supabase)
-
+[//]: # ([//]: # &#40;   Project Settings → Data API&#41;)
+[//]: # ()
+[//]: # ([//]: # &#40;   ```&#41;)
+[//]: # ()
+[//]: # ([//]: # &#40;3. Locate the following:&#41;)
+[//]: # ()
+[//]: # ([//]: # &#40;&#41;)
+[//]: # ([//]: # &#40;| Field                 | Value Location                      |&#41;)
+[//]: # ()
+[//]: # ([//]: # &#40;|-----------------------|-------------------------------------|&#41;)
+[//]: # ()
+[//]: # ([//]: # &#40;| `SUPABASE_URL`        | **Project URL** &#40;top of the page&#41;   |&#41;)
+[//]: # ()
+[//]: # ([//]: # &#40;| `SUPABASE_SECRET_KEY` | **Project API Keys → service_role** |&#41;)
 [//]: # ()
 [//]: # (---)
+
+[//]: # ()
+[//]: # ([//]: # &#40;### ⚠️ Upcoming Change in API Key Naming &#40;Q2 2025&#41;&#41;)
+[//]: # ()
+[//]: # ([//]: # &#40;&#41;)
+[//]: # ([//]: # &#40;Supabase has announced that:&#41;)
+[//]: # ()
+[//]: # ([//]: # &#40;&#41;)
+[//]: # ([//]: # &#40;- `anon` → will be renamed to `publishable`&#41;)
+[//]: # ()
+[//]: # ([//]: # &#40;- `service_role` → will be renamed to `secret`&#41;)
+[//]: # ()
+[//]: # ([//]: # &#40;&#41;)
+[//]: # ([//]: # &#40;Keep this in mind when using future versions of Supabase&#41;)
+[//]: # ()
+[//]: # ([//]: # &#40;&#41;)
+[//]: # ([//]: # &#40;---&#41;)
 
 ### ⚠️ API Rate Limiting
 
