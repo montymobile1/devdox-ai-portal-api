@@ -24,7 +24,7 @@ class Settings(BaseSettings):
     )
 
     # SUPABASE settings
-    SUPABASE_URL: str = "https://localhost"
+    SUPABASE_URL: str = "https://your-project.supabase.co"
     SUPABASE_SECRET_KEY: str = "test-supabase-key"
 
     SUPABASE_REST_API: bool = True
