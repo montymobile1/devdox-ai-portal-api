@@ -30,7 +30,7 @@ def sample_repo_dict_list():
             "id": 1,
             "user_id": "user-1",
             "repo_id": "123",
-            "name": "repo-1",
+            "repo_name": "repo-1",
             "description": "First repository",
             "html_url": "https://github.com/user/repo-1",
             "default_branch": "main",
@@ -51,7 +51,7 @@ def sample_repo_dict_list():
             "id": 2,
             "user_id": "user-1",
             "repo_id": "456",
-            "name": "repo-2",
+            "repo_name": "repo-2",
             "description": "Second repository",
             "html_url": "https://gitlab.com/user/repo-2",
             "default_branch": "main",
@@ -155,7 +155,7 @@ class TestGetReposEndpoint:
         data = response.json()
         assert data["total_count"] == 2
         assert len(data["repos"]) == 2
-        assert data["repos"][0]["name"] == "repo-1"
+        assert data["repos"][0]["repo_name"] == "repo-1"
 
     @patch("app.routes.repos.Repo")
     async def test_get_repos_empty(self, mock_repo, client):
@@ -311,9 +311,8 @@ class TestRepoUtilityFunctions:
         }
 
         result = build_repo_dict(github_repo, GitHosting.GITHUB)
-
         assert result["id"] == "123"  # Should be string
-        assert result["name"] == "test-repo"
+        assert result["repo_name"] == "test-repo"
         assert result["private"] is False
         assert result["html_url"] == "https://github.com/user/test-repo"
         assert result["visibility"] is None
@@ -336,7 +335,7 @@ class TestRepoUtilityFunctions:
         result = build_repo_dict(gitlab_repo, GitHosting.GITLAB)
 
         assert result["id"] == "456"
-        assert result["name"] == "gitlab-repo"
+        assert result["repo_name"] == "gitlab-repo"
         assert result["visibility"] == "public"
         assert result["html_url"] == "https://gitlab.com/user/gitlab-repo"
         assert result["private"] is None
@@ -381,10 +380,9 @@ class TestRepoFetcherFunctions:
 
         # Call the function
         repos, total_count = fetch_github_repos("test_token", pagination)
-
         # Verify results
         assert len(repos) == 1
-        assert repos[0]["name"] == "test-repo"
+        assert repos[0]["repo_name"] == "test-repo"
         assert repos[0]["id"] == "123"  # Should be string
         assert total_count == 1
 
@@ -412,7 +410,7 @@ class TestRepoFetcherFunctions:
 
         # Verify results
         assert len(repos) == 1
-        assert repos[0]["name"] == "gitlab-repo"
+        assert repos[0]["repo_name"] == "gitlab-repo"
         assert repos[0]["id"] == "456"
         assert total_pages == 1
 
