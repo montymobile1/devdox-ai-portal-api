@@ -72,8 +72,8 @@ settings = Settings()
 
 def get_database_config() -> Dict[str, Any]:
     """
-    Returns the appropriate database configuration based on available credentials.
-    Prioritizes direct PostgreSQL connection over API-based connection.
+     Returns the appropriate database configuration based on available credentials.
+    Uses REST API connection when SUPABASE_REST_API is True, otherwise uses direct PostgreSQL.
     """
     base_credentials = {
         "minsize": settings.DB_MIN_CONNECTIONS,
@@ -85,9 +85,16 @@ def get_database_config() -> Dict[str, Any]:
 
         # Extract database connection info from Supabase URL
         # Supabase URL format: https://your-project.supabase.co
+        if not settings.SUPABASE_URL.startswith(
+            "https://"
+        ) or not settings.SUPABASE_URL.endswith(".supabase.co"):
+            raise ValueError(f"Invalid Supabase URL format: {settings.SUPABASE_URL}")
+
         project_id = settings.SUPABASE_URL.replace("https://", "").replace(
             ".supabase.co", ""
         )
+        if not project_id:
+            raise ValueError("Unable to extract project ID from Supabase URL")
         credentials = {
             **base_credentials,
             "host": project_id,  # Use project_id directly as host
