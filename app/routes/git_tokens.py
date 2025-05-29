@@ -12,9 +12,11 @@ from app.utils.gitlab_manager import GitLabManager
 from app.utils.github_manager import GitHubManager
 from app.utils.encryption import EncryptionHelper
 from app.utils.api_response import APIResponse
+from app.utils.auth import AuthenticatedUserDTO
 from app.schemas.basic import PaginationParams
 from app.config import GitHosting
-from app.utils import constants
+from app.utils import constants, CurrentUser
+
 
 from app.models.git_label import GitLabel
 from app.schemas.git_label import (
@@ -128,7 +130,7 @@ async def handle_github(
     description="Retrieve a list of all git labels with masked token values",
 )
 async def get_git_labels(
-    current_user_id: str = Depends(get_current_user_id),
+    current_user_id: AuthenticatedUserDTO = CurrentUser,
     pagination: PaginationParams = Depends(),
     git_hosting: Optional[str] = Query(
         None, description="Filter by git hosting service"
@@ -142,7 +144,7 @@ async def get_git_labels(
     """
     try:
         # Build query for user's git labels
-        query = GitLabel.filter(user_id=current_user_id)
+        query = GitLabel.filter(user_id=current_user_id.id)
         # Apply git_hosting filter if provided
         if git_hosting:
             query = query.filter(git_hosting=git_hosting)
