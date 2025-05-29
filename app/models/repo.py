@@ -16,7 +16,7 @@ class Repo(Model):
     repo_id = fields.CharField(
         max_length=255, description="Repository ID from the Git provider"
     )
-    name = fields.CharField(max_length=255, description="Repository name")
+    repo_name = fields.CharField(max_length=255, description="Repository name")
     description = fields.TextField(null=True, description="Repository description")
     html_url = fields.CharField(max_length=500, description="Repository URL")
 
@@ -36,9 +36,6 @@ class Repo(Model):
     )
 
     # Git provider information
-    git_hosting = fields.CharField(
-        max_length=50, description="Git hosting provider (github/gitlab)"
-    )
     token_id = fields.CharField(
         max_length=255, null=True, description="Associated token ID"
     )
@@ -70,9 +67,7 @@ class Repo(Model):
         table_description = "Repository information from Git providers"
         indexes = [
             ("user_id", "created_at"),
-            ("user_id", "git_hosting"),
-            ("repo_id", "git_hosting"),
         ]
 
     def __str__(self):
-        return f"{self.name} ({self.git_hosting})"
+        return f"{self.name} "

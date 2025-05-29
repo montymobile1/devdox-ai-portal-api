@@ -15,13 +15,6 @@ from version import __version__
 logger = setup_logging()
 
 # Initialize FastAPI app
-app = FastAPI(
-    title="DevDox AI Portal API",
-    description="Backend API service for the DevDox AI Portal.",
-    version=__version__,
-    docs_url="/docs",
-    redoc_url="/redoc",
-)
 
 
 @asynccontextmanager
@@ -31,9 +24,8 @@ async def lifespan(app: FastAPI):
     from tortoise import Tortoise
 
     await Tortoise.init(config=TORTOISE_ORM)
-
     # Generate schemas only in development
-    if settings.API_ENV == "dev":
+    if settings.API_ENV == "development":
         await Tortoise.generate_schemas()
 
     yield
@@ -42,6 +34,14 @@ async def lifespan(app: FastAPI):
     await Tortoise.close_connections()
 
 
+app = FastAPI(
+    title="DevDox AI Portal API",
+    description="Backend API service for the DevDox AI Portal.",
+    version=__version__,
+    docs_url="/docs",
+    redoc_url="/redoc",
+    lifespan=lifespan,
+)
 # Configure CORS middleware
 app.add_middleware(
     CORSMiddleware,
