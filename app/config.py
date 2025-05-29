@@ -26,7 +26,7 @@ class Settings(BaseSettings):
     # supbase settings
     SUPABASE_URL: str = "https://localhost"
     SUPABASE_SECRET_KEY: str = "test-supabase-key"
-    SUPABASE_HOST: str = "supabase_user"
+    SUPABASE_HOST: str = "https://locahost"
     SUPABASE_USER: str = "admin"
     SUPABASE_PASSWORD: str = "test"
     SUPABASE_PORT: int = 5432
@@ -60,7 +60,6 @@ class Settings(BaseSettings):
         git_hosting: Optional[GitHosting] = None
 
 
-
 # Initialize settings instance
 settings = Settings()
 
@@ -77,18 +76,19 @@ TORTOISE_ORM = {
                 "database": settings.SUPABASE_DB_NAME,
                 "minsize": 1,  # Minimum number of connections in the pool
                 "maxsize": 10,  # Maximum number of connections in the pool
-            }
+            },
         }
     },
     "apps": {
         "models": {
-            "models": ["app.models.git_label", "aerich.models"],
+            "models": ["app.models.git_label", "app.models"],
             "default_connection": "default",
         }
     },
     "use_tz": True,
-    "timezone": "UTC"
+    "timezone": "UTC",
 }
+
 
 # Alternative connection URL format (you can use either approach)
 def get_database_url():

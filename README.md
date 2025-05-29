@@ -93,7 +93,7 @@ my_flask_supabase_app/
 ### Prerequisites
 
 - Python **&ge;** 3.12
-- Supabase account with API credentials
+- This project uses Tortoise ORM to interact with the PostgreSQL database hosted on Supabase.
 - Clerk account with API credentials
 - SonarCloud for code quality scanning
 
@@ -202,6 +202,13 @@ using the hosted [Supabase website](https://supabase.com/).
     - **Database password** Choose a secure one and save it somewhere safe.
     - Choose your region (nearest to your location or team).
 3. Click **Create new project** and wait for setup to complete.
+4. Navigate to **Settings** > **Database**
+    - Copy the following values:
+      - **Host**: e.g. your-project.supabase.co
+      - **Port**: usually 5432
+      - **User**: usually postgres
+      - **Database**: usually postgres
+For more info visit: [Supabase Docs](https://supabase.com/docs/guides/database/connecting-to-postgres)
 
 ---
 
@@ -268,32 +275,47 @@ SUPABASE_SECRET_KEY=your-service-role-key
 
 ---
 
-### Where to Get These Values
+[//]: # (### Where to Get These Values)
 
-1. Go to your Supabase Dashboard
-2. From the left-hand side Menu, Navigate to:
-   ```
-   Project Settings → Data API
-   ```
-3. Locate the following:
+[//]: # ()
+[//]: # (1. Go to your Supabase Dashboard)
 
-| Field                 | Value Location                      |
-|-----------------------|-------------------------------------|
-| `SUPABASE_URL`        | **Project URL** (top of the page)   |
-| `SUPABASE_SECRET_KEY` | **Project API Keys → service_role** |
+[//]: # (2. From the left-hand side Menu, Navigate to:)
+
+[//]: # (   ```)
+
+[//]: # (   Project Settings → Data API)
+
+[//]: # (   ```)
+
+[//]: # (3. Locate the following:)
+
+[//]: # ()
+[//]: # (| Field                 | Value Location                      |)
+
+[//]: # (|-----------------------|-------------------------------------|)
+
+[//]: # (| `SUPABASE_URL`        | **Project URL** &#40;top of the page&#41;   |)
+
+[//]: # (| `SUPABASE_SECRET_KEY` | **Project API Keys → service_role** |)
 
 ---
 
-### ⚠️ Upcoming Change in API Key Naming (Q2 2025)
+[//]: # (### ⚠️ Upcoming Change in API Key Naming &#40;Q2 2025&#41;)
 
-Supabase has announced that:
+[//]: # ()
+[//]: # (Supabase has announced that:)
 
-- `anon` → will be renamed to `publishable`
-- `service_role` → will be renamed to `secret`
+[//]: # ()
+[//]: # (- `anon` → will be renamed to `publishable`)
 
-Keep this in mind when using future versions of Supabase
+[//]: # (- `service_role` → will be renamed to `secret`)
 
----
+[//]: # ()
+[//]: # (Keep this in mind when using future versions of Supabase)
+
+[//]: # ()
+[//]: # (---)
 
 ### ⚠️ API Rate Limiting
 
