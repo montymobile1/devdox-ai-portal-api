@@ -30,7 +30,7 @@ class Settings(BaseSettings):
     SUPABASE_REST_API: bool = True
 
     SUPABASE_HOST: str = "https://locahost"
-    SUPABASE_USER: str = "admin"
+    SUPABASE_USER: str = "postgres"
     SUPABASE_PASSWORD: str = "test"
     SUPABASE_PORT: int = 5432
     SUPABASE_DB_NAME: str = "postgres"
@@ -75,6 +75,11 @@ def get_database_config() -> Dict[str, Any]:
     Returns the appropriate database configuration based on available credentials.
     Prioritizes direct PostgreSQL connection over API-based connection.
     """
+    base_credentials = {
+        "minsize": settings.DB_MIN_CONNECTIONS,
+        "maxsize": settings.DB_MAX_CONNECTIONS,
+        "ssl": "require",
+    }
     # Check if developer wants to use RESTAPI
     if settings.SUPABASE_REST_API:
 
@@ -83,38 +88,27 @@ def get_database_config() -> Dict[str, Any]:
         project_id = settings.SUPABASE_URL.replace("https://", "").replace(
             ".supabase.co", ""
         )
-
-        # Use service role key if available
-        password = settings.SUPABASE_SECRET_KEY
-        return {
-            "engine": "tortoise.backends.asyncpg",
-            "credentials": {
-                "host": f"db.{project_id}.supabase.co",
-                "port": 5432,
-                "user": "postgres",
-                "password": password,
-                "database": "postgres",
-                "minsize": settings.DB_MIN_CONNECTIONS,
-                "maxsize": settings.DB_MAX_CONNECTIONS,
-                "ssl": "require",
-            },
+        credentials = {
+            **base_credentials,
+            "host": project_id,  # Use project_id directly as host
+            "port": 5432,
+            "user": "postgres",
+            "password": settings.SUPABASE_SECRET_KEY,
+            "database": "postgres",
         }
 
     # Method 2: Supabase postgress sql
     else:
-        return {
-            "engine": "tortoise.backends.asyncpg",
-            "credentials": {
-                "host": settings.SUPABASE_HOST,
-                "port": settings.SUPABASE_PORT,
-                "user": settings.SUPABASE_USER,
-                "password": settings.SUPABASE_PASSWORD,
-                "database": settings.SUPABASE_DB_NAME,
-                "minsize": settings.DB_MIN_CONNECTIONS,
-                "maxsize": settings.DB_MAX_CONNECTIONS,
-                "ssl": "require",  # Supabase requires SSL
-            },
+        credentials = {
+            **base_credentials,
+            "host": settings.SUPABASE_HOST,
+            "port": settings.SUPABASE_PORT,
+            "user": settings.SUPABASE_USER,
+            "password": settings.SUPABASE_PASSWORD,
+            "database": settings.SUPABASE_DB_NAME,
         }
+
+    return {"engine": "tortoise.backends.asyncpg", "credentials": credentials}
 
 
 TORTOISE_ORM = get_database_config()
