@@ -144,7 +144,6 @@ class TestGetReposEndpoint:
         mock_query.offset.return_value = mock_query
         mock_query.limit.return_value = mock_query
 
-
         mock_query.all = AsyncMock(return_value=sample_repo_dict_list)
 
         # Set up the initial filter to return our mock query
@@ -247,8 +246,6 @@ class TestGetReposFromGitEndpoint:
         """Test response when token is not found."""
         user_id = "user-1"
         token_id = "nonexistent-token"
-
-
 
         mock_git_label.filter.return_value.first = AsyncMock(return_value=None)
 
