@@ -1,23 +1,61 @@
 from pydantic import BaseModel, Field
 from typing import Optional
-from app.config import GitHosting
+from datetime import datetime
+import uuid
 
-class AddGitTokenSchema(BaseModel):
-    """
-    Base model for an example entity.
-    """
-    label: str = Field(
-       ..., 
-       description="Token label",
-       min_length=1,
-       max_length=50
-   )
-    git_hosting: GitHosting = Field(..., description="Git hosting provider")
+
+class GitLabelBase(BaseModel):
+    """Base schema for GitLabel"""
+
+    label: str = Field(..., description="Label/name for this git configuration")
+    git_hosting: str = Field(
+        ..., description="Git hosting service (e.g., 'github', 'gitlab')"
+    )
     token_value: str = Field(
-               ...,
-               description = "Token value of git hosting",
-           min_length = 5,
-           max_length = 255,
-                       )
-    user_id: Optional[str] = Field(None, description="User ID")
+        ..., description="Access token for the git hosting service"
+    )
 
+
+class GitLabelCreate(GitLabelBase):
+    user_id: str = Field(
+        None, description="User identifier (will be overridden by auth)"
+    )
+
+
+class GitLabelUpdate(BaseModel):
+    label: Optional[str] = Field(
+        None, description="Label/name for this git configuration"
+    )
+    git_hosting: Optional[str] = Field(
+        None, description="Git hosting service (e.g., 'github', 'gitlab')"
+    )
+    username: Optional[str] = Field(
+        None, description="Username for the git hosting service"
+    )
+    token_value: Optional[str] = Field(
+        None, description="Access token for the git hosting service"
+    )
+
+
+class GitLabelResponse(GitLabelBase):
+    id: uuid.UUID = Field(..., description="Unique identifier")
+    user_id: str = Field(..., description="User identifier")
+    created_at: datetime = Field(..., description="Record creation timestamp")
+    updated_at: datetime = Field(..., description="Record last update timestamp")
+
+    class Config:
+        from_attributes = True
+
+
+class GitLabelListResponse(BaseModel):
+    items: list[GitLabelResponse]
+    total: int
+    page: int
+    size: int
+
+
+class ErrorResponse(BaseModel):
+    """Schema for error responses"""
+
+    detail: str = Field(..., description="Error message")
+    error_code: Optional[str] = Field(None, description="Error code")

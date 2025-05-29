@@ -20,9 +20,8 @@ class GitLabManager:
             self.gl = None
             self.auth_status = False
 
-
     def get_project(self):
-        if self.project_id !="":
+        if self.project_id != "":
             return self.gl.projects.get(self.project_id)
         else:
             return None
@@ -37,9 +36,34 @@ class GitLabManager:
             print(f"Error fetching repos: {e}")
             return False
 
+    def get_repos(self, page=1, per_page=20):
+        try:
+            per_page = max(1, min(per_page, 100))
+            page = max(1, page)
+
+            url = (
+                f"{self.base_url}/api/v4/projects"
+                f"?membership=true&min_access_level=30&per_page={per_page}&page={page}"
+            )
+            response = self.session.get(url, headers=self.headers)
+            response.raise_for_status()
+
+            repos = response.json()
+            pagination = {
+                "current_page": page,
+                "per_page": per_page,
+                "total_pages": int(response.headers.get("X-Total-Pages", 1)),
+                "next_page": int(response.headers.get("X-Next-Page") or 0) or None,
+                "prev_page": int(response.headers.get("X-Prev-Page") or 0) or None,
+            }
+            return {"repositories": repos, "pagination_info": pagination}
+        except requests.exceptions.RequestException as e:
+            self.log_error("GitLab API request failed", e)
+            return []
+
     def log_error(self, message, exception):
         """Logs an error with traceback details."""
         print(f"{message}: {exception}")
         import traceback
-        traceback.print_exc()
 
+        traceback.print_exc()

@@ -1,204 +1,343 @@
 """
-Token routes for the DevDox AI Portal API.
+Git Label routes for the DevDox AI Portal API.
 
-This module provides endpoints for retrieving Git tokens with their values masked
-for security. It supports retrieving all tokens or filtering by a specific label.
+This module provides endpoints for managing Git tokens with CRUD operations.
+It supports creating, reading, updating, and deleting git hosting service configurations.
 """
 
-from typing import Any, Dict, List
-
-from fastapi import APIRouter, Body, HTTPException, Request, status
-
-from app.config import GitHosting
-from app.schemas.git_label import AddGitTokenSchema
-from app.services.supabase_client import SupabaseClient
-from app.utils import constants, CurrentUser
+from fastapi import APIRouter, Depends, Query, Body, Request, status
+from typing import Dict, Any, Optional
+import uuid
+from app.utils.gitlab_manager import GitLabManager
+from app.utils.github_manager import GitHubManager
+from app.utils.encryption import EncryptionHelper
 from app.utils.api_response import APIResponse
 from app.utils.auth import AuthenticatedUserDTO
-from app.utils.encryption import EncryptionHelper
-from app.utils.github_manager import GitHubManager
-from app.utils.gitlab_manager import GitLabManager
+from app.schemas.basic import PaginationParams
+from app.config import GitHosting
+from app.utils import constants, CurrentUser
 
 
-async def handle_gitlab(payload: AddGitTokenSchema, encrypted_token: str):
-	gitlab = GitLabManager(base_url="https://gitlab.com", access_token=payload.token_value)
-	
-	if not gitlab.auth_status:
-		return APIResponse.error(message=constants.GITLAB_AUTH_FAILED)
-	
-	user = gitlab.get_user()
-	if not user:
-		return APIResponse.error(message=constants.GITLAB_USER_RETRIEVE_FAILED)
-	
-	client = SupabaseClient()
-	res = client.insert(
-		"git_label",
-		{
-			"label": payload.label,
-			"user_id": payload.user_id,
-			"git_hosting": payload.git_hosting,
-			"token_value": encrypted_token,
-			"masked_token": mask_token(payload.token_value),
-			"username": user.get("username", "")
-		}
-	)
-	
-	if res:
-		return APIResponse.success(message=constants.TOKEN_SAVED_SUCCESSFULLY, data={"id": str(res["id"])})
-	return APIResponse.error(message=constants.GITLAB_TOKEN_SAVE_FAILED)
+from app.models.git_label import GitLabel
+from app.schemas.git_label import (
+    GitLabelCreate,
+)
 
-
-async def handle_github(payload: AddGitTokenSchema, encrypted_token: str):
-	github = GitHubManager(access_token=payload.token_value)
-	user = github.get_user()
-	
-	if not user:
-		return APIResponse.error(message=constants.GITHUB_AUTH_FAILED, status_code=status.HTTP_400_BAD_REQUEST)
-	
-	client = SupabaseClient()
-	res = client.insert(
-		"git_label",
-		{
-			"label": payload.label,
-			"user_id": payload.user_id,
-			"git_hosting": payload.git_hosting,
-			"token_value": encrypted_token,
-			"masked_token": mask_token(payload.token_value),
-			"username": user.get("login", "")
-		}
-	)
-	
-	if res:
-		return APIResponse.success(message=constants.TOKEN_SAVED_SUCCESSFULLY, data={"id": str(res["id"])})
-	return APIResponse.error(message=constants.GITHUB_TOKEN_SAVE_FAILED)
-
-
-def mask_token(token: str) -> str:
-	"""
-	Masks a token string by revealing only the first and last four characters.
-	
-	If the token is 8 characters or fewer, the entire token is replaced with asterisks. Returns an empty string if the input is empty.
-	"""
-	if not token:
-		return ""
-	
-	token_len = len(token)
-	
-	if token_len <= 8:
-		return "*" * token_len
-	
-	prefix = token[:4]
-	suffix = token[-4:]
-	middle_mask = "*" * (token_len - 8)
-	
-	return f"{prefix}{middle_mask}{suffix}"
-
-
-# Create router
 router = APIRouter()
 
 
-@router.get("/", response_model=List[Dict[str, Any]],
-            status_code=status.HTTP_200_OK,
-            summary="Get all tokens for specific users",
-            description="Retrieve a list of all tokens with masked values for specific users",
+def mask_token(token: str) -> str:
+    """
+    Masks a token string by revealing only the first and last four characters.
+
+    If the token is 8 characters or fewer, the entire token is replaced with asterisks.
+    Returns an empty string if the input is empty.
+    """
+    if not token:
+        return ""
+
+    token_len = len(token)
+
+    if token_len <= 8:
+        return "*" * token_len
+
+    prefix = token[:4]
+    suffix = token[-4:]
+    middle_mask = "*" * (token_len - 8)
+
+    return f"{prefix}{middle_mask}{suffix}"
+
+
+async def get_current_user_id() -> str:
+    """
+    Dependency to get current user ID.
+    In a real application, this would extract user ID from JWT token or session.
+    For now, this is a placeholder that you should implement based on your auth system.
+    """
+    # Will be changed
+    # This could be from JWT token, session, or other auth mechanism
+    return "user_2sw6NOnSajM1kpsLPA1ZnxCW3uZ"
+
+
+async def handle_gitlab(
+    payload: GitLabelCreate, encrypted_token: str
+) -> Dict[str, Any]:
+    """Handle GitLab token validation and storage"""
+    gitlab = GitLabManager(
+        base_url="https://gitlab.com", access_token=payload.token_value
+    )
+
+    if not gitlab.auth_status:
+        return APIResponse.error(message=constants.GITLAB_AUTH_FAILED)
+
+    user = gitlab.get_user()
+    if not user:
+        return APIResponse.error(message=constants.GITLAB_USER_RETRIEVE_FAILED)
+
+    try:
+        git_label = await GitLabel.create(
+            label=payload.label,
+            user_id=payload.user_id,
+            git_hosting=payload.git_hosting,
+            token_value=encrypted_token,
+            username=user.get("username", ""),
+        )
+
+        return APIResponse.success(
+            message=constants.TOKEN_SAVED_SUCCESSFULLY, data={"id": str(git_label.id)}
+        )
+    except Exception:
+        return APIResponse.error(
+            message=f"Failed to save GitLab token: {str(e)}",
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+        )
+
+
+async def handle_github(
+    payload: GitLabelCreate, encrypted_token: str
+) -> Dict[str, Any]:
+    """Handle GitHub token validation and storage"""
+    github = GitHubManager(access_token=payload.token_value)
+    user = github.get_user()
+
+    if not user:
+        return APIResponse.error(
+            message=constants.GITHUB_AUTH_FAILED,
+            status_code=status.HTTP_400_BAD_REQUEST,
+        )
+
+    try:
+        git_label = await GitLabel.create(
+            label=payload.label,
+            user_id=payload.user_id,
+            git_hosting=payload.git_hosting,
+            token_value=encrypted_token,
+            username=user.get("login", ""),
+        )
+
+        return APIResponse.success(
+            message=constants.TOKEN_SAVED_SUCCESSFULLY, data={"id": str(git_label.id)}
+        )
+    except Exception:
+        return APIResponse.error(message=constants.GITHUB_TOKEN_SAVE_FAILED)
+
+
+@router.get(
+    "/",
+    response_model=Dict[str, Any],
+    status_code=status.HTTP_200_OK,
+    summary="Get all git labels",
+    description="Retrieve a list of all git labels with masked token values",
+)
+async def get_git_labels(
+    current_user_id: AuthenticatedUserDTO = CurrentUser,
+    pagination: PaginationParams = Depends(),
+    git_hosting: Optional[str] = Query(
+        None, description="Filter by git hosting service"
+    ),
+) -> Dict[str, Any]:
+    """
+    Retrieves all stored git labels with masked token values for API response.
+
+    Returns:
+        APIResponse with list of git labels containing metadata and masked token values.
+    """
+    try:
+        # Build query for user's git labels
+        query = GitLabel.filter(user_id=current_user_id.id)
+        # Apply git_hosting filter if provided
+        if git_hosting:
+            query = query.filter(git_hosting=git_hosting)
+
+        # Get total count
+        total = await query.count()
+
+        # Apply pagination and ordering
+        git_labels = (
+            await query.order_by("-created_at")
+            .offset(pagination.offset)
+            .limit(pagination.limit)
+            .all()
+        )
+
+        # Format response data with masked tokens
+        formatted_data = []
+        for gl in git_labels:
+            formatted_data.append(
+                {
+                    "id": str(gl.id),
+                    "label": gl.label,
+                    "git_hosting": gl.git_hosting,
+                    "masked_token": mask_token(
+                        EncryptionHelper.decrypt(gl.token_value)
+                        if gl.token_value
+                        else ""
+                    ),
+                    "username": gl.username,
+                    "created_at": gl.created_at.isoformat(),
+                    "updated_at": gl.updated_at.isoformat(),
+                }
             )
-async def get_tokens(user: AuthenticatedUserDTO = CurrentUser) -> dict[str, Any]:
-	"""
-	Retrieves all stored tokens with masked values for API response.
-	
-	Returns:
-		A list of dictionaries containing token metadata and masked token values.
-	"""
-	try:
-		client = SupabaseClient()
-		res = client.filter(
-			table="git_label",
-			columns="label, id, git_hosting,masked_token, created_at",
-			filters={"user_id": user.id},
-			order_by="created_at.desc"
-		)
-		
-		return APIResponse.success(message=constants.GENERIC_SUCCESS, data=res)
-	except Exception as e:
-		
-		raise HTTPException(
-			status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
-			detail=constants.SERVICE_UNAVAILABLE
-		) from e
+
+        return APIResponse.success(
+            message="Git labels retrieved successfully",
+            data={
+                "items": formatted_data,
+                "total": total,
+                "page": (pagination.offset // pagination.limit) + 1,
+                "size": pagination.limit,
+            },
+        )
+    except Exception:
+        return APIResponse.error(
+            message=constants.SERVICE_UNAVAILABLE,
+            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+        )
 
 
-@router.get("/{label}", response_model=List[Dict[str, Any]],
-            status_code=status.HTTP_200_OK,
-            summary="Get tokens by label",
-            description="Retrieve a list of all tokens with masked values")
-async def get_token_by_label(label: str) -> List[Dict[str, Any]]:
-	"""
-	Retrieves a token matching the specified label with its value masked.
-	
-	Args:
-		label: The label identifying the token to retrieve.
-	
-	Returns:
-		A list containing the formatted token dictionary with masked token value. The list is empty if no matching token is found.
-	"""
-	try:
-		client = SupabaseClient()
-		res = client.filter(table="git_label", filters={"label": label},
-		                    columns="label, id, git_hosting, masked_token, created_at")
-		return res
-	except Exception as e:
-		raise HTTPException(
-			status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
-			detail="Service temporarily unavailable. Please try again later."
-		) from e
+@router.get(
+    "/{label}",
+    response_model=Dict[str, Any],
+    status_code=status.HTTP_200_OK,
+    summary="Get git labels by label",
+    description="Retrieve git labels matching the specified label with masked token values",
+)
+async def get_git_label_by_label(
+    label: str,
+    current_user_id: str = Depends(get_current_user_id),
+    pagination: PaginationParams = Depends(),
+) -> Dict[str, Any]:
+    """
+    Retrieves git labels matching the specified label with masked token values.
+
+    Args:
+        label: The label identifying the git labels to retrieve.
+
+    Returns:
+        APIResponse with list of matching git labels with masked token values.
+    """
+    try:
+        git_labels = (
+            await GitLabel.filter(user_id=current_user_id, label=label)
+            .order_by("-created_at")
+            .offset(pagination.offset)
+            .limit(pagination.limit)
+            .all()
+        )
+
+        # Format response data with masked tokens
+        formatted_data = []
+        for gl in git_labels:
+            formatted_data.append(
+                {
+                    "id": str(gl.id),
+                    "label": gl.label,
+                    "git_hosting": gl.git_hosting,
+                    "masked_token": mask_token(
+                        EncryptionHelper.decrypt(gl.token_value)
+                        if gl.token_value
+                        else ""
+                    ),
+                    "username": gl.username,
+                    "created_at": gl.created_at.isoformat(),
+                    "updated_at": gl.updated_at.isoformat(),
+                }
+            )
+
+        return APIResponse.success(
+            message="Git labels retrieved successfully", data={"items": formatted_data}
+        )
+    except Exception:
+        return APIResponse.error(
+            message=constants.SERVICE_UNAVAILABLE,
+            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+        )
 
 
-@router.post("/", response_model=Dict[str, Any])
-async def add_token(request: Request, payload: AddGitTokenSchema = Body(...)):
-	token = payload.token_value.replace(" ", "")
-	encrypted_token = EncryptionHelper.encrypt(token.replace(" ", "")) if token else ""
-	if payload.git_hosting == GitHosting.GITLAB:
-		return await handle_gitlab(payload, encrypted_token)
-	
-	if payload.git_hosting == GitHosting.GITHUB:
-		return await handle_github(payload, encrypted_token)
-	
-	return APIResponse.error(message=constants.UNSUPPORTED_GIT_PROVIDER,
-	                         status_code=status.HTTP_422_UNPROCESSABLE_ENTITY, )
+@router.post(
+    "/",
+    response_model=Dict[str, Any],
+    status_code=status.HTTP_201_CREATED,
+    summary="Add new git token",
+    description="Create a new git hosting service token configuration",
+)
+async def add_git_token(
+    request: Request,
+    payload: GitLabelCreate = Body(...),
+    current_user_id: str = Depends(get_current_user_id),
+) -> Dict[str, Any]:
+    """
+    Add a new git token configuration with validation based on hosting service.
+    """
+    try:
+        # Override user_id with authenticated user ID for security
+        payload.user_id = current_user_id
+
+        token = payload.token_value.replace(" ", "")
+        if not token:
+            return APIResponse.error(
+                message=constants.TOKEN_MISSED,
+                status_code=status.HTTP_400_BAD_REQUEST,
+            )
+        encrypted_token = EncryptionHelper.encrypt(token) if token else ""
+
+        if payload.git_hosting == GitHosting.GITLAB.value:
+            return await handle_gitlab(payload, encrypted_token)
+        elif payload.git_hosting == GitHosting.GITHUB.value:
+            return await handle_github(payload, encrypted_token)
+        else:
+            return APIResponse.error(
+                message=constants.UNSUPPORTED_GIT_PROVIDER,
+                status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+            )
+    except Exception as e:
+        return APIResponse.error(
+            message=f"Failed to add git token: {str(e)}",
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+        )
 
 
-@router.delete("/{id}", response_model=Dict[str, Any],
-               status_code=status.HTTP_200_OK,
-               summary="Delete token by id",
-               description="Delete token by id")
-async def delete_token(id: str) -> Dict[str, Any]:
-	"""
-	 Deletes a token with the specified ID.
+@router.delete(
+    "/{git_label_id}",
+    response_model=Dict[str, Any],
+    status_code=status.HTTP_200_OK,
+    summary="Delete git label by ID",
+    description="Delete a git label configuration by ID",
+)
+async def delete_git_label(
+    git_label_id: str, current_user_id: str = Depends(get_current_user_id)
+) -> Dict[str, Any]:
+    """
+    Deletes a git label with the specified ID.
 
-	Args:
-		 id: The unique identifier of the token to delete.
+    Args:
+        git_label_id: The unique identifier of the git label to delete.
 
-	Returns:
-	   A success response if the token was deleted, or an error response if the token was not found.
-	"""
-	try:
-		client = SupabaseClient()
-		res = client.get_by_id(table="git_label", id_value=id)
-		if res:
-			client.delete(table="git_label", id_value=id)
-			return APIResponse.success(
-				message=constants.TOKEN_DELETED_SUCCESSFULLY
-			)
-		else:
-			return APIResponse.error(
-				message=constants.TOKEN_NOT_FOUND,
-				status_code=status.HTTP_404_NOT_FOUND
-			)
-	
-	
-	except Exception as e:
-		raise HTTPException(
-			status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
-			detail=constants.SERVICE_UNAVAILABLE
-		) from e
+    Returns:
+        A success response if the git label was deleted, or an error response if not found.
+    """
+    try:
+        git_label_uuid = uuid.UUID(git_label_id)  # Ensure it's a valid UUID
+
+        git_label = await GitLabel.filter(
+            id=git_label_uuid, user_id=current_user_id
+        ).first()
+        if git_label:
+            await git_label.delete()
+        else:
+            return APIResponse.error(
+                message=constants.TOKEN_NOT_FOUND,
+                status_code=status.HTTP_404_NOT_FOUND,
+            )
+
+        return APIResponse.success(message=constants.TOKEN_DELETED_SUCCESSFULLY)
+    except ValueError as e:
+        return APIResponse.error(
+            message="Invalid UUID format", status_code=status.HTTP_400_BAD_REQUEST
+        )
+
+    except Exception:
+        return APIResponse.error(
+            message=constants.SERVICE_UNAVAILABLE,
+            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+        )
