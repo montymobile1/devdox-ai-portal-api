@@ -12,3 +12,9 @@ GITHUB_TOKEN_SAVE_FAILED = "Failed to save GitHub token"
 GITHUB_AUTH_FAILED = "Failed to authenticate with GitHub"
 
 UNSUPPORTED_GIT_PROVIDER = "Unsupported git hosting provider"
+
+INVALID_BEARER_TOKEN_SCHEMA = "Missing or malformed Authorization header"
+
+GENERIC_SUCCESS = "Operation Successful"
+
+AUTH_FAILED = "Access denied. Please log in again."
