@@ -55,13 +55,13 @@ class GitHubManager:
             return False
 
     def get_user_repositories(
-            self,
-            visibility="all",
-            affiliation="owner,collaborator,organization_member",
-            sort="updated",
-            direction="desc",
-            page=1,
-            per_page=20,
+        self,
+        visibility="all",
+        affiliation="owner,collaborator,organization_member",
+        sort="updated",
+        direction="desc",
+        page=1,
+        per_page=20,
     ):
         """
         Get list of repositories that the authenticated user has access to with pagination.

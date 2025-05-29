@@ -118,4 +118,20 @@ def get_database_config() -> Dict[str, Any]:
     return {"engine": "tortoise.backends.asyncpg", "credentials": credentials}
 
 
-TORTOISE_ORM = get_database_config()
+def get_tortoise_config():
+    db_config = get_database_config()
+
+    return {
+        "connections": {"default": db_config},
+        "apps": {
+            "models": {
+                "models": [
+                    "app.models",
+                ],  # Replace with your actual models module
+                "default_connection": "default",
+            }
+        },
+    }
+
+
+TORTOISE_ORM = get_tortoise_config()

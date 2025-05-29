@@ -14,7 +14,7 @@ class GitHostingProvider(str, Enum):
 class RepoBase(BaseModel):
     """Base repository schema with common fields"""
 
-    name: str = Field(..., description="Repository name", max_length=255)
+    repo_name: str = Field(..., description="Repository name", max_length=255)
     description: Optional[str] = Field(None, description="Repository description")
     html_url: str = Field(..., description="Repository URL", max_length=500)
     default_branch: str = Field(
@@ -63,7 +63,7 @@ class GitRepoResponse(BaseModel):
     """Schema for Git provider repository response (unified format)"""
 
     id: str = Field(..., description="Repository ID from provider")
-    name: str = Field(..., description="Repository name")
+    repo_name: str = Field(..., description="Repository name")
     description: Optional[str] = Field(None, description="Repository description")
     html_url: str = Field(..., description="Repository URL")
     default_branch: str = Field(..., description="Default branch name")

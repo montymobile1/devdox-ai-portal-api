@@ -25,7 +25,7 @@ def build_repo_dict(repo_info: Dict[str, Any], platform: str) -> Dict[str, Any]:
     """Builds a unified repository dictionary for GitHub or GitLab."""
     common_fields = {
         "id": str(repo_info.get("id")),
-        "name": repo_info.get("name"),
+        "repo_name": repo_info.get("name"),
         "description": repo_info.get("description"),
         "default_branch": repo_info.get("default_branch", "main"),
         "forks_count": repo_info.get("forks_count", 0),
