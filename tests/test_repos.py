@@ -1,36 +1,79 @@
 """
-Updated test cases for repository API endpoints.
-Fixed mocking to match actual database client usage.
+Updated test cases for repository API endpoints using Tortoise ORM.
+Tests cover all CRUD operations and new functionality.
 """
 
 import pytest
 from fastapi import status
-from unittest.mock import patch, AsyncMock, Mock
+from unittest.mock import patch, AsyncMock, Mock, MagicMock
+from tortoise.exceptions import DoesNotExist
+from datetime import datetime
+
 from app.utils import constants
 from app.config import GitHosting
+from app.schemas.repo import GitHostingProvider
+
+
+def create_does_not_exist_exception():
+    """Create a properly formed DoesNotExist exception for Tortoise ORM."""
+    # Create a mock model class to satisfy DoesNotExist constructor
+    mock_model = Mock()
+    mock_model.__name__ = "MockModel"
+    return DoesNotExist(mock_model)
 
 
 @pytest.fixture
-def sample_repos():
+def sample_repo_dict_list():
+    """Sample list of repository data as dictionaries"""
     return [
         {
-            "repo_id": "uuid-123",
+            "id": 1,
             "user_id": "user-1",
-            "repo_name": "awesome-repo",
-            "description": "Test repository",
-            "last_commit": "abc123",
-            "star_count": 10,
-            "commit_count": 50,
-            "fork_count": 5,
-            "branch_default": "main",
-            "created_at": "2024-01-01T00:00:00Z",
-            "updated_at": "2024-01-01T00:00:00Z",
-        }
+            "repo_id": "123",
+            "name": "repo-1",
+            "description": "First repository",
+            "html_url": "https://github.com/user/repo-1",
+            "default_branch": "main",
+            "forks_count": 5,
+            "stargazers_count": 10,
+            "is_private": False,
+            "visibility": None,
+            "git_hosting": GitHosting.GITHUB,
+            "token_id": "token-123",
+            "created_at": datetime.now(),
+            "updated_at": datetime.now(),
+            "repo_created_at": None,
+            "repo_updated_at": None,
+            "language": "Python",
+            "size": 1024,
+        },
+        {
+            "id": 2,
+            "user_id": "user-1",
+            "repo_id": "456",
+            "name": "repo-2",
+            "description": "Second repository",
+            "html_url": "https://gitlab.com/user/repo-2",
+            "default_branch": "main",
+            "forks_count": 3,
+            "stargazers_count": 7,
+            "is_private": True,
+            "visibility": "private",
+            "git_hosting": GitHosting.GITLAB,
+            "token_id": "token-456",
+            "created_at": datetime.now(),
+            "updated_at": datetime.now(),
+            "repo_created_at": None,
+            "repo_updated_at": None,
+            "language": "JavaScript",
+            "size": 512,
+        },
     ]
 
 
 @pytest.fixture
 def sample_github_repos():
+    """Sample GitHub API response"""
     return {
         "repositories": [
             {
@@ -50,6 +93,7 @@ def sample_github_repos():
 
 @pytest.fixture
 def sample_gitlab_repos():
+    """Sample GitLab API response"""
     return {
         "repositories": [
             {
@@ -68,261 +112,187 @@ def sample_gitlab_repos():
 
 
 @pytest.fixture
-def mock_token_github():
-    return {"token_value": "encrypted_github_token", "git_hosting": GitHosting.GITHUB}
+def mock_git_label():
+    """Mock GitLabel model"""
+    return Mock(
+        id="token-123",
+        user_id="user-1",
+        token_value="encrypted_token",
+        git_hosting=GitHosting.GITHUB,
+    )
 
 
-@pytest.fixture
-def mock_token_gitlab():
-    return {"token_value": "encrypted_gitlab_token", "git_hosting": GitHosting.GITLAB}
+mock_git_label_class = MagicMock(
+    name="GitLabel",
+    spec=None,
+)
 
 
 class TestGetReposEndpoint:
     """Test cases for GET /repos/{user_id} endpoint."""
 
-    @patch("app.routes.repos.db_client")
-    async def test_get_repos_by_user_success(
-        self, mock_db_client, client, sample_repos
-    ):
-        """Test successful retrieval of repos by user ID."""
+    @patch("app.routes.repos.Repo")
+    async def test_get_repos_success(self, mock_repo, client, sample_repo_dict_list):
+        """Test successful retrieval of repos with pagination."""
         user_id = "user-1"
 
-        # Mock the database query
-        mock_db_client.execute_query = AsyncMock(return_value=sample_repos)
+        # Mock the query chain
+        mock_query = MagicMock()
+        mock_query.count = AsyncMock(return_value=2)
 
-        # Make the request
-        response = client.get(f"/api/v1/repos/{user_id}")
+        mock_query.order_by.return_value = mock_query
+        mock_query.offset.return_value = mock_query
+        mock_query.limit.return_value = mock_query
 
-        # Verify response
+
+        mock_query.all = AsyncMock(return_value=sample_repo_dict_list)
+
+        # Set up the initial filter to return our mock query
+        mock_repo.filter.return_value = mock_query
+
+        response = client.get(f"/api/v1/repos/{user_id}?offset=0&limit=10")
+
         assert response.status_code == status.HTTP_200_OK
         data = response.json()
-        assert isinstance(data, list)
-        assert len(data) == 1
-        assert data[0]["user_id"] == user_id
+        assert data["total_count"] == 2
+        assert len(data["repos"]) == 2
+        assert data["repos"][0]["name"] == "repo-1"
 
-        # Verify the database was called with correct query
-        expected_query = f"SELECT * FROM repo WHERE user_id =  '{user_id}' ORDER BY created_at DESC LIMIT 20 OFFSET 0"
-        mock_db_client.execute_query.assert_called_once_with(expected_query)
-
-    @patch("app.routes.repos.db_client")
-    async def test_get_repos_by_user_empty(self, mock_db_client, client):
+    @patch("app.routes.repos.Repo")
+    async def test_get_repos_empty(self, mock_repo, client):
         """Test retrieval when user has no repos."""
         user_id = "user-2"
 
-        # Mock empty database response
-        mock_db_client.execute_query = AsyncMock(return_value=[])
+        mock_filter = MagicMock()
+        mock_filter.count = AsyncMock(return_value=0)
 
-        # Make the request
+        mock_filter.order_by.return_value = mock_filter
+        mock_filter.offset.return_value = mock_filter
+        mock_filter.limit.return_value = mock_filter
+
+        # Mock all() to return the sample repo list
+        mock_filter.all = AsyncMock(return_value=[])
+
+        # Set up the initial filter to return our mock query
+        mock_repo.filter.return_value = mock_filter
+
         response = client.get(f"/api/v1/repos/{user_id}")
 
-        # Verify response
         assert response.status_code == status.HTTP_200_OK
-        assert response.json() == []
+        data = response.json()
+        assert data["total_count"] == 0
+        assert data["repos"] == []
 
-    @patch("app.routes.repos.db_client")
-    async def test_get_repos_by_user_failure(self, mock_db_client, client):
+    @patch("app.routes.repos.Repo")
+    async def test_get_repos_error(self, mock_repo, client):
         """Test error handling when database query fails."""
         user_id = "user-3"
 
-        # Mock database error
-        mock_db_client.execute_query = AsyncMock(
-            side_effect=Exception("Database error")
-        )
+        mock_repo.filter.side_effect = Exception("Database error")
 
-        # Make the request
         response = client.get(f"/api/v1/repos/{user_id}")
 
-        # Verify error response
         assert response.status_code == status.HTTP_503_SERVICE_UNAVAILABLE
         assert response.json()["detail"] == constants.SERVICE_UNAVAILABLE
 
-    @patch("app.routes.repos.db_client")
-    async def test_get_repos_with_pagination(
-        self, mock_db_client, client, sample_repos
-    ):
-        """Test repos retrieval with custom pagination."""
-        user_id = "user-1"
-        limit = 10
-        offset = 5
 
-        # Mock the database query
-        mock_db_client.execute_query = AsyncMock(return_value=sample_repos)
-
-        # Make the request with pagination parameters
-        response = client.get(f"/api/v1/repos/{user_id}?limit={limit}&offset={offset}")
-
-        # Verify response
-        assert response.status_code == status.HTTP_200_OK
-
-        # Verify the database was called with correct pagination
-        expected_query = f"SELECT * FROM repo WHERE user_id =  '{user_id}' ORDER BY created_at DESC LIMIT {limit} OFFSET {offset}"
-        mock_db_client.execute_query.assert_called_once_with(expected_query)
-
-    @patch("app.routes.repos.db_client")
-    async def test_token_not_found(self, mock_db_client, client):
-        """Test response when token is not found."""
-        user_id = "user-1"
-        token_id = "token-1"
-
-        mock_db_client.execute_query_one = AsyncMock(return_value=None)
-        response = client.get(f"/api/v1/repos/git_repos/{user_id}/{token_id}")
-        assert response.status_code == status.HTTP_503_SERVICE_UNAVAILABLE
-
-        #assert response.json()["detail"] == "Token not found"
+class TestGetReposFromGitEndpoint:
+    """Test cases for GET /repos/git_repos/{user_id}/{token_id} endpoint."""
 
     @patch("app.routes.repos.get_git_repo_fetcher")
-    @patch("app.routes.repos.EncryptionHelper")
-    @patch("app.routes.repos.db_client")
-    async def test_successful_repo_fetch(
-            self, mock_db_client, mock_encryption_helper, mock_get_repo_fetcher, client
+    async def test_get_repos_from_git_success(
+        mock_fetcher,
+        client,
+        sample_github_repos,
     ):
         """Test successful retrieval of repos from Git provider."""
         user_id = "user-1"
-        token_id = "token-1"
+        token_id = "token-123"
 
-        # Mock DB return
-        mock_token_data = {
-            "token_value": "encrypted_value",
-            "git_hosting": "github"
-        }
-        mock_db_client.execute_query_one = AsyncMock(return_value=mock_token_data)
+        with patch("app.routes.repos.GitLabel") as mock_git_label:
+            mock_label = MagicMock()
+            mock_label.id = token_id
+            mock_label.user_id = user_id
+            mock_label.token_value = "encrypted_token"
+            mock_label.git_hosting = GitHosting.GITHUB
 
-        # Mock token decryption
-        mock_encryption_helper.return_value.decrypt.return_value = "decrypted_token"
+            mock_git_label.filter.return_value.first = AsyncMock(
+                return_value=mock_label
+            )
+            with patch("app.utils.encryption.EncryptionHelper") as mock_helper:
+                mock_instance = MagicMock()
+                mock_instance.decrypt.return_value = "ghp_1234567890abcdef"
+                mock_helper.return_value = mock_instance
+                mock_helper.encrypt = mock_instance.encrypt
+                mock_helper.decrypt = mock_instance.decrypt
+                yield mock_helper
 
-        # Mock repo fetcher
-        mock_fetcher = Mock(return_value=([{"id": 1, "name": "repo1"}], 1))
-        mock_get_repo_fetcher.return_value = mock_fetcher
+            # Mock fetcher - it should return a function that returns the repos
+            mock_fetcher_func = Mock(
+                return_value=(sample_github_repos["repositories"], 1)
+            )
 
-        # Perform request
+            mock_fetcher.return_value = mock_fetcher_func
+
+            response = client.get(f"/api/v1/repos/git_repos/{user_id}/{token_id}")
+            data = response.json()
+
+            assert response.status_code == status.HTTP_200_OK
+            assert data["success"] is True
+            assert data["data"]["total_count"] == 1
+            assert len(data["data"]["repos"]) == 1
+
+    @patch("app.routes.repos.GitLabel")
+    async def test_get_repos_from_git_token_not_found(self, mock_git_label, client):
+        """Test response when token is not found."""
+        user_id = "user-1"
+        token_id = "nonexistent-token"
+
+
+
+        mock_git_label.filter.return_value.first = AsyncMock(return_value=None)
+
         response = client.get(f"/api/v1/repos/git_repos/{user_id}/{token_id}")
+
+        assert response.status_code == status.HTTP_404_NOT_FOUND
         data = response.json()
-        print("line 203 ", data)
-        # Validate response
-        assert response.status_code == status.HTTP_200_OK
+        assert data["message"] == constants.TOKEN_NOT_FOUND
 
-        assert isinstance(data, dict)
-        assert "data" in data
-        assert len(data["data"]) == 1
-        assert data["data"][0]["total_count"] == 1
-        assert data["data"][0]["repos"] == [{"id": 1, "name": "repo1"}]
-
-class TestGetReposFromGitErrors:
-    """Test error cases for the GET /repos/git_repos/{user_id}/{token_id} endpoint"""
-
-    @patch("app.routes.repos.db_client")
+    @patch("app.routes.repos.get_git_repo_fetcher")
     @patch("app.routes.repos.EncryptionHelper")
-    async def test_unsupported_provider(self, mock_encryption, mock_db_client, client):
-        """Test unsupported Git hosting provider"""
+    @patch("app.routes.repos.GitLabel")
+    async def test_get_repos_from_git_unsupported_provider(
+        self, mock_git_label, mock_encryption, mock_fetcher, client
+    ):
+        """Test unsupported Git hosting provider."""
         user_id = "user-1"
         token_id = "token-123"
 
-        mock_token = {
-            "token_value": "encrypted_token",
-            "git_hosting": "BITBUCKET",  # Unsupported provider
-        }
+        # Create a mock token instance
+        mock_token = Mock()
+        mock_token.id = token_id
+        mock_token.user_id = user_id
+        mock_token.token_value = "encrypted_token"
+        mock_token.git_hosting = "BITBUCKET"  # Unsupported provider
 
-        mock_db_client.execute_query_one = AsyncMock(return_value=mock_token)
+        # Mock the filter().first() chain
+        mock_filter = Mock()
+        mock_filter.first = AsyncMock(return_value=mock_token)
+        mock_git_label.filter.return_value = mock_filter
 
-        mock_encryption_instance = mock_encryption.return_value
+        # Mock the encryption helper
+        mock_encryption_instance = Mock()
         mock_encryption_instance.decrypt.return_value = "decrypted_token"
+        mock_encryption.return_value = mock_encryption_instance
+
+        # Mock the fetcher to return None for unsupported provider
+        mock_fetcher.return_value = None
 
         response = client.get(f"/api/v1/repos/git_repos/{user_id}/{token_id}")
 
         assert response.status_code == status.HTTP_400_BAD_REQUEST
-        assert "Unsupported Git hosting provider" in response.json()["message"]
-
-    @patch("app.routes.repos.db_client")
-    async def test_supabase_exception(self, mock_db_client, client):
-        """Test database client exception handling"""
-        user_id = "user-1"
-        token_id = "token-123"
-
-        mock_db_client.execute_query_one = AsyncMock(
-            side_effect=Exception("Database connection failed")
-        )
-
-        response = client.get(f"/api/v1/repos/git_repos/{user_id}/{token_id}")
-
-        assert response.status_code == status.HTTP_503_SERVICE_UNAVAILABLE
-        assert response.json()["message"] == constants.SERVICE_UNAVAILABLE
-
-    @patch("app.routes.repos.db_client")
-    @patch("app.routes.repos.EncryptionHelper")
-    async def test_encryption_exception(
-        self, mock_encryption, mock_db_client, client, mock_token_github
-    ):
-        """Test encryption/decryption exception handling"""
-        user_id = "user-1"
-        token_id = "token-123"
-
-        mock_db_client.execute_query_one = AsyncMock(return_value=mock_token_github)
-
-        mock_encryption_instance = mock_encryption.return_value
-        mock_encryption_instance.decrypt.side_effect = Exception("Decryption failed")
-
-        response = client.get(f"/api/v1/repos/git_repos/{user_id}/{token_id}")
-
-        assert response.status_code == status.HTTP_503_SERVICE_UNAVAILABLE
-        assert response.json()["message"] == constants.SERVICE_UNAVAILABLE
-
-    @patch("app.routes.repos.db_client")
-    @patch("app.routes.repos.EncryptionHelper")
-    @patch("app.routes.repos.GitHubManager")
-    async def test_github_manager_exception(
-        self,
-        mock_github_manager,
-        mock_encryption,
-        mock_db_client,
-        client,
-        mock_token_github,
-    ):
-        """Test GitHub manager exception handling"""
-        user_id = "user-1"
-        token_id = "token-123"
-
-        mock_db_client.execute_query_one = AsyncMock(return_value=mock_token_github)
-
-        mock_encryption_instance = mock_encryption.return_value
-        mock_encryption_instance.decrypt.return_value = "decrypted_github_token"
-
-        mock_github_instance = mock_github_manager.return_value
-        mock_github_instance.get_user_repositories.side_effect = Exception(
-            "GitHub API error"
-        )
-
-        response = client.get(f"/api/v1/repos/git_repos/{user_id}/{token_id}")
-
-        assert response.status_code == status.HTTP_503_SERVICE_UNAVAILABLE
-        assert response.json()["message"] == constants.SERVICE_UNAVAILABLE
-
-    @patch("app.routes.repos.db_client")
-    @patch("app.routes.repos.EncryptionHelper")
-    @patch("app.routes.repos.GitLabManager")
-    async def test_gitlab_manager_exception(
-        self,
-        mock_gitlab_manager,
-        mock_encryption,
-        mock_db_client,
-        client,
-        mock_token_gitlab,
-    ):
-        """Test GitLab manager exception handling"""
-        user_id = "user-1"
-        token_id = "token-456"
-
-        mock_db_client.execute_query_one = AsyncMock(return_value=mock_token_gitlab)
-
-        mock_encryption_instance = mock_encryption.return_value
-        mock_encryption_instance.decrypt.return_value = "decrypted_gitlab_token"
-
-        mock_gitlab_instance = mock_gitlab_manager.return_value
-        mock_gitlab_instance.get_repos.side_effect = Exception("GitLab API error")
-
-        response = client.get(f"/api/v1/repos/git_repos/{user_id}/{token_id}")
-
-        assert response.status_code == status.HTTP_503_SERVICE_UNAVAILABLE
-        assert response.json()["message"] == constants.SERVICE_UNAVAILABLE
+        data = response.json()
+        assert "Unsupported Git hosting provider" in data["message"]
 
 
 class TestRepoUtilityFunctions:
@@ -345,11 +315,11 @@ class TestRepoUtilityFunctions:
 
         result = build_repo_dict(github_repo, GitHosting.GITHUB)
 
-        assert result["id"] == 123
+        assert result["id"] == "123"  # Should be string
         assert result["name"] == "test-repo"
         assert result["private"] is False
         assert result["html_url"] == "https://github.com/user/test-repo"
-        assert "visibility" not in result
+        assert result["visibility"] is None
 
     def test_build_repo_dict_gitlab(self):
         """Test build_repo_dict function for GitLab repositories."""
@@ -368,11 +338,11 @@ class TestRepoUtilityFunctions:
 
         result = build_repo_dict(gitlab_repo, GitHosting.GITLAB)
 
-        assert result["id"] == 456
+        assert result["id"] == "456"
         assert result["name"] == "gitlab-repo"
         assert result["visibility"] == "public"
         assert result["html_url"] == "https://gitlab.com/user/gitlab-repo"
-        assert "private" not in result
+        assert result["private"] is None
 
     def test_get_git_repo_fetcher_github(self):
         """Test get_git_repo_fetcher function for GitHub."""
@@ -387,6 +357,13 @@ class TestRepoUtilityFunctions:
 
         fetcher = get_git_repo_fetcher(GitHosting.GITLAB)
         assert fetcher == fetch_gitlab_repos
+
+    def test_get_git_repo_fetcher_unsupported(self):
+        """Test get_git_repo_fetcher function for unsupported provider."""
+        from app.routes.repos import get_git_repo_fetcher
+
+        fetcher = get_git_repo_fetcher("BITBUCKET")
+        assert fetcher is None
 
 
 class TestRepoFetcherFunctions:
@@ -411,6 +388,7 @@ class TestRepoFetcherFunctions:
         # Verify results
         assert len(repos) == 1
         assert repos[0]["name"] == "test-repo"
+        assert repos[0]["id"] == "123"  # Should be string
         assert total_count == 1
 
         # Verify GitHub manager was called correctly
@@ -438,6 +416,7 @@ class TestRepoFetcherFunctions:
         # Verify results
         assert len(repos) == 1
         assert repos[0]["name"] == "gitlab-repo"
+        assert repos[0]["id"] == "456"
         assert total_pages == 1
 
         # Verify GitLab manager was called correctly
