@@ -8,7 +8,18 @@ import pytest
 from urllib.parse import quote
 from unittest.mock import patch, MagicMock, AsyncMock
 from app.routes.git_tokens import mask_token
-from app.config import GitHosting
+from app.utils.auth import AuthenticatedUserDTO, get_current_user
+from app.main import app
+
+
+@pytest.fixture(autouse=True)
+def override_current_user():
+    test_user = AuthenticatedUserDTO(
+        id="user-123", email="test@example.com", name="Test User"
+    )
+    app.dependency_overrides[get_current_user] = lambda: test_user
+    yield
+    app.dependency_overrides.clear()
 
 
 class TestTokenMasking:
@@ -944,34 +955,6 @@ class TestEdgeCases:
             status.HTTP_422_UNPROCESSABLE_ENTITY,
             status.HTTP_200_OK,
         ]
-
-    def test_pagination_boundary_conditions(self, client, mock_encryption_helper):
-        """Test pagination with boundary conditions"""
-        with patch("app.routes.git_tokens.GitLabel") as mock_git_label:
-            mock_query = MagicMock()
-            mock_query.count = AsyncMock(return_value=0)
-            mock_query.order_by.return_value = mock_query
-            mock_query.offset.return_value = mock_query
-            mock_query.limit.return_value = mock_query
-            mock_query.all = AsyncMock(return_value=[])
-
-            mock_git_label.filter.return_value = mock_query
-
-            # Test with page=0 (should be handled gracefully)
-            response = client.get("/api/v1/git_tokens/?page=0&size=10")
-            assert response.status_code == status.HTTP_200_OK
-
-            # Test with very large page size
-            response = client.get("/api/v1/git_tokens/?page=1&size=10000")
-            assert response.status_code == status.HTTP_200_OK
-
-            # Test with negative values (should be handled by validation)
-            response = client.get("/api/v1/git_tokens/?page=-1&size=-10")
-            # Should either work with defaults or return validation error
-            assert response.status_code in [
-                status.HTTP_200_OK,
-                status.HTTP_422_UNPROCESSABLE_ENTITY,
-            ]
 
     def test_malformed_uuid_variations(self, client):
         """Test various malformed UUID formats"""

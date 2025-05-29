@@ -2,6 +2,7 @@
 Pytest fixtures for token API endpoint tests.
 Updated for Tortoise ORM-based SupabaseClient.
 """
+
 from datetime import datetime, timedelta
 from typing import Union
 
@@ -9,10 +10,15 @@ import jwt
 import pytest
 import asyncio
 from clerk_backend_api import RequestState
-from clerk_backend_api.jwks_helpers import AuthErrorReason, AuthStatus, TokenVerificationErrorReason
+from clerk_backend_api.jwks_helpers import (
+    AuthErrorReason,
+    AuthStatus,
+    TokenVerificationErrorReason,
+)
 from fastapi.testclient import TestClient
 from unittest.mock import Mock, patch, MagicMock, AsyncMock
 from app.routes.git_tokens import get_current_user_id
+
 from app.main import app  # Assuming your FastAPI app is in app.main
 
 # Sample encrypted token values for testing
@@ -21,26 +27,30 @@ TOKEN_ENCRYPTED_2 = "gAAAAABoMFiNIvAc7WIFnoKXBjkpAVrdiTFrhlmZtG8BBwvmy1dtvfEFmup
 decrypted1_masked = decrypted2_masked = "ghp_************cdef"
 
 
-
 @pytest.fixture
 def token_decrypted1_masked():
     return "ghp_************cdef"
+
 
 @pytest.fixture
 def token_decrypted1():
     return "ghp_1234567890abcdef"
 
+
 @pytest.fixture
 def token_encrypted1():
     return TOKEN_ENCRYPTED_1
+
 
 @pytest.fixture
 def token_gitlab_decrypted1():
     return "glpat-1234567890abcdef"
 
+
 @pytest.fixture
 def token_gitlab_decrypted1_masked():
     return "glpa**************cdef"
+
 
 @pytest.fixture
 def client():
@@ -96,8 +106,6 @@ def mock_supabase():
         yield mock
 
 
-
-
 @pytest.fixture
 def token_data_single():
     """
@@ -112,6 +120,7 @@ def token_data_single():
         "created_at": "2024-01-01T10:00:00Z",
         "updated_at": "2024-01-02T10:00:00Z",
     }
+
 
 @pytest.fixture
 def token_data_list():
@@ -141,9 +150,7 @@ def token_data_list():
 
 
 @pytest.fixture
-
 def invalid_token_data_list():
-
     """
 
     Return a list of token data with missing or invalid fields for testing.
@@ -151,51 +158,28 @@ def invalid_token_data_list():
     """
 
     return [
-
         {
-
             "id": "3",
-
             # Missing token_value field
-
             "label": "Missing Token Value",
-
             "git_hosting": "github",
-
-            "created_at": "2024-01-01T10:00:00Z"
-
+            "created_at": "2024-01-01T10:00:00Z",
         },
-
         {
-
             # Missing id field
-
             "label": "Missing ID",
-
             "git_hosting": "gitlab",
-
             "token_value": TOKEN_ENCRYPTED_2,
-
-            "created_at": "2024-01-03T10:00:00Z"
-
+            "created_at": "2024-01-03T10:00:00Z",
         },
-
         {
-
             "id": "5",
-
             "label": "Empty Token Value",
-
             "git_hosting": "github",
-
             "token_value": "",  # Empty token
-
-            "created_at": "2024-01-05T10:00:00Z"
-
-        }
-
+            "created_at": "2024-01-05T10:00:00Z",
+        },
     ]
-
 
 
 @pytest.fixture
@@ -515,6 +499,7 @@ async def async_client():
     async with AsyncClient(app=app, base_url="http://test") as ac:
         yield ac
 
+
 # ==================================================
 # Clerk Fixtures
 # ==================================================
@@ -530,7 +515,7 @@ def generate_test_jwt():
             "iat": now,
             "exp": now + timedelta(minutes=exp_minutes),
             "iss": "https://mock.clerk.dev",
-            "v": 2
+            "v": 2,
         }
         if payload_overrides:
             payload.update(payload_overrides)
@@ -545,9 +530,7 @@ def mock_clerk_signed_in(monkeypatch):
     def _mock(payload: dict, token: str = "fake-token"):
         def _handler(request, options):
             return RequestState(
-                status=AuthStatus.SIGNED_IN,
-                token=token,
-                payload=payload
+                status=AuthStatus.SIGNED_IN, token=token, payload=payload
             )
 
         monkeypatch.setattr("app.utils.auth.authenticate_request", _handler)
@@ -564,7 +547,7 @@ def mock_clerk_signed_out(monkeypatch):
                 status=AuthStatus.SIGNED_OUT,
                 reason=reason_enum,
                 token=None,
-                payload=None
+                payload=None,
             )
 
         monkeypatch.setattr("app.utils.auth.authenticate_request", _handler)
