@@ -86,7 +86,7 @@ async def handle_gitlab(
         return APIResponse.success(
             message=constants.TOKEN_SAVED_SUCCESSFULLY, data={"id": str(git_label.id)}
         )
-    except Exception as e:
+    except Exception:
         return APIResponse.error(
             message=f"Failed to save GitLab token: {str(e)}",
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
@@ -118,7 +118,7 @@ async def handle_github(
         return APIResponse.success(
             message=constants.TOKEN_SAVED_SUCCESSFULLY, data={"id": str(git_label.id)}
         )
-    except Exception as e:
+    except Exception:
         return APIResponse.error(message=constants.GITHUB_TOKEN_SAVE_FAILED)
 
 
@@ -188,7 +188,7 @@ async def get_git_labels(
                 "size": pagination.limit,
             },
         )
-    except Exception as e:
+    except Exception:
         return APIResponse.error(
             message=constants.SERVICE_UNAVAILABLE,
             status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
@@ -247,7 +247,7 @@ async def get_git_label_by_label(
         return APIResponse.success(
             message="Git labels retrieved successfully", data={"items": formatted_data}
         )
-    except Exception as e:
+    except Exception:
         return APIResponse.error(
             message=constants.SERVICE_UNAVAILABLE,
             status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
@@ -281,9 +281,9 @@ async def add_git_token(
             )
         encrypted_token = EncryptionHelper.encrypt(token) if token else ""
 
-        if payload.git_hosting == GitHosting.GITLAB:
+        if payload.git_hosting == GitHosting.GITLAB.value:
             return await handle_gitlab(payload, encrypted_token)
-        elif payload.git_hosting == GitHosting.GITHUB:
+        elif payload.git_hosting == GitHosting.GITHUB.value:
             return await handle_github(payload, encrypted_token)
         else:
             return APIResponse.error(
@@ -336,7 +336,7 @@ async def delete_git_label(
             message="Invalid UUID format", status_code=status.HTTP_400_BAD_REQUEST
         )
 
-    except Exception as e:
+    except Exception:
         return APIResponse.error(
             message=constants.SERVICE_UNAVAILABLE,
             status_code=status.HTTP_503_SERVICE_UNAVAILABLE,

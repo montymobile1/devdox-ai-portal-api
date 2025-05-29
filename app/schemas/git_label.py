@@ -17,7 +17,7 @@ class GitLabelBase(BaseModel):
 
 
 class GitLabelCreate(GitLabelBase):
-    user_id: Optional[str] = Field(
+    user_id: str = Field(
         None, description="User identifier (will be overridden by auth)"
     )
 

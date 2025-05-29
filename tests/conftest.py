@@ -467,18 +467,6 @@ def mock_encryption_helper():
         yield mock_helper
 
 
-def mock_general_encryption_helper():
-    """Mock EncryptionHelper for token encryption/decryption."""
-    with patch("app.utils.encryption.EncryptionHelper") as mock_helper:
-        mock_instance = MagicMock()
-        mock_instance.encrypt.return_value = TOKEN_ENCRYPTED_1
-        mock_instance.decrypt.return_value = "ghp_1234567890abcdef"
-        mock_helper.return_value = mock_instance
-        mock_helper.encrypt = mock_instance.encrypt
-        mock_helper.decrypt = mock_instance.decrypt
-        yield mock_helper
-
-
 # Event loop fixture for async tests
 @pytest.fixture(scope="session")
 def event_loop():

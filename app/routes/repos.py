@@ -29,7 +29,8 @@ def build_repo_dict(repo_info: Dict[str, Any], platform: str) -> Dict[str, Any]:
         "description": repo_info.get("description"),
         "default_branch": repo_info.get("default_branch", "main"),
         "forks_count": repo_info.get("forks_count", 0),
-        "stargazers_count": repo_info.get("stargazers_count", 0),
+        "stargazers_count": repo_info.get("stargazers_count")
+        or repo_info.get("star_count", 0),
     }
 
     if platform == GitHosting.GITLAB:
@@ -62,7 +63,9 @@ def fetch_gitlab_repos(
     return [
         build_repo_dict(repo, GitHosting.GITLAB)
         for repo in raw_repos.get("repositories", [])
-    ], raw_repos.get("pagination_info", {}).get("total_pages", 0)
+    ], raw_repos.get("pagination_info", {}).get(
+        "total_count", len(raw_repos.get("repositories", []))
+    )
 
 
 def fetch_github_repos(
@@ -173,7 +176,7 @@ async def get_repos_from_git(
                         message=f"Unsupported Git hosting provider: {hosting}",
                         status_code=status.HTTP_400_BAD_REQUEST,
                     )
-            except Exception as e:
+            except Exception:
                 return APIResponse.error(
                     message=f"Failed to fetch repositories: {str(e)}",
                     status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
@@ -182,7 +185,7 @@ async def get_repos_from_git(
             message=constants.TOKEN_NOT_FOUND, status_code=status.HTTP_404_NOT_FOUND
         )
 
-    except Exception as e:
+    except Exception:
         return APIResponse.error(
             message=constants.SERVICE_UNAVAILABLE,
             status_code=status.HTTP_503_SERVICE_UNAVAILABLE,

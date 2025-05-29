@@ -5,8 +5,6 @@ FastAPI application entry point for DevDox AI Portal API.
 import uvicorn
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
-
-from app.config import settings
 from app.logging_config import setup_logging
 from contextlib import asynccontextmanager
 from app.services import connect_db, disconnect_db
