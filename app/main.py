@@ -54,10 +54,6 @@ app.add_middleware(
 # Include API routes
 app.include_router(api_router, prefix="/api/v1")
 
-# Register lifecycle events
-app.add_event_handler("startup", connect_db)
-app.add_event_handler("shutdown", disconnect_db)
-
 
 @app.get("/", tags=["Health"])
 @app.get("/health_check", tags=["Health"])
