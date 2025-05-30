@@ -1,5 +1,6 @@
 from tortoise.models import Model
 from tortoise import fields
+import uuid
 
 
 class Repo(Model):
@@ -7,9 +8,9 @@ class Repo(Model):
     Repository model for storing repository information from various Git providers
     """
 
-    id = fields.IntField(pk=True, description="Primary key")
+    id = fields.UUIDField(primary_key=True, default=uuid.uuid4)
     user_id = fields.CharField(
-        max_length=255, description="User ID who owns this repository"
+        unique=True, max_length=255, description="User ID who owns this repository"
     )
 
     # Repository basic information

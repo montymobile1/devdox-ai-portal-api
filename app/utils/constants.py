@@ -18,3 +18,8 @@ INVALID_BEARER_TOKEN_SCHEMA = "Missing or malformed Authorization header"
 GENERIC_SUCCESS = "Operation Successful"
 
 AUTH_FAILED = "Access denied. Please log in again."
+
+# Webhooks
+USER_EXIST = "User already exists"
+USER_CREATED_SUCCESS = "User created"
+INVALID_WEBHOOK_SIGNATURE = "Webhook verification failed"
