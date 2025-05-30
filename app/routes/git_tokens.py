@@ -4,6 +4,7 @@ Git Label routes for the DevDox AI Portal API.
 This module provides endpoints for managing Git tokens with CRUD operations.
 It supports creating, reading, updating, and deleting git hosting service configurations.
 """
+import logging
 
 from fastapi import APIRouter, Depends, Query, Body, Request, status
 from typing import Dict, Any, Optional
@@ -22,6 +23,8 @@ from app.models.git_label import GitLabel
 from app.schemas.git_label import (
     GitLabelCreate,
 )
+
+logger = logging.getLogger(__name__)
 
 router = APIRouter()
 
@@ -86,7 +89,9 @@ async def handle_gitlab(
         return APIResponse.success(
             message=constants.TOKEN_SAVED_SUCCESSFULLY, data={"id": str(git_label.id)}
         )
-    except Exception:
+    except Exception as e:
+        logger.exception("Unexpected Failure while attempting to save GitLab token on Path = '[POST] /api/v1/git_tokens' -> handle_gitlab")
+        
         return APIResponse.error(
             message=f"Failed to save GitLab token: {str(e)}",
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
@@ -119,6 +124,7 @@ async def handle_github(
             message=constants.TOKEN_SAVED_SUCCESSFULLY, data={"id": str(git_label.id)}
         )
     except Exception:
+        logger.exception("Unexpected Failure while attempting to save GitHub token on Path = '[POST] /api/v1/git_tokens' -> handle_github")
         return APIResponse.error(message=constants.GITHUB_TOKEN_SAVE_FAILED)
 
 
@@ -189,6 +195,8 @@ async def get_git_labels(
             },
         )
     except Exception:
+        logger.exception("Failed to retrieve git labels")
+        
         return APIResponse.error(
             message=constants.SERVICE_UNAVAILABLE,
             status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
@@ -204,7 +212,7 @@ async def get_git_labels(
 )
 async def get_git_label_by_label(
     label: str,
-    current_user_id: str = Depends(get_current_user_id),
+    authenticated_user: AuthenticatedUserDTO = CurrentUser,
     pagination: PaginationParams = Depends(),
 ) -> Dict[str, Any]:
     """
@@ -218,13 +226,13 @@ async def get_git_label_by_label(
     """
     try:
         git_labels = (
-            await GitLabel.filter(user_id=current_user_id, label=label)
+            await GitLabel.filter(user_id=authenticated_user.id, label=label)
             .order_by("-created_at")
             .offset(pagination.offset)
             .limit(pagination.limit)
             .all()
         )
-
+        
         # Format response data with masked tokens
         formatted_data = []
         for gl in git_labels:
@@ -248,6 +256,7 @@ async def get_git_label_by_label(
             message="Git labels retrieved successfully", data={"items": formatted_data}
         )
     except Exception:
+        logger.exception("Unexpected Failure while attempting to retrieve git labels on Path = '[GET] /api/v1/git_tokens/{label}'")
         return APIResponse.error(
             message=constants.SERVICE_UNAVAILABLE,
             status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
@@ -264,14 +273,14 @@ async def get_git_label_by_label(
 async def add_git_token(
     request: Request,
     payload: GitLabelCreate = Body(...),
-    current_user_id: str = Depends(get_current_user_id),
+    authenticated_user: AuthenticatedUserDTO = CurrentUser,
 ) -> Dict[str, Any]:
     """
     Add a new git token configuration with validation based on hosting service.
     """
     try:
         # Override user_id with authenticated user ID for security
-        payload.user_id = current_user_id
+        payload.user_id = authenticated_user.id
 
         token = payload.token_value.replace(" ", "")
         if not token:
@@ -291,6 +300,9 @@ async def add_git_token(
                 status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
             )
     except Exception as e:
+        
+        logger.exception("Unexpected Failure while attempting to add git token on Path = '[POST] /api/v1/git_tokens'")
+        
         return APIResponse.error(
             message=f"Failed to add git token: {str(e)}",
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,

@@ -2,27 +2,17 @@
 Pytest fixtures for token API endpoint tests.
 Updated for Tortoise ORM-based SupabaseClient.
 """
-
-from datetime import datetime, timedelta
-from typing import Union
-
-import jwt
 import pytest
 import asyncio
-from clerk_backend_api import RequestState
-from clerk_backend_api.jwks_helpers import (
-    AuthErrorReason,
-    AuthStatus,
-    TokenVerificationErrorReason,
-)
+
 from fastapi.testclient import TestClient
-from unittest.mock import Mock, patch, MagicMock, AsyncMock
+from unittest.mock import patch, MagicMock, AsyncMock
 from app.routes.git_tokens import get_current_user_id
 
 from app.main import app  # Assuming your FastAPI app is in app.main
+from tests.unit_test.conftest import TOKEN_ENCRYPTED_1
 
 # Sample encrypted token values for testing
-TOKEN_ENCRYPTED_1 = "gAAAAABoMFiNIvAc7WIFnoKXBjkpAVrdiTFrhlmZtG8BBwvmy1dtvfEFmupm0fcvDUo3unosoAQz5eclP2QFMnPMLG4Hj21MBt-xTdWL661JnWP-wQarnLI="
 TOKEN_ENCRYPTED_2 = "gAAAAABoMFiNIvAc7WIFnoKXBjkpAVrdiTFrhlmZtG8BBwvmy1dtvfEFmupm0fcvDUo3unosoAQz5eclP2QFMnPMLG4Hj21MBt-xTdWL661JnWP-wQarnLI="
 decrypted1_masked = decrypted2_masked = "ghp_************cdef"
 
@@ -454,19 +444,6 @@ def mock_tortoise_init():
         yield mock_init
 
 
-@pytest.fixture
-def mock_encryption_helper():
-    """Mock EncryptionHelper for token encryption/decryption."""
-    with patch("app.routes.git_tokens.EncryptionHelper") as mock_helper:
-        mock_instance = MagicMock()
-        mock_instance.encrypt.return_value = TOKEN_ENCRYPTED_1
-        mock_instance.decrypt.return_value = "ghp_1234567890abcdef"
-        mock_helper.return_value = mock_instance
-        mock_helper.encrypt = mock_instance.encrypt
-        mock_helper.decrypt = mock_instance.decrypt
-        yield mock_helper
-
-
 # Event loop fixture for async tests
 @pytest.fixture(scope="session")
 def event_loop():
@@ -486,58 +463,3 @@ async def async_client():
 
     async with AsyncClient(app=app, base_url="http://test") as ac:
         yield ac
-
-
-# ==================================================
-# Clerk Fixtures
-# ==================================================
-# Fixture: Generate test JWT with custom payload overrides
-@pytest.fixture
-def generate_test_jwt():
-    def _generate(payload_overrides=None, exp_minutes=10):
-        now = datetime.utcnow()
-        payload = {
-            "sub": "user_test123",
-            "email": "test@example.com",
-            "name": "Test User",
-            "iat": now,
-            "exp": now + timedelta(minutes=exp_minutes),
-            "iss": "https://mock.clerk.dev",
-            "v": 2,
-        }
-        if payload_overrides:
-            payload.update(payload_overrides)
-        return jwt.encode(payload, "test-secret", algorithm="HS256")
-
-    return _generate
-
-
-# Fixture: Mock authenticate_request() as a signed-in Clerk user
-@pytest.fixture
-def mock_clerk_signed_in(monkeypatch):
-    def _mock(payload: dict, token: str = "fake-token"):
-        def _handler(request, options):
-            return RequestState(
-                status=AuthStatus.SIGNED_IN, token=token, payload=payload
-            )
-
-        monkeypatch.setattr("app.utils.auth.authenticate_request", _handler)
-
-    return _mock
-
-
-# Fixture: Simulate signed-out Clerk response with an error reason
-@pytest.fixture
-def mock_clerk_signed_out(monkeypatch):
-    def _mock(reason_enum: Union[AuthErrorReason, TokenVerificationErrorReason]):
-        def _handler(request, options):
-            return RequestState(
-                status=AuthStatus.SIGNED_OUT,
-                reason=reason_enum,
-                token=None,
-                payload=None,
-            )
-
-        monkeypatch.setattr("app.utils.auth.authenticate_request", _handler)
-
-    return _mock
