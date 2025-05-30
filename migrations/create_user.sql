@@ -3,17 +3,17 @@ CREATE EXTENSION IF NOT EXISTS "uuid-ossp";
 
 -- Create user table
 CREATE TABLE IF NOT EXISTS public.user (
-    id SERIAL PRIMARY KEY,
+    id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
     user_id VARCHAR(255) NOT NULL,
 
     first_name VARCHAR(255) NOT NULL,
     last_name VARCHAR(255) NOT NULL,
     email VARCHAR(255) NOT NULL,
-    username VARCHAR(255),
+    username VARCHAR(255) DEFAULT '',
     role VARCHAR(255),
     active BOOLEAN DEFAULT TRUE,
 
-    memembrship_level VARCHAR(100) DEFAULT 'main',
+    membership_level VARCHAR(100) DEFAULT 'free',
     token_limit INTEGER DEFAULT 0,
     token_used INTEGER DEFAULT 0,
 

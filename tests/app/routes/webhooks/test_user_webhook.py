@@ -54,15 +54,26 @@ class TestWebhookEndpoint:
         response = client.post(
             "/api/v1/webhooks/", json=test_payload, headers=test_headers
         )
-        print("response json ", response.json())
 
         assert response.status_code == status.HTTP_200_OK
+        assert (
+            response.json()["message"] == constants.USER_CREATED_SUCCESS
+        )
+        mock_create.assert_called_once()  # Verify user creation was attempted
+        mock_filter.assert_called_once_with(user_id="user_123")  # Verify user lookup
 
     @pytest.mark.asyncio
     @patch("app.routes.webhooks.Webhook")
     @patch("app.routes.webhooks.User.filter")
+    @patch("app.routes.webhooks.User.create")
     async def test_user_already_exists(
-        self, mock_filter, mock_webhook_class, client, test_payload, test_headers
+        self,
+        mock_create,
+        mock_filter,
+        mock_webhook_class,
+        client,
+        test_payload,
+        test_headers,
     ):
         mock_webhook_instance = MagicMock()
         mock_webhook_instance.verify.return_value = test_payload
@@ -75,6 +86,7 @@ class TestWebhookEndpoint:
         )
 
         assert response.status_code == status.HTTP_200_OK
+        mock_create.assert_not_called()
 
     @pytest.mark.asyncio
     @patch("app.routes.webhooks.Webhook")

@@ -19,7 +19,7 @@ class User(Model):
         max_length=255,
         description="Username of user",
     )
-    role = fields.CharField(max_length=255, description="Last name of user")
+    role = fields.CharField(max_length=255, description="Role name of user")
     active = fields.BooleanField(default=True)
 
     membership_level = fields.CharField(

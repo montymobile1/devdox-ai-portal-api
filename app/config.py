@@ -42,7 +42,7 @@ class Settings(BaseSettings):
 
     CLERK_JWT_PUBLIC_KEY: Optional[str] = None
 
-    CLERK_WEBHOOK_SECRET: str = "test-webhook-key"
+    CLERK_WEBHOOK_SECRET: str = "CHANGE_ME_IN_PRODUCTION"
 
     # CORS settings
     CORS_ORIGINS: List[str] = ["http://localhost:3000"]

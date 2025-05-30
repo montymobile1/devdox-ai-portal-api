@@ -33,7 +33,9 @@ async def webhook_handler(request: Request, response: Response):
         logger.info(f"Processing webhook event: {event_type}")
 
         if event_type == "user.created":
-            await _handle_user_created(data)
+            res = await _handle_user_created(data)
+            if not res:
+                APIResponse.success(message=constants.USER_EXIST)
         else:
             logger.info(f"Unhandled webhook event type: {event_type}")
 
@@ -69,7 +71,7 @@ async def _handle_user_created(data: dict) -> None:
             return
 
         # Create user using the validated Pydantic model data
-        user = await User.create(
+        await User.create(
             user_id=user_data.id,
             first_name=user_data.first_name,
             last_name=user_data.last_name,
