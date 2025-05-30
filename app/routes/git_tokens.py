@@ -89,7 +89,9 @@ async def handle_gitlab(
         return APIResponse.success(
             message=constants.TOKEN_SAVED_SUCCESSFULLY, data={"id": str(git_label.id)}
         )
-    except Exception:
+    except Exception as e:
+        logger.exception("Unexpected Failure while attempting to save GitLab token on Path = '[POST] /api/v1/git_tokens' -> handle_gitlab")
+        
         return APIResponse.error(
             message=f"Failed to save GitLab token: {str(e)}",
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
@@ -122,6 +124,7 @@ async def handle_github(
             message=constants.TOKEN_SAVED_SUCCESSFULLY, data={"id": str(git_label.id)}
         )
     except Exception:
+        logger.exception("Unexpected Failure while attempting to save GitHub token on Path = '[POST] /api/v1/git_tokens' -> handle_github")
         return APIResponse.error(message=constants.GITHUB_TOKEN_SAVE_FAILED)
 
 
@@ -270,14 +273,14 @@ async def get_git_label_by_label(
 async def add_git_token(
     request: Request,
     payload: GitLabelCreate = Body(...),
-    current_user_id: str = Depends(get_current_user_id),
+    authenticated_user: AuthenticatedUserDTO = CurrentUser,
 ) -> Dict[str, Any]:
     """
     Add a new git token configuration with validation based on hosting service.
     """
     try:
         # Override user_id with authenticated user ID for security
-        payload.user_id = current_user_id
+        payload.user_id = authenticated_user.id
 
         token = payload.token_value.replace(" ", "")
         if not token:
@@ -297,6 +300,9 @@ async def add_git_token(
                 status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
             )
     except Exception as e:
+        
+        logger.exception("Unexpected Failure while attempting to add git token on Path = '[POST] /api/v1/git_tokens'")
+        
         return APIResponse.error(
             message=f"Failed to add git token: {str(e)}",
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
