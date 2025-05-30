@@ -1,5 +1,6 @@
 from cryptography.fernet import Fernet
 from app.config import settings
+from app.utils import constants
 
 
 class EncryptionHelper:
@@ -16,7 +17,7 @@ class EncryptionHelper:
             ValueError: If the secret key is not set.
         """
         if not cls.SECRET_KEY:
-            raise ValueError("Encryption key is not set.")
+            raise ValueError(constants.ENCRYPTION_KEY_NOT_FOUND)
         return Fernet(cls.SECRET_KEY)
 
     @classmethod
