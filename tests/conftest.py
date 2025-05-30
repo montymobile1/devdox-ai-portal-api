@@ -10,7 +10,6 @@ from unittest.mock import patch, MagicMock, AsyncMock
 from app.routes.git_tokens import get_current_user_id
 
 from app.main import app  # Assuming your FastAPI app is in app.main
-from tests.unit_test.conftest import TOKEN_ENCRYPTED_1
 
 # Sample encrypted token values for testing
 TOKEN_ENCRYPTED_2 = "gAAAAABoMFiNIvAc7WIFnoKXBjkpAVrdiTFrhlmZtG8BBwvmy1dtvfEFmupm0fcvDUo3unosoAQz5eclP2QFMnPMLG4Hj21MBt-xTdWL661JnWP-wQarnLI="
@@ -463,3 +462,19 @@ async def async_client():
 
     async with AsyncClient(app=app, base_url="http://test") as ac:
         yield ac
+
+
+TOKEN_ENCRYPTED_1 = "gAAAAABoMFiNIvAc7WIFnoKXBjkpAVrdiTFrhlmZtG8BBwvmy1dtvfEFmupm0fcvDUo3unosoAQz5eclP2QFMnPMLG4Hj21MBt-xTdWL661JnWP-wQarnLI="
+
+
+@pytest.fixture
+def mock_encryption_helper():
+    """Mock EncryptionHelper for token encryption/decryption."""
+    with patch("app.routes.git_tokens.EncryptionHelper") as mock_helper:
+        mock_instance = MagicMock()
+        mock_instance.encrypt.return_value = TOKEN_ENCRYPTED_1
+        mock_instance.decrypt.return_value = "ghp_1234567890abcdef"
+        mock_helper.return_value = mock_instance
+        mock_helper.encrypt = mock_instance.encrypt
+        mock_helper.decrypt = mock_instance.decrypt
+        yield mock_helper
