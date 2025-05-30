@@ -4,6 +4,7 @@ Git Label routes for the DevDox AI Portal API.
 This module provides endpoints for managing Git tokens with CRUD operations.
 It supports creating, reading, updating, and deleting git hosting service configurations.
 """
+import logging
 
 from fastapi import APIRouter, Depends, Query, Body, Request, status
 from typing import Dict, Any, Optional
@@ -22,6 +23,8 @@ from app.models.git_label import GitLabel
 from app.schemas.git_label import (
     GitLabelCreate,
 )
+
+logger = logging.getLogger(__name__)
 
 router = APIRouter()
 
@@ -189,6 +192,8 @@ async def get_git_labels(
             },
         )
     except Exception:
+        logger.exception("Failed to retrieve git labels")
+        
         return APIResponse.error(
             message=constants.SERVICE_UNAVAILABLE,
             status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
@@ -204,7 +209,7 @@ async def get_git_labels(
 )
 async def get_git_label_by_label(
     label: str,
-    current_user_id: str = Depends(get_current_user_id),
+    authenticated_user: AuthenticatedUserDTO = CurrentUser,
     pagination: PaginationParams = Depends(),
 ) -> Dict[str, Any]:
     """
@@ -218,13 +223,13 @@ async def get_git_label_by_label(
     """
     try:
         git_labels = (
-            await GitLabel.filter(user_id=current_user_id, label=label)
+            await GitLabel.filter(user_id=authenticated_user.id, label=label)
             .order_by("-created_at")
             .offset(pagination.offset)
             .limit(pagination.limit)
             .all()
         )
-
+        
         # Format response data with masked tokens
         formatted_data = []
         for gl in git_labels:
@@ -248,6 +253,7 @@ async def get_git_label_by_label(
             message="Git labels retrieved successfully", data={"items": formatted_data}
         )
     except Exception:
+        logger.exception("Unexpected Failure while attempting to retrieve git labels on Path = '[GET] /api/v1/git_tokens/{label}'")
         return APIResponse.error(
             message=constants.SERVICE_UNAVAILABLE,
             status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
