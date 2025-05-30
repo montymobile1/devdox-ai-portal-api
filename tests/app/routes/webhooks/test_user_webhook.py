@@ -1,5 +1,5 @@
 import pytest
-from unittest.mock import AsyncMock, patch
+from unittest.mock import AsyncMock, patch, MagicMock
 from svix.webhooks import WebhookVerificationError
 from fastapi import status
 from app.utils import constants
@@ -31,28 +31,44 @@ class TestWebhookEndpoint:
         }
 
     @pytest.mark.asyncio
-    @patch("app.routes.webhooks.Webhook.verify")
+    @patch("app.routes.webhooks.Webhook")
     @patch("app.routes.webhooks.User.filter")
     @patch("app.routes.webhooks.User.create")
     async def test_user_created_success(
-        self, mock_create, mock_filter, mock_verify, client, test_payload, test_headers
+        self,
+        mock_create,
+        mock_filter,
+        mock_webhook_class,
+        client,
+        test_payload,
+        test_headers,
     ):
-        mock_verify.return_value = test_payload
+        mock_webhook_instance = MagicMock()
+        mock_webhook_instance.verify.return_value = test_payload
+        mock_webhook_class.return_value = (
+            mock_webhook_instance  # Return mock instance on init
+        )
+
         mock_filter.return_value.exists = AsyncMock(return_value=False)
         mock_create.return_value = AsyncMock()
         response = client.post(
             "/api/v1/webhooks/", json=test_payload, headers=test_headers
         )
+        print("response json ", response.json())
 
         assert response.status_code == status.HTTP_200_OK
 
     @pytest.mark.asyncio
-    @patch("app.routes.webhooks.Webhook.verify")
+    @patch("app.routes.webhooks.Webhook")
     @patch("app.routes.webhooks.User.filter")
     async def test_user_already_exists(
-        self, mock_filter, mock_verify, client, test_payload, test_headers
+        self, mock_filter, mock_webhook_class, client, test_payload, test_headers
     ):
-        mock_verify.return_value = test_payload
+        mock_webhook_instance = MagicMock()
+        mock_webhook_instance.verify.return_value = test_payload
+        mock_webhook_class.return_value = (
+            mock_webhook_instance  # Return mock instance on init
+        )
         mock_filter.return_value.exists = AsyncMock(return_value=True)
         response = client.post(
             "/api/v1/webhooks/", json=test_payload, headers=test_headers
@@ -61,11 +77,19 @@ class TestWebhookEndpoint:
         assert response.status_code == status.HTTP_200_OK
 
     @pytest.mark.asyncio
-    @patch("app.routes.webhooks.Webhook.verify")
+    @patch("app.routes.webhooks.Webhook")
     async def test_invalid_webhook_signature(
-        self, mock_verify, client, test_payload, test_headers
+        self, mock_webhook_class, client, test_payload, test_headers
     ):
-        mock_verify.side_effect = WebhookVerificationError("Invalid signature")
+        mock_webhook_instance = MagicMock()
+
+        mock_webhook_instance.verify.side_effect = WebhookVerificationError(
+            "Invalid signature"
+        )
+
+        mock_webhook_class.return_value = (
+            mock_webhook_instance  # Return mock instance on init
+        )
 
         response = client.post(
             "/api/v1/webhooks/", json=test_payload, headers=test_headers
