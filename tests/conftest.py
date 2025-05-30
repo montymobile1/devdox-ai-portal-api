@@ -16,7 +16,7 @@ from clerk_backend_api.jwks_helpers import (
     TokenVerificationErrorReason,
 )
 from fastapi.testclient import TestClient
-from unittest.mock import Mock, patch, MagicMock, AsyncMock
+from unittest.mock import patch, MagicMock, AsyncMock
 from app.routes.git_tokens import get_current_user_id
 
 from app.main import app  # Assuming your FastAPI app is in app.main
@@ -357,12 +357,6 @@ def mock_supabase_insert_success():
     with patch("app.routes.git_tokens.db_client") as mock:
         mock.insert_row = AsyncMock(return_value="999")
         yield mock
-
-
-@pytest.fixture
-def sample_token_id():
-    """Simple sample token ID for testing"""
-    return "67dff10e-d80e-4a90-a737-20afab09a321"
 
 
 @pytest.fixture

@@ -317,7 +317,7 @@ async def add_git_token(
     description="Delete a git label configuration by ID",
 )
 async def delete_git_label(
-    git_label_id: str, current_user_id: str = Depends(get_current_user_id)
+    git_label_id: str, authenticated_user: AuthenticatedUserDTO = CurrentUser,
 ) -> Dict[str, Any]:
     """
     Deletes a git label with the specified ID.
@@ -332,7 +332,7 @@ async def delete_git_label(
         git_label_uuid = uuid.UUID(git_label_id)  # Ensure it's a valid UUID
 
         git_label = await GitLabel.filter(
-            id=git_label_uuid, user_id=current_user_id
+            id=git_label_uuid, user_id=authenticated_user.id
         ).first()
         if git_label:
             await git_label.delete()
@@ -349,6 +349,9 @@ async def delete_git_label(
         )
 
     except Exception:
+        
+        logger.exception("Unexpected Failure while attempting to delete git label on Path = '[DELETE] /api/v1/git_tokens/{git_label_id}'")
+        
         return APIResponse.error(
             message=constants.SERVICE_UNAVAILABLE,
             status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
