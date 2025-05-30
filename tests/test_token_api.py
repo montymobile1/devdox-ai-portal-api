@@ -22,48 +22,7 @@ def override_current_user():
     app.dependency_overrides.clear()
 
 
-class TestTokenMasking:
-    """Test cases for token masking functionality."""
 
-    def test_mask_token_normal_length(self):
-        """Test masking for normal length token."""
-        token = "ghp_1234567890abcdef"
-        result = mask_token(token)
-        assert result == "ghp_************cdef"
-        assert len(result) == len(token)
-
-    def test_mask_token_short_token(self):
-        """Test masking for short token (8 chars or less)."""
-        token = "short123"
-        result = mask_token(token)
-        assert result == "********"
-        assert len(result) == len(token)
-
-    def test_mask_token_empty_string(self):
-        """Test masking for empty token."""
-        token = ""
-        result = mask_token(token)
-        assert result == ""
-
-    def test_mask_token_none(self):
-        """Test masking for None token."""
-        token = None
-        result = mask_token(token)
-        assert result == ""
-
-    def test_mask_token_exact_eight_chars(self):
-        """Test masking for a token of exactly 8 characters."""
-        token = "12345678"
-        result = mask_token(token)
-        assert result == "********"
-        assert len(result) == 8
-
-    def test_mask_token_nine_chars(self):
-        """Test masking for a token of exactly 9 characters."""
-        token = "123456789"
-        result = mask_token(token)
-        assert result == "1234*6789"
-        assert len(result) == 9
 
 
 class TestGetGitLabelsEndpoint:

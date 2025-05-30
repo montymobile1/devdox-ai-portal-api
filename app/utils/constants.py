@@ -23,3 +23,5 @@ AUTH_FAILED = "Access denied. Please log in again."
 USER_EXIST = "User already exists"
 USER_CREATED_SUCCESS = "User created"
 INVALID_WEBHOOK_SIGNATURE = "Webhook verification failed"
+
+ENCRYPTION_KEY_NOT_FOUND = "Encryption key is not set."
