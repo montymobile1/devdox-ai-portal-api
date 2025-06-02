@@ -28,6 +28,7 @@ RUN mkdir -p /app/migrations
 COPY run_migrations.py ./run_migrations.py
 
 COPY aerich.ini ./aerich.ini
+COPY pyproject.toml ./pyproject.toml
 
 
 # Change ownership of the app directory to the non-root user
