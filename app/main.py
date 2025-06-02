@@ -7,10 +7,8 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from app.logging_config import setup_logging
 from contextlib import asynccontextmanager
-from app.services import connect_db, disconnect_db
 from app.config import settings, TORTOISE_ORM
 from app.routes import router as api_router
-from version import __version__
 
 logger = setup_logging()
 
@@ -24,10 +22,6 @@ async def lifespan(app: FastAPI):
     from tortoise import Tortoise
 
     await Tortoise.init(config=TORTOISE_ORM)
-    # Generate schemas only in development
-    if settings.API_ENV == "development":
-        await Tortoise.generate_schemas()
-
     yield
 
     # Shutdown
@@ -37,7 +31,7 @@ async def lifespan(app: FastAPI):
 app = FastAPI(
     title="DevDox AI Portal API",
     description="Backend API service for the DevDox AI Portal.",
-    version=__version__,
+    version=settings.VERSION,
     docs_url="/docs",
     redoc_url="/redoc",
     lifespan=lifespan,
@@ -62,7 +56,7 @@ async def health_check():
     return {
         "status": "healthy",
         "message": "DevDox AI Portal API is running!",
-        "version": __version__,
+        "version": settings.VERSION,
     }
 
 
