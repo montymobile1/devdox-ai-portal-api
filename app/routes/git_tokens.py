@@ -175,11 +175,7 @@ async def get_git_labels(
 					"id": str(gl.id),
 					"label": gl.label,
 					"git_hosting": gl.git_hosting,
-					"masked_token": mask_token(
-						EncryptionHelper.decrypt(gl.token_value)
-						if gl.token_value
-						else ""
-					),
+					"masked_token": gl.masked_token,
 					"username": gl.username,
 					"created_at": gl.created_at.isoformat(),
 					"updated_at": gl.updated_at.isoformat(),
