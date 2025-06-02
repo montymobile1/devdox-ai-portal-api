@@ -35,6 +35,7 @@ class TestGetGitLabelsEndpoint:
 				label="GitHub Production",
 				git_hosting="github",
 				token_value="encrypted_token",
+				masked_token=mask_token("encrypted_token"),
 				username="testuser",
 				created_at=MagicMock(
 					isoformat=MagicMock(return_value="2024-01-01T10:00:00+00:00")
@@ -48,6 +49,7 @@ class TestGetGitLabelsEndpoint:
 				label="GitLab Staging",
 				git_hosting="gitlab",
 				token_value="encrypted_token",
+				masked_token=mask_token("encrypted_token"),
 				username="testuser2",
 				created_at=MagicMock(
 					isoformat=MagicMock(return_value="2024-01-03T10:00:00+00:00")
@@ -83,7 +85,7 @@ class TestGetGitLabelsEndpoint:
 			assert label1["id"] == "1"
 			assert label1["label"] == "GitHub Production"
 			assert label1["git_hosting"] == "github"
-			assert label1["masked_token"] == "ghp_************cdef"
+			assert label1["masked_token"] == mask_token("encrypted_token")
 	
 	def test_empty_git_labels_list(self, client):
 		"""Test retrieval when no git labels exist."""
@@ -125,6 +127,7 @@ class TestGetGitLabelsEndpoint:
 				label="GitHub Production",
 				git_hosting="github",
 				token_value="encrypted_token",
+				masked_token=mask_token("encrypted_token"),
 				username="testuser",
 				created_at=MagicMock(
 					isoformat=MagicMock(return_value="2024-01-01T10:00:00+00:00")
