@@ -476,3 +476,8 @@ def mock_encryption_helper():
 		mock_helper.encrypt = mock_instance.encrypt
 		mock_helper.decrypt = mock_instance.decrypt
 		yield mock_helper
+
+@pytest.fixture
+def sample_token_id():
+    """Simple sample token ID for testing"""
+    return "67dff10e-d80e-4a90-a737-20afab09a321"
