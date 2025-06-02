@@ -50,17 +50,6 @@ def mask_token(token: str) -> str:
 	return f"{prefix}{middle_mask}{suffix}"
 
 
-async def get_current_user_id() -> str:
-	"""
-	Dependency to get current user ID.
-	In a real application, this would extract user ID from JWT token or session.
-	For now, this is a placeholder that you should implement based on your auth system.
-	"""
-	# Will be changed
-	# This could be from JWT token, session, or other auth mechanism
-	return "user_2sw6NOnSajM1kpsLPA1ZnxCW3uZ"
-
-
 async def handle_gitlab(
 		payload: GitLabelCreate, encrypted_token: str
 ) -> Dict[str, Any]:
@@ -88,7 +77,7 @@ async def handle_gitlab(
 		return APIResponse.success(
 			message=constants.TOKEN_SAVED_SUCCESSFULLY, data={"id": str(git_label.id)}
 		)
-	except Exception as e:
+	except Exception:
 		logger.exception(
 			"Unexpected Failure while attempting to save GitLab token on Path = '[POST] /api/v1/git_tokens' -> handle_gitlab")
 		
@@ -337,7 +326,10 @@ async def delete_git_label(
 			)
 		
 		return APIResponse.success(message=constants.TOKEN_DELETED_SUCCESSFULLY)
-	except ValueError as e:
+	except ValueError:
+		logger.exception(
+			"Unexpected Failure while attempting to delete git label on Path = '[DELETE] /api/v1/git_tokens/{git_label_id}'")
+		
 		return APIResponse.error(
 			message="Invalid UUID format", status_code=status.HTTP_400_BAD_REQUEST
 		)

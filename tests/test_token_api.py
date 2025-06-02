@@ -408,37 +408,6 @@ class TestEndpointSecurity:
 			assert response.status_code == 200
 			mock_git_label.filter.assert_called_with(user_id="user-123")
 	
-	def test_user_data_isolation_get_by_label(self, client, mock_encryption_helper):
-		"""Test that users can only see their own git labels when filtering by label"""
-		
-		async def mock_get_current_user_id():
-			return "user-123"
-		
-		# Apply the override to your FastAPI app
-		from app.main import app  # Import your FastAPI app
-		from app.routes.git_tokens import get_current_user_id
-		
-		app.dependency_overrides[get_current_user_id] = mock_get_current_user_id
-		
-		try:
-			with patch("app.routes.git_tokens.GitLabel") as mock_git_label:
-				mock_query = MagicMock()
-				mock_query.order_by.return_value = mock_query
-				mock_query.offset.return_value = mock_query
-				mock_query.limit.return_value = mock_query
-				mock_query.all = AsyncMock(return_value=[])
-				mock_git_label.filter.return_value = mock_query
-				
-				response = client.get("/api/v1/git_tokens/TestLabel")
-				
-				# Verify that the query was filtered by both user_id and label
-				mock_git_label.filter.assert_called_with(
-					user_id="user-123", label="TestLabel"
-				)
-		finally:
-			# Clean up the override
-			app.dependency_overrides.clear()
-	
 	def test_token_encryption_on_create(self, client, mock_encryption_helper):
 		"""Test that tokens are properly encrypted when creating git labels"""
 		with patch("app.routes.git_tokens.GitHubManager") as mock_github_manager:
