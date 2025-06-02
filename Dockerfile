@@ -11,10 +11,14 @@ ENV PYTHONDONTWRITEBYTECODE=1 \
     PYTHONUNBUFFERED=1 \
     ENVIRONMENT=production
 
-# Copy and install dependencies
-COPY requirements.txt .
+# Copy pyproject.toml first for better Docker layer caching
+COPY pyproject.toml .
+
+# Install dependencies from pyproject.toml
 RUN pip install --no-cache-dir --upgrade pip \
-    && pip install --no-cache-dir -r requirements.txt
+    && pip install --no-cache-dir .
+
+
 # Copy application code
 COPY app/ ./app
 COPY entrypoint.sh ./entrypoint.sh
@@ -24,7 +28,7 @@ RUN mkdir -p /app/migrations
 COPY run_migrations.py ./run_migrations.py
 
 COPY aerich.ini ./aerich.ini
-COPY pyproject.toml ./pyproject.toml
+
 
 # Change ownership of the app directory to the non-root user
 
