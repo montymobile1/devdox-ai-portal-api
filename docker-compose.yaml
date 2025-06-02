@@ -1,0 +1,12 @@
+version: '3.8'
+
+services:
+  app:
+    build: .
+    volumes:
+      # Mount migrations folder to persist changes
+      - ./migrations:/app/migrations
+      # Optional: mount other directories you want to persist
+      - ./logs:/app/logs
+    ports:
+      - "8000:8000"

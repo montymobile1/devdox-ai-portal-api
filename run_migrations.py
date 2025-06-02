@@ -10,6 +10,7 @@ import subprocess
 import asyncio
 import logging
 from tortoise import Tortoise
+from tortoise.exceptions import OperationalError
 from app.config import TORTOISE_ORM
 
 
@@ -57,20 +58,64 @@ def is_first_time():
     return len(migration_files) == 0
 
 
+async def database_tables_exist():
+    """Check if database tables already exist by attempting to connect and query."""
+    try:
+        # Attempt to get the connection and check if any tables exist
+        connection = Tortoise.get_connection("default")
+
+        # Try to get table names - this will fail if no tables exist or DB is not initialized
+        tables = await connection.execute_query(
+            "SELECT name FROM aerich WHERE type='table';"
+        )
+
+        # Filter out sqlite internal tables
+        user_tables = [
+            table[0] for table in tables if not table[0].startswith("aerich")
+        ]
+
+        return len(user_tables) > 0
+    except (OperationalError, AttributeError, Exception) as e:
+        logger.debug(f"Database check failed: {e}")
+        return False
+
+
+async def needs_initialization():
+    """
+    Determine if we need to run init-db based on:
+    1. Migration files exist but database tables don't exist (deployment scenario)
+    2. No migration files exist (true first time)
+    """
+
+    # Check if database tables exist
+    tables_exist = await database_tables_exist()
+    if not tables_exist:
+        logger.info(
+            "Migration files exist but no database tables found - treating as fresh deployment"
+        )
+        return True
+
+    return False
+
+
 async def run():
     try:
-        if is_first_time():
-            logger.info("First-time setup: Running aerich init and init-db...")
-            run_command("aerich init -t app.config.TORTOISE_ORM")
+        if await needs_initialization():
+            logger.info("Initializing database: Running aerich init and init-db...")
+
+            # Only run aerich init if migrations directory doesn't exist
+            if not os.path.exists(MIGRATIONS_DIR):
+                run_command("aerich init -t app.config.TORTOISE_ORM")
+
             run_command("aerich init-db")
         else:
-            print("Running aerich migrate and upgrade...")
             logger.info("Running aerich migrate and upgrade...")
             run_command("aerich migrate")
             run_command("aerich upgrade")
 
         # Optional: ensure Tortoise connection is valid
         await ensure_tortoise_connected()
+
     except subprocess.CalledProcessError:
         logger.error("Migration failed - this may require manual intervention")
         raise
