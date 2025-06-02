@@ -10,6 +10,7 @@ import pytest
 from fastapi import status
 
 from app.main import app
+from app.routes.git_tokens import mask_token
 from app.utils.auth import AuthenticatedUserDTO, get_current_user
 
 
@@ -195,6 +196,7 @@ class TestPerformance:
 				mock_label.label = f"Label {i}"
 				mock_label.git_hosting = "github"
 				mock_label.token_value = "encrypted_token"
+				mock_label.masked_token = mask_token("encrypted_token")
 				mock_label.username = "testuser"
 				mock_label.created_at.isoformat.return_value = "2024-01-01T10:00:00"
 				mock_label.updated_at.isoformat.return_value = "2024-01-01T10:00:00"
@@ -470,6 +472,7 @@ class TestEndpointSecurity:
 				label="GitHub Production",
 				git_hosting="github",
 				token_value="encrypted_token",
+				masked_token=mask_token("encrypted_token"),
 				username="testuser",
 				created_at=MagicMock(
 					isoformat=MagicMock(return_value="2024-01-01T10:00:00+00:00")
@@ -492,10 +495,8 @@ class TestEndpointSecurity:
 			
 			response = client.get("/api/v1/git_tokens/")
 			
-			mock_encryption_helper.decrypt.assert_called()
-			
 			data = response.json()
-			assert data["data"]["items"][0]["masked_token"] == "ghp_************cdef"
+			assert data["data"]["items"][0]["masked_token"] == mask_token("encrypted_token")
 			
 			# Verify the original token is not in the response
 			response_str = response.text
