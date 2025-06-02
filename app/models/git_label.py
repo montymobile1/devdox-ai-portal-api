@@ -1,7 +1,6 @@
 import uuid
 
-from tortoise import fields
-from tortoise.models import Model
+from tortoise import fields, Model
 
 
 class GitLabel(Model):
@@ -44,7 +43,8 @@ class GitLabel(Model):
 		)
 	
 	def __str__(self):
-		return f"GitLabel(id={self.id}, user_id={self.user_id}, label={self.label}, git_hosting={self.git_hosting})"
+		return (f"GitLabel(id={self.id}, user_id={self.user_id}, "
+		        f"label={self.label}, git_hosting={self.git_hosting})")
 	
 	def __repr__(self):
 		return self.__str__()

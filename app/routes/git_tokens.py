@@ -299,7 +299,7 @@ async def add_git_token(
 				message=constants.UNSUPPORTED_GIT_PROVIDER,
 				status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
 			)
-	except Exception as e:
+	except Exception:
 		
 		logger.exception("Unexpected Failure while attempting to add git token on Path = '[POST] /api/v1/git_tokens'")
 		
