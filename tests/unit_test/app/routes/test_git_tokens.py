@@ -462,3 +462,87 @@ class TestAddGitTokenEndpoint:
 			data = response.json()
 			assert data["success"] is False
 			assert constants.GITLAB_AUTH_FAILED in data["message"]
+
+
+class TestDeleteGitLabelEndpoint:
+	"""Test cases for DELETE /api/v1/git_tokens/{git_label_id} endpoint."""
+	
+	@staticmethod
+	def get_url(git_label_id: str) -> str:
+		return f"/api/v1/git_tokens/{git_label_id}"
+	
+	def test_delete_git_label_success(self, client, sample_token_id, mock_authenticated_user):
+		"""Test successful git label deletion."""
+		with patch("app.routes.git_tokens.GitLabel") as mock_git_label:
+			mock_label = MagicMock()
+			mock_label.delete = AsyncMock()
+			mock_git_label.filter.return_value.first = AsyncMock(
+				return_value=mock_label
+			)
+			
+			response = client.delete(TestDeleteGitLabelEndpoint.get_url(sample_token_id))
+			
+			assert response.status_code == status.HTTP_200_OK
+			data = response.json()
+			assert data["success"] is True
+			assert "Token deleted successfully" in data["message"]
+			
+			mock_label.delete.assert_called_once()
+	
+	def test_delete_git_label_not_found(self, client, sample_token_id, mock_authenticated_user):
+		"""Test deletion when git label doesn't exist."""
+		with patch("app.routes.git_tokens.GitLabel") as mock_git_label:
+			mock_git_label.filter.return_value.first = AsyncMock(return_value=None)
+			
+			response = client.delete(TestDeleteGitLabelEndpoint.get_url(sample_token_id))
+			
+			assert response.status_code == status.HTTP_404_NOT_FOUND
+			data = response.json()
+			assert data["success"] is False
+			assert "Token not found" in data["message"]
+	
+	def test_delete_git_label_invalid_uuid(self, client, mock_authenticated_user):
+		"""Test deletion with invalid UUID format."""
+		
+		response = client.delete(TestDeleteGitLabelEndpoint.get_url("invalid-uuid"))
+		
+		assert response.status_code == status.HTTP_400_BAD_REQUEST
+		data = response.json()
+		assert data["success"] is False
+		assert "Invalid UUID format" in data["message"]
+	
+	def test_delete_token_database_error_on_get(self, client, sample_token_id, mock_authenticated_user):
+		"""Test handling of database error during get operation"""
+		with patch("app.routes.git_tokens.GitLabel") as mock_git_label:
+			mock_git_label.get = AsyncMock(
+				side_effect=Exception("Database connection failed")
+			)
+			
+			response = client.delete(TestDeleteGitLabelEndpoint.get_url(sample_token_id))
+			
+			assert response.status_code == status.HTTP_503_SERVICE_UNAVAILABLE
+			data = response.json()
+			assert data["success"] is False
+			assert "Service temporarily unavailable" in data["message"]
+	
+	@pytest.mark.parametrize(
+		"token_id",
+		[
+			"550e8400-e29b-41d4-a716-446655440000",  # Valid UUID
+			"123e4567-e89b-12d3-a456-426614174000",  # Another valid UUID
+		],
+	)
+	def test_delete_token_valid_uuid_formats(self, client, token_id, mock_authenticated_user):
+		"""Test deletion with valid UUID formats"""
+		with patch("app.routes.git_tokens.GitLabel") as mock_git_label:
+			mock_label = MagicMock()
+			mock_label.delete = AsyncMock()
+			mock_git_label.filter.return_value.first = AsyncMock(
+				return_value=mock_label
+			)
+			
+			response = client.delete(TestDeleteGitLabelEndpoint.get_url(token_id))
+			
+			assert response.status_code == status.HTTP_200_OK
+			data = response.json()
+			assert data["success"] is True

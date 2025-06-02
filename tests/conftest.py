@@ -9,7 +9,6 @@ import pytest
 from fastapi.testclient import TestClient
 
 from app.main import app  # Assuming your FastAPI app is in app.main
-from app.routes.git_tokens import get_current_user_id
 
 # Sample encrypted token values for testing
 TOKEN_ENCRYPTED_1 = "gAAAAABoMFiNIvAc7WIFnoKXBjkpAVrdiTFrhlmZtG8BBwvmy1dtvfEFmupm0fcvDUo3unosoAQz5eclP2QFMnPMLG4Hj21MBt-xTdWL661JnWP-wQarnLI="
@@ -62,26 +61,6 @@ def mock_db_client():
 		mock.insert_row = AsyncMock()
 		mock.delete_rows = AsyncMock()
 		yield mock
-
-
-@pytest.fixture
-def mock_get_current_user_id():
-	"""Create a mocked get_current_user_id function."""
-	with patch(
-			"app.routes.git_tokens.get_current_user_id", new_callable=AsyncMock
-	) as mock:
-		mock.return_value = "user-123"
-		yield mock
-
-
-@pytest.fixture(autouse=True)
-def override_get_current_user_id():
-	async def mock_user():
-		return "user-123"
-	
-	app.dependency_overrides[get_current_user_id] = mock_user
-	yield
-	app.dependency_overrides.clear()
 
 
 @pytest.fixture
@@ -476,3 +455,9 @@ def mock_encryption_helper():
 		mock_helper.encrypt = mock_instance.encrypt
 		mock_helper.decrypt = mock_instance.decrypt
 		yield mock_helper
+
+
+@pytest.fixture
+def sample_token_id():
+	"""Simple sample token ID for testing"""
+	return "67dff10e-d80e-4a90-a737-20afab09a321"
