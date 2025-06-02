@@ -60,3 +60,4 @@ pytest-trio==0.8.0
 twisted>=22.0.0
 pytest-twisted==1.14.3
 svix==1.66.0
+tomli-w==1.2.0

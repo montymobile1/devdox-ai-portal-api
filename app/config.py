@@ -129,6 +129,7 @@ def get_tortoise_config():
             "models": {
                 "models": [
                     "app.models",
+                    "aerich.models",  # Required for aerich migrations
                 ],  # Replace with your actual models module
                 "default_connection": "default",
             }
