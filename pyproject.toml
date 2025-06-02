@@ -1,3 +1,6 @@
+[tool.setuptools]
+packages = ["app"]
+
 [project]
 name = "context-creators"
 version = "1.0.0"
