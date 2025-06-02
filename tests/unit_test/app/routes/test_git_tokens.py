@@ -77,6 +77,7 @@ class TestGetByLabelEndpoint:
 				git_hosting="github",
 				token_value="encrypted_token",
 				username="testuser",
+				masked_token=mask_token("encrypted_token"),
 				created_at=MagicMock(
 					isoformat=MagicMock(return_value="2024-01-01T10:00:00+00:00")
 				),
@@ -168,6 +169,7 @@ class TestGetByLabelEdgeCases:
 				label=label,
 				git_hosting="github",
 				token_value=None,
+				masked_token="",
 				username="devuser",
 				created_at=MagicMock(isoformat=MagicMock(return_value="2025-01-01T10:00:00Z")),
 				updated_at=MagicMock(isoformat=MagicMock(return_value="2025-01-02T10:00:00Z")),
