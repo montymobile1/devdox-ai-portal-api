@@ -1,9 +1,11 @@
 from unittest.mock import AsyncMock, MagicMock, patch
 from urllib.parse import quote
 
+import pytest
 from fastapi import status
 
 from app.routes.git_tokens import mask_token
+from app.utils import constants
 
 
 class TestMaskToken:
@@ -16,24 +18,31 @@ class TestMaskToken:
 		assert result == "ghp_************cdef"
 		assert len(result) == len(token)
 	
-	def test_mask_token_short_token(self):
+	@staticmethod
+	def __generate_test_data_with_ids_for_test_mask_token_short_token():
+		"""Generates test data and custom IDs."""
+		character = "a"
+		max_characters = 9
+		
+		for i in range(1, max_characters):
+			yield pytest.param(character * i, "*" * i, id=f"test_{i}_characters")
+	
+	@pytest.mark.parametrize("input_value, expected_output", __generate_test_data_with_ids_for_test_mask_token_short_token())
+	def test_mask_token_short_token(self, input_value, expected_output):
 		"""Test masking for short token (8 chars or less)."""
-		token = "short123"
-		result = mask_token(token)
-		assert result == "********"
-		assert len(result) == len(token)
+		result = mask_token(input_value)
+		assert result == expected_output
 	
-	def test_mask_token_empty_string(self):
-		"""Test masking for empty token."""
-		token = ""
+	@pytest.mark.parametrize(
+		"token",
+		[None, "", " "],
+		ids=["when token None", "when token empty string", "when token blank string"]
+	)
+	def test_mask_token_for_empty_token_forms(self, token):
+		"""Test masking for invalid token."""
 		result = mask_token(token)
 		assert result == ""
 	
-	def test_mask_token_none(self):
-		"""Test masking for None token."""
-		token = None
-		result = mask_token(token)
-		assert result == ""
 	
 	def test_mask_token_exact_eight_chars(self):
 		"""Test masking for a token of exactly 8 characters."""
@@ -368,7 +377,7 @@ class TestAddGitTokenEndpoint:
 			assert response.status_code == status.HTTP_400_BAD_REQUEST
 			data = response.json()
 			assert data["success"] is False
-			assert "Could not retrieve GitLab user" in data["message"]
+			assert constants.GITLAB_USER_RETRIEVE_FAILED in data["message"]
 			
 			# Verify user data was attempted to be fetched
 			mock_gitlab_manager.return_value.get_user.assert_called_once()
@@ -429,3 +438,26 @@ class TestAddGitTokenEndpoint:
 				# Verify that GitLabel.create was called with the authenticated user ID, not the provided one
 				call_args = mock_git_label.create.call_args
 				assert call_args.kwargs["user_id"] == mock_authenticated_user.id
+	
+	def test_add_gitlab_auth_status_false(self, client, mock_encryption_helper, mock_authenticated_user):
+		"""Test GitLab token creation auth status failure."""
+		with patch("app.routes.git_tokens.GitLabManager") as mock_gitlab_manager:
+			# Mock GitLab auth success but user fetch failure
+			mock_instance = MagicMock()
+			mock_instance.auth_status = False
+			mock_instance.get_user.return_value = None
+			mock_gitlab_manager.return_value = mock_instance
+			
+			payload = {
+				"label": "Test GitLab Token",
+				"git_hosting": "gitlab",
+				"token_value": "glpat-1234567890abcdef",
+			}
+			
+			response = client.post(TestAddGitTokenEndpoint.get_url(), json=payload)
+			
+			assert response.status_code == status.HTTP_400_BAD_REQUEST
+			data = response.json()
+			assert data["success"] is False
+			assert constants.GITLAB_AUTH_FAILED in data["message"]
+	

@@ -26,6 +26,11 @@ class GitLabel(Model):
     token_value = fields.TextField(
         null=False, description="Access token for the git hosting service"
     )
+    
+    masked_token = fields.TextField(
+        null=False, description="Masked Access token for the git hosting service"
+    )
+    
     created_at = fields.DatetimeField(
         auto_now_add=True, description="Record creation timestamp"
     )

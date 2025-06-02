@@ -36,7 +36,7 @@ def mask_token(token: str) -> str:
     If the token is 8 characters or fewer, the entire token is replaced with asterisks.
     Returns an empty string if the input is empty.
     """
-    if not token:
+    if not token or token.replace(" ", "") == "":
         return ""
 
     token_len = len(token)
@@ -93,7 +93,7 @@ async def handle_gitlab(
         logger.exception("Unexpected Failure while attempting to save GitLab token on Path = '[POST] /api/v1/git_tokens' -> handle_gitlab")
         
         return APIResponse.error(
-            message=f"Failed to save GitLab token: {str(e)}",
+            message=constants.SERVICE_UNAVAILABLE,
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
         )
 
@@ -241,11 +241,7 @@ async def get_git_label_by_label(
                     "id": str(gl.id),
                     "label": gl.label,
                     "git_hosting": gl.git_hosting,
-                    "masked_token": mask_token(
-                        EncryptionHelper.decrypt(gl.token_value)
-                        if gl.token_value
-                        else ""
-                    ),
+                    "masked_token": gl.masked_token,
                     "username": gl.username,
                     "created_at": gl.created_at.isoformat(),
                     "updated_at": gl.updated_at.isoformat(),
@@ -304,7 +300,7 @@ async def add_git_token(
         logger.exception("Unexpected Failure while attempting to add git token on Path = '[POST] /api/v1/git_tokens'")
         
         return APIResponse.error(
-            message=f"Failed to add git token: {str(e)}",
+            message=constants.SERVICE_UNAVAILABLE,
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
         )
 
