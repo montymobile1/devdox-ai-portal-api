@@ -3,7 +3,7 @@ from unittest.mock import MagicMock, patch
 import pytest
 
 from app.main import app
-from app.utils.test_auth import AuthenticatedUserDTO, get_current_user
+from app.utils.auth import AuthenticatedUserDTO, get_current_user
 
 
 @pytest.fixture
