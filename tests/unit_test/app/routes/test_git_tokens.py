@@ -27,7 +27,8 @@ class TestMaskToken:
 		for i in range(1, max_characters):
 			yield pytest.param(character * i, "*" * i, id=f"test_{i}_characters")
 	
-	@pytest.mark.parametrize("input_value, expected_output", __generate_test_data_with_ids_for_test_mask_token_short_token())
+	@pytest.mark.parametrize("input_value, expected_output",
+	                         __generate_test_data_with_ids_for_test_mask_token_short_token())
 	def test_mask_token_short_token(self, input_value, expected_output):
 		"""Test masking for short token (8 chars or less)."""
 		result = mask_token(input_value)
@@ -42,7 +43,6 @@ class TestMaskToken:
 		"""Test masking for invalid token."""
 		result = mask_token(token)
 		assert result == ""
-	
 	
 	def test_mask_token_exact_eight_chars(self):
 		"""Test masking for a token of exactly 8 characters."""
@@ -460,4 +460,3 @@ class TestAddGitTokenEndpoint:
 			data = response.json()
 			assert data["success"] is False
 			assert constants.GITLAB_AUTH_FAILED in data["message"]
-	
