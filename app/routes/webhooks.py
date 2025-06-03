@@ -1,5 +1,7 @@
 from fastapi import APIRouter, status, Request, Response
 import logging
+import base64
+import os
 from svix.webhooks import Webhook, WebhookVerificationError
 from app.models.user import User
 from app.utils.api_response import APIResponse
@@ -70,6 +72,9 @@ async def _handle_user_created(data: dict) -> None:
             logger.info(f"User {user_data.id} already exists, skipping creation")
             return
 
+        salt_bytes = os.urandom(32)  # 32 bytes for extra security
+        salt_b64 = base64.urlsafe_b64encode(salt_bytes).decode()
+
         # Create user using the validated Pydantic model data
         await User.create(
             user_id=user_data.id,
@@ -77,6 +82,7 @@ async def _handle_user_created(data: dict) -> None:
             last_name=user_data.last_name,
             email=user_data.primary_email,
             username=user_data.username,  # This is now cleaned by Pydantic
+            encryption_salt=salt_b64,
             role="user",
             active=True,
         )

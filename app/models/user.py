@@ -34,6 +34,13 @@ class User(Model):
     created_at = fields.DatetimeField(
         auto_now_add=True, description="Record creation timestamp"
     )
+    updated_at = fields.DatetimeField(
+        auto_now_add=True, description="Record creation timestamp"
+    )
+
+    encryption_salt = fields.CharField(
+        default=0, max_length=255, description="Encryption salt"
+    )
 
     class Meta:
         table = "user"
