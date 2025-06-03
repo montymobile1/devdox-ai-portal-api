@@ -59,28 +59,21 @@ def is_first_time():
 
 
 async def database_tables_exist():
-    """Check if database tables already exist by attempting to connect and query."""
+    """Check if the 'aerich' table exists in the PostgreSQL database (Supabase)."""
     try:
-        # Initialize Tortoise connection first
+        # Initialize Tortoise connection
         await Tortoise.init(config=TORTOISE_ORM)
 
         connection = Tortoise.get_connection("default")
 
-        # Query for existing tables (SQLite-specific, adjust for your database)
-        tables = await connection.execute_query(
-            "SELECT name FROM sqlite_master WHERE type='table' AND name NOT LIKE 'sqlite_%';"
+        # Execute the query to check for 'aerich' table
+        rows, _ = await connection.execute_query(
+            "SELECT tablename FROM pg_catalog.pg_tables WHERE schemaname = 'public' AND tablename = 'aerich';"
         )
 
-        # Filter out aerich internal tables
-        user_tables = [
-            table["name"] if isinstance(table, dict) else table[0]
-            for table in tables
-            if not (table["name"] if isinstance(table, dict) else table[0]).startswith(
-                "aerich"
-            )
-        ]
+        # If any row is returned, the table exists
+        return rows > 0
 
-        return len(user_tables) > 0
     except (OperationalError, AttributeError) as e:
         logger.debug("Database check failed: %s", e)
         return False
