@@ -10,10 +10,11 @@ import uuid
 from typing import Any, Dict, Optional
 
 from fastapi import APIRouter, Body, Depends, Query, Request, status
+from starlette.responses import JSONResponse
 
+import app.exceptions.exception_constants
 from app.config import GitHosting
 from app.models.git_label import GitLabel
-from app.models.user import User
 from app.schemas.basic import PaginationParams
 from app.schemas.git_label import GitLabelBase, GitLabelCreate
 from app.utils import constants, CurrentUser
@@ -50,9 +51,7 @@ def mask_token(token: str) -> str:
     return f"{prefix}{middle_mask}{suffix}"
 
 
-async def handle_gitlab(
-    payload: GitLabelCreate, encrypted_token: str
-) -> Dict[str, Any]:
+async def handle_gitlab(payload: GitLabelCreate, encrypted_token: str) -> JSONResponse:
     """Handle GitLab token validation and storage"""
     gitlab = GitLabManager(
         base_url="https://gitlab.com", access_token=payload.token_value
@@ -71,7 +70,6 @@ async def handle_gitlab(
             user_id=payload.user_id,
             git_hosting=payload.git_hosting,
             token_value=encrypted_token,
-            masked_token=mask_token(payload.token_value),
             username=user.get("username", ""),
         )
 
@@ -84,14 +82,12 @@ async def handle_gitlab(
         )
 
         return APIResponse.error(
-            message=constants.SERVICE_UNAVAILABLE,
+            message=app.exceptions.exception_constants.SERVICE_UNAVAILABLE,
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
         )
 
 
-async def handle_github(
-    payload: GitLabelCreate, encrypted_token: str
-) -> Dict[str, Any]:
+async def handle_github(payload: GitLabelCreate, encrypted_token: str) -> JSONResponse:
     """Handle GitHub token validation and storage"""
     github = GitHubManager(access_token=payload.token_value)
     user = github.get_user()
@@ -135,12 +131,12 @@ async def get_git_labels(
     git_hosting: Optional[str] = Query(
         None, description="Filter by git hosting service"
     ),
-) -> Dict[str, Any]:
+) -> JSONResponse:
     """
     Retrieves all stored git labels with masked token values for API response.
 
     Returns:
-            APIResponse with list of git labels containing metadata and masked token values.
+        APIResponse with list of git labels containing metadata and masked token values.
     """
     try:
         # Build query for user's git labels
@@ -188,7 +184,7 @@ async def get_git_labels(
         logger.exception("Failed to retrieve git labels")
 
         return APIResponse.error(
-            message=constants.SERVICE_UNAVAILABLE,
+            message=app.exceptions.exception_constants.SERVICE_UNAVAILABLE,
             status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
         )
 
@@ -204,7 +200,7 @@ async def get_git_label_by_label(
     label: str,
     authenticated_user: AuthenticatedUserDTO = CurrentUser,
     pagination: PaginationParams = Depends(),
-) -> Dict[str, Any]:
+) -> JSONResponse:
     """
     Retrieves git labels matching the specified label with masked token values.
 
@@ -212,7 +208,7 @@ async def get_git_label_by_label(
             label: The label identifying the git labels to retrieve.
 
     Returns:
-            APIResponse with list of matching git labels with masked token values.
+        APIResponse with list of matching git labels with masked token values.
     """
     try:
         git_labels = (
@@ -246,7 +242,7 @@ async def get_git_label_by_label(
             "Unexpected Failure while attempting to retrieve git labels on Path = '[GET] /api/v1/git_tokens/{label}'"
         )
         return APIResponse.error(
-            message=constants.SERVICE_UNAVAILABLE,
+            message=app.exceptions.exception_constants.SERVICE_UNAVAILABLE,
             status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
         )
 
@@ -262,13 +258,13 @@ async def add_git_token(
     request: Request,
     payload: GitLabelBase = Body(...),
     authenticated_user: AuthenticatedUserDTO = CurrentUser,
-) -> Dict[str, Any]:
+) -> JSONResponse | dict[str, Any]:
     """
     Add a new git token configuration with validation based on hosting service.
     """
     try:
         # Override user_id with authenticated user ID for security
-        # payload.user_id = authenticated_user.id
+        payload.user_id = authenticated_user.id
 
         token = payload.token_value.replace(" ", "")
         if not token:
@@ -276,27 +272,12 @@ async def add_git_token(
                 message=constants.TOKEN_MISSED,
                 status_code=status.HTTP_400_BAD_REQUEST,
             )
-        user = await User.filter(user_id=authenticated_user.id).first()
-        if not user:
-            return APIResponse.error(
-                message="User not found",
-                status_code=status.HTTP_404_NOT_FOUND,
-            )
-        encrypted_token = (
-            EncryptionHelper().encrypt_for_user(token, user.encryption_salt)
-            if token
-            else ""
-        )
-        new_payload: GitLabelCreate = GitLabelCreate(
-            label=payload.label,
-            user_id=authenticated_user.id,
-            git_hosting=payload.git_hosting,
-            token_value=payload.token_value,
-        )
-        if new_payload.git_hosting == GitHosting.GITLAB.value:
-            return await handle_gitlab(new_payload, encrypted_token)
-        elif new_payload.git_hosting == GitHosting.GITHUB.value:
-            return await handle_github(new_payload, encrypted_token)
+        encrypted_token = EncryptionHelper.encrypt(token) if token else ""
+
+        if payload.git_hosting == GitHosting.GITLAB.value:
+            return await handle_gitlab(payload, encrypted_token)
+        elif payload.git_hosting == GitHosting.GITHUB.value:
+            return await handle_github(payload, encrypted_token)
         else:
             return APIResponse.error(
                 message=constants.UNSUPPORTED_GIT_PROVIDER,
@@ -309,7 +290,7 @@ async def add_git_token(
         )
 
         return APIResponse.error(
-            message=constants.SERVICE_UNAVAILABLE,
+            message=app.exceptions.exception_constants.SERVICE_UNAVAILABLE,
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
         )
 
@@ -324,7 +305,7 @@ async def add_git_token(
 async def delete_git_label(
     git_label_id: str,
     authenticated_user: AuthenticatedUserDTO = CurrentUser,
-) -> Dict[str, Any]:
+) -> JSONResponse:
     """
     Deletes a git label with the specified ID.
 
@@ -332,7 +313,7 @@ async def delete_git_label(
             git_label_id: The unique identifier of the git label to delete.
 
     Returns:
-            A success response if the git label was deleted, or an error response if not found.
+        A success response if the git label was deleted, or an error response if not found.
     """
     try:
         git_label_uuid = uuid.UUID(git_label_id)  # Ensure it's a valid UUID
@@ -365,6 +346,6 @@ async def delete_git_label(
         )
 
         return APIResponse.error(
-            message=constants.SERVICE_UNAVAILABLE,
+            message=app.exceptions.exception_constants.SERVICE_UNAVAILABLE,
             status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
         )

@@ -3,6 +3,8 @@ import logging
 import base64
 import os
 from svix.webhooks import Webhook, WebhookVerificationError
+
+import app.exceptions.exception_constants
 from app.models.user import User
 from app.utils.api_response import APIResponse
 from app.schemas.user import WebhookUserData
@@ -54,7 +56,7 @@ async def webhook_handler(request: Request, response: Response):
         logger.error(f"Unexpected error processing webhook: {str(e)}")
         return APIResponse.error(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            message=constants.SERVICE_UNAVAILABLE,
+            message=app.exceptions.exception_constants.SERVICE_UNAVAILABLE,
         )
 
 
