@@ -97,6 +97,9 @@ dependencies = [
     "coverage==7.8.0",
 ]
 
+[tool.poetry.extras]
+dev = ["pytest", "coverage"]
+
 
 [tool.aerich]
 tortoise_orm = "app.config.TORTOISE_ORM"

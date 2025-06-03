@@ -85,7 +85,7 @@ async def database_tables_exist():
         logger.debug("Database check failed: %s", e)
         return False
     except Exception as e:
-        logger.error("Unexpected error during database check: %s", e)
+        logger.error("Unexpected error during database check: %s", str(e))
         return False
     finally:
         await Tortoise.close_connections()
@@ -94,8 +94,7 @@ async def database_tables_exist():
 async def needs_initialization():
     """
     Determine if we need to run init-db based on:
-    1. Migration files exist but database tables don't exist (deployment scenario)
-    2. No migration files exist (true first time)
+    Migration files exist but database tables don't exist (deployment scenario)
     """
 
     # Check if database tables exist
