@@ -13,6 +13,7 @@ ENV PYTHONDONTWRITEBYTECODE=1 \
 
 # Copy pyproject.toml first for better Docker layer caching
 COPY pyproject.toml .
+COPY app/ ./app
 
 # Install dependencies from pyproject.toml
 RUN pip install --no-cache-dir --upgrade pip \
@@ -20,7 +21,6 @@ RUN pip install --no-cache-dir --upgrade pip \
 
 
 # Copy application code
-COPY app/ ./app
 COPY entrypoint.sh ./entrypoint.sh
 
 # Create migrations directory (will be mounted as volume)
