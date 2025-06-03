@@ -61,23 +61,34 @@ def is_first_time():
 async def database_tables_exist():
     """Check if database tables already exist by attempting to connect and query."""
     try:
-        # Attempt to get the connection and check if any tables exist
+        # Initialize Tortoise connection first
+        await Tortoise.init(config=TORTOISE_ORM)
+
         connection = Tortoise.get_connection("default")
 
-        # Try to get table names - this will fail if no tables exist or DB is not initialized
+        # Query for existing tables (SQLite-specific, adjust for your database)
         tables = await connection.execute_query(
-            "SELECT name FROM aerich WHERE type='table';"
+            "SELECT name FROM sqlite_master WHERE type='table' AND name NOT LIKE 'sqlite_%';"
         )
 
-        # Filter out sqlite internal tables
+        # Filter out aerich internal tables
         user_tables = [
-            table[0] for table in tables if not table[0].startswith("aerich")
+            table["name"] if isinstance(table, dict) else table[0]
+            for table in tables
+            if not (table["name"] if isinstance(table, dict) else table[0]).startswith(
+                "aerich"
+            )
         ]
 
         return len(user_tables) > 0
-    except (OperationalError, AttributeError, Exception) as e:
-        logger.debug(f"Database check failed: {e}")
+    except (OperationalError, AttributeError) as e:
+        logger.debug("Database check failed: %s", e)
         return False
+    except Exception as e:
+        logger.error("Unexpected error during database check: %s", e)
+        return False
+    finally:
+        await Tortoise.close_connections()
 
 
 async def needs_initialization():
