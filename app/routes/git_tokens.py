@@ -10,6 +10,7 @@ from typing import Any, Dict, Optional
 
 from fastapi import APIRouter, Body, Depends, Query, Request, status
 
+import app.exceptions.exception_constants
 from app.config import GitHosting
 from app.models.git_label import GitLabel
 from app.schemas.basic import PaginationParams
@@ -82,7 +83,7 @@ async def handle_gitlab(
 			"Unexpected Failure while attempting to save GitLab token on Path = '[POST] /api/v1/git_tokens' -> handle_gitlab")
 		
 		return APIResponse.error(
-			message=constants.SERVICE_UNAVAILABLE,
+			message=app.exceptions.exception_constants.SERVICE_UNAVAILABLE,
 			status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
 		)
 
@@ -184,7 +185,7 @@ async def get_git_labels(
 		logger.exception("Failed to retrieve git labels")
 		
 		return APIResponse.error(
-			message=constants.SERVICE_UNAVAILABLE,
+			message=app.exceptions.exception_constants.SERVICE_UNAVAILABLE,
 			status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
 		)
 
@@ -241,7 +242,7 @@ async def get_git_label_by_label(
 		logger.exception(
 			"Unexpected Failure while attempting to retrieve git labels on Path = '[GET] /api/v1/git_tokens/{label}'")
 		return APIResponse.error(
-			message=constants.SERVICE_UNAVAILABLE,
+			message=app.exceptions.exception_constants.SERVICE_UNAVAILABLE,
 			status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
 		)
 
@@ -287,7 +288,7 @@ async def add_git_token(
 		logger.exception("Unexpected Failure while attempting to add git token on Path = '[POST] /api/v1/git_tokens'")
 		
 		return APIResponse.error(
-			message=constants.SERVICE_UNAVAILABLE,
+			message=app.exceptions.exception_constants.SERVICE_UNAVAILABLE,
 			status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
 		)
 
@@ -340,6 +341,6 @@ async def delete_git_label(
 			"Unexpected Failure while attempting to delete git label on Path = '[DELETE] /api/v1/git_tokens/{git_label_id}'")
 		
 		return APIResponse.error(
-			message=constants.SERVICE_UNAVAILABLE,
+			message=app.exceptions.exception_constants.SERVICE_UNAVAILABLE,
 			status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
 		)

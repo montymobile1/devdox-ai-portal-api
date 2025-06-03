@@ -6,16 +6,17 @@ from dataclasses import dataclass, fields
 from typing import Any, ClassVar, Dict
 
 from clerk_backend_api import authenticate_request, AuthenticateRequestOptions
-from fastapi import Depends, HTTPException, Request, status
+from fastapi import Depends, Request
 from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
 
 from app.config import settings
-from app.utils import constants
-from app.utils.constants import INVALID_BEARER_TOKEN_SCHEMA
+from app.exceptions.custom_exceptions import UnauthorizedAccess
+from app.exceptions.exception_constants import INVALID_BEARER_TOKEN_SCHEMA
 
 http_bearer_security_schema = HTTPBearer(auto_error=False)
 
 logger = logging.getLogger(__name__)
+
 
 @dataclass
 class AuthenticatedUserDTO:
@@ -80,11 +81,7 @@ def get_current_user(
 		HTTPException: If token is missing or invalid.
 	"""
 	if auth_header is None or auth_header.scheme.lower() != "bearer":
-		raise HTTPException(
-			status_code=status.HTTP_401_UNAUTHORIZED,
-			detail=INVALID_BEARER_TOKEN_SCHEMA,
-			headers={"WWW-Authenticate": "Bearer"},
-		)
+		raise UnauthorizedAccess(reason=INVALID_BEARER_TOKEN_SCHEMA)
 	
 	auth_result = authenticate_request(
 		request_from_context,
@@ -95,16 +92,9 @@ def get_current_user(
 		reason = auth_result.reason.name if auth_result.reason else "UNKNOWN"
 		message = auth_result.message or "Authentication failed for unknown reasons."
 		
-		logger.error(
-			f"[Clerk Auth Failure] Reason: {reason} | "
-			f"Message: {message} | "
-			f"Path: {request_from_context.url.path}",
-			exc_info=True
-		)
-		
-		raise HTTPException(
-			status_code=status.HTTP_401_UNAUTHORIZED,
-			detail=constants.AUTH_FAILED
+		raise UnauthorizedAccess(
+			log_message=f"Clerk failed to authenticate for | Reason: {reason} | Message: {message} | ",
+			log_level="error",
 		)
 	
 	payload = auth_result.payload
@@ -114,18 +104,10 @@ def get_current_user(
 	missing_payload_fields, user_dto = AuthenticatedUserDTO.from_clerk_payload(payload)
 	
 	if missing_payload_fields:
-		logger.error(
-			f"[Payload Validation From Clerk Failure] Reason: Missing required payload fields | "
-			f"Message: Fields from clerk Payload are missing: {missing_payload_fields} | "
-			f"Path: {request_from_context.url.path}",
-			exc_info=True
-		)
-		
-		raise HTTPException(
-			status_code=status.HTTP_401_UNAUTHORIZED,
-			detail=INVALID_BEARER_TOKEN_SCHEMA,
-			headers={"WWW-Authenticate": "Bearer"},
-		)
+		raise UnauthorizedAccess(reason=INVALID_BEARER_TOKEN_SCHEMA,
+		                         log_message=f"Fields from clerk Payload are missing: {missing_payload_fields}",
+		                         log_level="exception",
+		                         )
 	
 	return user_dto
 

@@ -10,9 +10,11 @@ from fastapi.security import HTTPAuthorizationCredentials
 from starlette.datastructures import Headers
 from starlette.requests import Request
 
+import app.exceptions.exception_constants
+from app.exceptions.custom_exceptions import UnauthorizedAccess
 from app.utils import constants
 from app.utils.auth import AuthenticatedUserDTO, get_current_user
-from app.utils.constants import INVALID_BEARER_TOKEN_SCHEMA
+from app.exceptions.exception_constants import INVALID_BEARER_TOKEN_SCHEMA
 
 base_clerk_payload_schema = {
 	"sub": "user_abc",
@@ -86,20 +88,20 @@ class TestGetCurrentUserNormal:
 
 class TestGetCurrentUserEdgeCases:
 	def test_missing_auth_header_raises_401(self):
-		with pytest.raises(HTTPException) as exc:
+		with pytest.raises(UnauthorizedAccess) as exc:
 			get_current_user(fake_request(), None)
-		assert exc.value.status_code == status.HTTP_401_UNAUTHORIZED
-		assert INVALID_BEARER_TOKEN_SCHEMA in str(exc.value.detail)
+		assert exc.value.http_status == status.HTTP_401_UNAUTHORIZED
+		assert INVALID_BEARER_TOKEN_SCHEMA in exc.value.user_message
 	
 	def test_invalid_scheme_raises_401(self):
 		bad_auth = make_auth_header(scheme="Basic")
-		with pytest.raises(HTTPException) as exc:
+		with pytest.raises(UnauthorizedAccess) as exc:
 			get_current_user(
 				fake_request(headers={"Authorization": f"{bad_auth.scheme} {bad_auth.credentials}"}),
 				bad_auth
 			)
-		assert exc.value.status_code == status.HTTP_401_UNAUTHORIZED
-		assert INVALID_BEARER_TOKEN_SCHEMA in str(exc.value.detail)
+		assert exc.value.http_status == status.HTTP_401_UNAUTHORIZED
+		assert INVALID_BEARER_TOKEN_SCHEMA in exc.value.user_message
 	
 	def test_clerk_signed_out_raises_auth_failed(self):
 		mock_result = MagicMock()
@@ -107,10 +109,10 @@ class TestGetCurrentUserEdgeCases:
 		mock_result.reason.name = AuthErrorReason.SESSION_TOKEN_MISSING.name
 		mock_result.message = "No token"
 		with patch("app.utils.auth.authenticate_request", return_value=mock_result):
-			with pytest.raises(HTTPException) as exc:
+			with pytest.raises(UnauthorizedAccess) as exc:
 				get_current_user(fake_request(), make_auth_header())
-			assert exc.value.status_code == status.HTTP_401_UNAUTHORIZED
-			assert exc.value.detail == constants.AUTH_FAILED
+			assert exc.value.http_status == status.HTTP_401_UNAUTHORIZED
+			assert app.exceptions.exception_constants.AUTH_FAILED in exc.value.user_message
 	
 	def test_payload_missing_required_fields_raises(self):
 		payload = {"sub": "user_abc", "email": "abc@example.com"}  # missing 'name'
@@ -118,10 +120,10 @@ class TestGetCurrentUserEdgeCases:
 		mock_result.is_signed_in = True
 		mock_result.payload = payload
 		with patch("app.utils.auth.authenticate_request", return_value=mock_result):
-			with pytest.raises(HTTPException) as exc:
+			with pytest.raises(UnauthorizedAccess) as exc:
 				get_current_user(fake_request(), make_auth_header("valid-token"))
-			assert exc.value.status_code == status.HTTP_401_UNAUTHORIZED
-			assert INVALID_BEARER_TOKEN_SCHEMA in str(exc.value.detail)
+			assert exc.value.http_status == status.HTTP_401_UNAUTHORIZED
+			assert INVALID_BEARER_TOKEN_SCHEMA in exc.value.user_message
 	
 	def test_sdk_error_is_raised(self):
 		with patch("app.utils.auth.authenticate_request", side_effect=models.SDKError(
@@ -158,7 +160,7 @@ class TestGetCurrentUserEdgeCases:
 		mock_result.message = None
 		
 		with patch("app.utils.auth.authenticate_request", return_value=mock_result):
-			with pytest.raises(HTTPException) as exc:
+			with pytest.raises(UnauthorizedAccess) as exc:
 				get_current_user(fake_request(), make_auth_header())
-			assert exc.value.status_code == 401
-			assert constants.AUTH_FAILED in str(exc.value.detail)
+			assert exc.value.http_status == 401
+			assert app.exceptions.exception_constants.AUTH_FAILED in exc.value.user_message
