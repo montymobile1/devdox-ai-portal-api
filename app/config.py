@@ -61,7 +61,7 @@ class Settings(BaseSettings):
     LAUNCHDARKLY_SDK_KEY: Optional[str] = None
 
     # Version
-    VERSION: str = "0.1.0"
+    VERSION: str = "0.1.1"
 
     class Config:
         """Pydantic config class."""
