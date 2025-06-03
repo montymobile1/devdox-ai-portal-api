@@ -12,7 +12,7 @@ router = APIRouter()
 logger = logging.getLogger(__name__)
 
 
-@router.post("/", status_code=status.HTTP_200_OK)
+@router.post("/", status_code=status.HTTP_200_OK, include_in_schema=False)
 async def webhook_handler(request: Request, response: Response):
     """
     Handle Clerk webhook events for user management.
