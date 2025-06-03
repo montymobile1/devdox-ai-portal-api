@@ -6,6 +6,8 @@ This module provides endpoints for retrieving and adding Repos with their inform
 
 from fastapi import APIRouter, status, HTTPException, Depends, Path, Query
 from typing import Callable, Tuple, List, Dict, Any, Optional
+
+from app.exceptions.exception_constants import SERVICE_UNAVAILABLE
 from app.schemas.basic import PaginationParams
 from app.schemas.repo import RepoResponse, RepoListResponse
 from app.models.repo import Repo
@@ -136,7 +138,7 @@ async def get_repos(
     except Exception as e:
         raise HTTPException(
             status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
-            detail=constants.SERVICE_UNAVAILABLE,
+            detail=SERVICE_UNAVAILABLE,
         ) from e
 
 
@@ -187,6 +189,6 @@ async def get_repos_from_git(
 
     except Exception:
         return APIResponse.error(
-            message=constants.SERVICE_UNAVAILABLE,
+            message=SERVICE_UNAVAILABLE,
             status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
         )

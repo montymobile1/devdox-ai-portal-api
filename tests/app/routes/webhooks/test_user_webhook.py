@@ -2,6 +2,8 @@ import pytest
 from unittest.mock import AsyncMock, patch, MagicMock
 from svix.webhooks import WebhookVerificationError
 from fastapi import status
+
+import app.exceptions.exception_constants
 from app.utils import constants
 
 
@@ -123,4 +125,4 @@ class TestWebhookEndpoint:
         )
 
         assert response.status_code == status.HTTP_500_INTERNAL_SERVER_ERROR
-        assert response.json()["message"] == constants.SERVICE_UNAVAILABLE
+        assert response.json()["message"] == app.exceptions.exception_constants.SERVICE_UNAVAILABLE

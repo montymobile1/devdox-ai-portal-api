@@ -5,6 +5,8 @@ FastAPI application entry point for DevDox AI Portal API.
 import uvicorn
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
+
+from app.exceptions.register import register_exception_handlers
 from app.logging_config import setup_logging
 from contextlib import asynccontextmanager
 from app.config import settings, TORTOISE_ORM
@@ -48,6 +50,8 @@ app.add_middleware(
 # Include API routes
 app.include_router(api_router, prefix="/api/v1")
 
+# Register all exception handlers from one place
+register_exception_handlers(app)
 
 @app.get("/", tags=["Health"])
 @app.get("/health_check", tags=["Health"])

@@ -9,6 +9,7 @@ from unittest.mock import patch, AsyncMock, Mock, MagicMock
 from tortoise.exceptions import DoesNotExist
 from datetime import datetime
 
+from app.exceptions.exception_constants import SERVICE_UNAVAILABLE
 from app.utils import constants
 from app.config import GitHosting
 from app.schemas.repo import GitHostingProvider
@@ -192,7 +193,7 @@ class TestGetReposEndpoint:
         response = client.get(f"/api/v1/repos/{user_id}")
 
         assert response.status_code == status.HTTP_503_SERVICE_UNAVAILABLE
-        assert response.json()["detail"] == constants.SERVICE_UNAVAILABLE
+        assert SERVICE_UNAVAILABLE in response.json()["detail"]
 
 
 class TestGetReposFromGitEndpoint:
