@@ -50,17 +50,6 @@ def mask_token(token: str) -> str:
 	return f"{prefix}{middle_mask}{suffix}"
 
 
-async def get_current_user_id() -> str:
-	"""
-	Dependency to get current user ID.
-	In a real application, this would extract user ID from JWT token or session.
-	For now, this is a placeholder that you should implement based on your auth system.
-	"""
-	# Will be changed
-	# This could be from JWT token, session, or other auth mechanism
-	return "user_2sw6NOnSajM1kpsLPA1ZnxCW3uZ"
-
-
 async def handle_gitlab(
 		payload: GitLabelCreate, encrypted_token: str
 ) -> Dict[str, Any]:
@@ -83,7 +72,6 @@ async def handle_gitlab(
 			git_hosting=payload.git_hosting,
 			token_value=encrypted_token,
 			username=user.get("username", ""),
-			masked_token=mask_token(payload.token_value),
 		)
 		
 		return APIResponse.success(
@@ -119,7 +107,6 @@ async def handle_github(
 			git_hosting=payload.git_hosting,
 			token_value=encrypted_token,
 			username=user.get("login", ""),
-			masked_token=mask_token(payload.token_value),
 		)
 		
 		return APIResponse.success(
@@ -177,11 +164,7 @@ async def get_git_labels(
 					"id": str(gl.id),
 					"label": gl.label,
 					"git_hosting": gl.git_hosting,
-					"masked_token": mask_token(
-						EncryptionHelper.decrypt(gl.token_value)
-						if gl.token_value
-						else ""
-					),
+					"masked_token": gl.masked_token,
 					"username": gl.username,
 					"created_at": gl.created_at.isoformat(),
 					"updated_at": gl.updated_at.isoformat(),
@@ -317,7 +300,7 @@ async def add_git_token(
 	description="Delete a git label configuration by ID",
 )
 async def delete_git_label(
-		git_label_id: str, current_user_id: str = Depends(get_current_user_id)
+		git_label_id: str, authenticated_user: AuthenticatedUserDTO = CurrentUser,
 ) -> Dict[str, Any]:
 	"""
 	Deletes a git label with the specified ID.
@@ -332,7 +315,7 @@ async def delete_git_label(
 		git_label_uuid = uuid.UUID(git_label_id)  # Ensure it's a valid UUID
 		
 		git_label = await GitLabel.filter(
-			id=git_label_uuid, user_id=current_user_id
+			id=git_label_uuid, user_id=authenticated_user.id
 		).first()
 		if git_label:
 			await git_label.delete()
@@ -343,12 +326,19 @@ async def delete_git_label(
 			)
 		
 		return APIResponse.success(message=constants.TOKEN_DELETED_SUCCESSFULLY)
-	except ValueError as e:
+	except ValueError:
+		logger.exception(
+			"Unexpected Failure while attempting to delete git label on Path = '[DELETE] /api/v1/git_tokens/{git_label_id}'")
+		
 		return APIResponse.error(
 			message="Invalid UUID format", status_code=status.HTTP_400_BAD_REQUEST
 		)
 	
 	except Exception:
+		
+		logger.exception(
+			"Unexpected Failure while attempting to delete git label on Path = '[DELETE] /api/v1/git_tokens/{git_label_id}'")
+		
 		return APIResponse.error(
 			message=constants.SERVICE_UNAVAILABLE,
 			status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
