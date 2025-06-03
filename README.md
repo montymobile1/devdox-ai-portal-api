@@ -382,11 +382,24 @@ Ensure your `.env` includes:
 ```env
 CLERK_API_KEY=sk_test_...
 CLERK_JWT_PUBLIC_KEY=pk_test_...
+CLERK_USER_ID=user_...
+CLERK_WEBHOOK_SECRET=whsec_...
 ```
 
 ---
+## Step 4 :  Generates secure JWT tokens
 
-## Step 4: Token Validation Logic
+The generate_clerk_token function in generate_token.py creates a new Clerk session for a specified user and generates a secure JWT token that can be used for authentication in your application.
+
+**What it does:**
+
+* Creates a new session in Clerk for the specified user using clerk.sessions.create()
+* Generates a signed JWT token using clerk.sessions.create_token()
+* Supports optional custom expiration times
+* Includes comprehensive error handling and logging
+* Validates that a JWT is actually returned before proceeding
+
+## Step 5: Token Validation Logic
 
 The FastAPI backend validates Clerk JWT tokens using the `clerk_backend_api` SDK. Tokens are extracted from either the `Authorization: Bearer <token>` header or the `__session` cookie.
 
@@ -431,7 +444,7 @@ This configuration ensures that Clerk injects those values into the token payloa
 
 ---
 
-## Step 5: Testing Clerk Auth (Mocked)
+## Step 6: Testing Clerk Auth (Mocked)
 
 During testing, Clerk is **fully mocked** using `pytest` fixtures. This enables:
 
@@ -449,7 +462,7 @@ See `tests/utils/test_auth.py` for examples of:
 
 ---
 
-## Step 6: Usage in Routes
+## Step 7: Usage in Routes
 
 ```python
 @router.get("/secure", response_model=...)
