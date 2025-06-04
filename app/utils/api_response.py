@@ -1,15 +1,13 @@
 from typing import Any, Dict, Optional
 
-from fastapi.responses import JSONResponse
-
-from app.config import settings
+from starlette.responses import JSONResponse
 
 
 class APIResponse:
     """Utility class for standardized API responses."""
 
     @staticmethod
-    def success(message: str, data: Optional[Dict[str, Any]] = None) -> Dict[str, Any]:
+    def success(message: str, data: Optional[Dict[str, Any]] = None) -> JSONResponse:
         """Generate a success response."""
         response = {"success": True, "message": message, "status_code": 200}
         if data is not None:
@@ -22,27 +20,29 @@ class APIResponse:
         message: str,
         details: Optional[Dict[str, Any]] = None,
         status_code: int = 400,
-        debug: Any = None,
-    ) -> Dict[str, Any]:
+        debug: Optional[Any] = None,
+        error_type: Optional[str] = None,
+    ) -> JSONResponse:
         """Generate an error response."""
         response = {
             "success": False,
             "message": message,
             "status_code": status_code,
-            "error_code": status_code,
+            "error_type": error_type,
         }
+        
+        if debug is not None:
+            response["debug"] = debug
+        
         if details is not None:
             response["details"] = details
-
-        if settings.API_ENV in ["development", "test"]:
-            response["debug"] = debug
 
         return JSONResponse(content=response, status_code=status_code)
 
     @staticmethod
     def validation_error(
         message: str, details: Optional[list] = None
-    ) -> Dict[str, Any]:
+    ) -> JSONResponse:
         """Generate a validation error response."""
         response = {"success": False, "message": message, "status_code": 422}
         if details is not None:
