@@ -12,7 +12,7 @@ Key responsibilities:
 To create a new custom exception:
 1. Subclass `DevDoxAPIException`
 2. Optionally override `http_status`
-3. Pass `user_message`, `log_message`, `error_code`, etc.
+3. Pass `user_message`, `log_message`, `error_type`, etc.
 
 Example:
     class RepoConflictError(DevDoxAPIException):
@@ -21,7 +21,7 @@ Example:
             super().__init__(
                 user_message="Repository conflict detected.",
                 log_message=f"Conflict when syncing repo ID: {repo_id}",
-                error_code="REPO_CONFLICT",
+                error_type="REPO_CONFLICT",
                 internal_context={"repo_id": repo_id},
             )
 
@@ -53,7 +53,7 @@ class DevDoxAPIException(Exception):
                     super().__init__(
                         user_message="Repository sync failed. Please try again later.",
                         log_message=f"Sync failed for repo `{repo_id}` on provider `{provider}`",
-                        error_code="REPO_SYNC_FAILED",
+                        error_type="REPO_SYNC_FAILED",
                         public_context=None,
                         internal_context={"repo_id": repo_id, "provider": provider},
                         root_exception=cause,
