@@ -1,3 +1,11 @@
+"""
+Unit tests for the global exception handling system in the DevDox AI Portal API.
+
+This module tests the exception handlers defined in app/exceptions/handlers.py,
+covering various scenarios including generic exceptions, custom DevDoxAPIException
+instances with different log levels, and UnauthorizedAccess handling.
+"""
+
 import logging
 
 import pytest
@@ -15,6 +23,7 @@ from app.exceptions.handlers import (
 # ----------------------------
 # Fixtures and helpers
 # ----------------------------
+
 
 @pytest.fixture(scope="session")
 def exception_test_app() -> FastAPI:
@@ -36,7 +45,9 @@ def exception_test_app() -> FastAPI:
 
     @app.get("/boom/custom-error")
     def _custom_error():
-        raise DevDoxAPIException(user_message="err-msg", log_message="internal-err", log_level="error")
+        raise DevDoxAPIException(
+            user_message="err-msg", log_message="internal-err", log_level="error"
+        )
 
     @app.get("/boom/custom-exception")
     def _custom_exception():
@@ -68,17 +79,37 @@ def fastapi_permissive_client(exception_test_app: FastAPI):
 
 
 def _log_levels(record_tuples):
+    """
+    Extracts the unique logging level names from captured log records.
+
+    Args:
+        record_tuples (List[Tuple[str, int, str]]): Log records from caplog.record_tuples.
+
+    Returns:
+        Set[str]: Set of log level names (e.g., {'WARNING', 'ERROR'}).
+    """
     return {logging.getLevelName(levelno) for _, levelno, _ in record_tuples}
 
 
 def assert_log_message_contains(caplog, fragment):
-    assert any(fragment in msg for _, _, msg in caplog.record_tuples), (
-        f"Expected '{fragment}' in log messages:\n\n{caplog.text}"
-    )
+    """
+    Asserts that at least one log message captured by caplog contains the given fragment.
+
+    Args:
+        caplog: Pytest's caplog fixture.
+        fragment (str): The expected substring to look for in the log messages.
+
+    Raises:
+        AssertionError: If no log message contains the expected fragment.
+    """
+    assert any(
+        fragment in msg for _, _, msg in caplog.record_tuples
+    ), f"Expected '{fragment}' in log messages:\n\n{caplog.text}"
 
 # ----------------------------
 # Test
 # ----------------------------
+
 
 class TestGenericExceptionHandler:
     """
@@ -183,4 +214,10 @@ class TestUnauthorizedAccessHandler:
     def test_default_auth_message_included(self, fastapi_permissive_client):
         """Checks that the default AUTH_FAILED message is used."""
         resp = fastapi_permissive_client.get("/boom/unauth")
-        assert resp.json()["message"]
+        body = resp.json()
+        assert body["message"]  # Ensure message exists
+        # Verify it contains expected auth failure content
+        assert (
+            "unauthorized" in body["message"].lower()
+            or "access" in body["message"].lower()
+        )
