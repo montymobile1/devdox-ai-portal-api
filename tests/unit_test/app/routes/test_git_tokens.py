@@ -4,6 +4,7 @@ from urllib.parse import quote
 import pytest
 from fastapi import status
 
+from app.exceptions.exception_constants import SERVICE_UNAVAILABLE
 from app.routes.git_tokens import mask_token
 from app.utils import constants
 
@@ -566,7 +567,7 @@ class TestAddGitTokenEndpoint:
         response = client.post(TestAddGitTokenEndpoint.get_url(), json=payload)
 
         assert response.status_code == 500
-        assert response.json()["message"] == constants.SERVICE_UNAVAILABLE
+        assert response.json()["message"] == SERVICE_UNAVAILABLE
 
 
 class TestDeleteGitLabelEndpoint:

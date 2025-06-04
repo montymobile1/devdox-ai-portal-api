@@ -2,10 +2,10 @@
 Configuration settings for the DevDox AI Portal API.
 """
 
-import os
-from pydantic_settings import BaseSettings
 from enum import Enum
-from typing import List, Optional, Dict, Any
+from typing import Any, Dict, List, Literal, Optional
+
+from pydantic_settings import BaseSettings
 
 
 class GitHosting(str, Enum):
@@ -17,7 +17,9 @@ class Settings(BaseSettings):
     """Application settings."""
 
     # API configuration
-    API_ENV: str = "development"
+    API_ENV: Literal["development", "staging", "production", "test", "local"] = (
+        "development"
+    )
     API_DEBUG: bool = True
     SECRET_KEY: str = (
         "f2hCPmuCDiBpAmuZD00ZX4fEXFb-H0WoReklDhJD3bA="  # Only for local/testing
