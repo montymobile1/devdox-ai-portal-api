@@ -11,6 +11,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from app.config import settings, TORTOISE_ORM
 from app.exceptions.register import register_exception_handlers
 from app.logging_config import setup_logging
+from app.middlewares.trace_id_middleware import TraceIDMiddleware
 from app.routes import router as api_router
 
 logger = setup_logging()
@@ -47,6 +48,9 @@ app.add_middleware(
     allow_methods=["*"],
     allow_headers=["*"],
 )
+
+app.add_middleware(TraceIDMiddleware)
+
 
 # Include API routes
 app.include_router(api_router, prefix="/api/v1")
