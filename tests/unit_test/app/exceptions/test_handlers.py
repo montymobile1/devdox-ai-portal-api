@@ -53,7 +53,7 @@ def exception_test_app() -> FastAPI:
     def _custom_exception():
         raise DevDoxAPIException(
             user_message="teapot",
-            error_code="E418",
+            error_type="E418",
             log_message="I am a teapot",
             log_level="exception",
             internal_context={"brew": "coffee"},
