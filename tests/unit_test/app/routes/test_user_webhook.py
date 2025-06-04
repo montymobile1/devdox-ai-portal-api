@@ -59,9 +59,7 @@ class TestWebhookEndpoint:
         )
 
         assert response.status_code == status.HTTP_200_OK
-        assert (
-            response.json()["message"] == constants.USER_CREATED_SUCCESS
-        )
+        assert response.json()["message"] == constants.USER_CREATED_SUCCESS
         mock_create.assert_called_once()  # Verify user creation was attempted
         mock_filter.assert_called_once_with(user_id="user_123")  # Verify user lookup
 
@@ -126,4 +124,7 @@ class TestWebhookEndpoint:
         )
 
         assert response.status_code == status.HTTP_500_INTERNAL_SERVER_ERROR
-        assert response.json()["message"] == app.exceptions.exception_constants.SERVICE_UNAVAILABLE
+        assert (
+            response.json()["message"]
+            == app.exceptions.exception_constants.SERVICE_UNAVAILABLE
+        )

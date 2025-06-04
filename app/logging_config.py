@@ -6,9 +6,9 @@ from app.middlewares.log_trace_context import RequestContextLogFilter
 
 def setup_logging():
     """
-	Configures logging for the entire application.
-	Logs messages to console and to a rotating log file.
-	"""
+    Configures logging for the entire application.
+    Logs messages to console and to a rotating log file.
+    """
     # Create a custom logger
     logger = logging.getLogger()
     logger.setLevel(logging.DEBUG)
@@ -37,13 +37,15 @@ def setup_logging():
     logger.addHandler(console_handler)
 
     # File handler with rotating log (max 5MB per file, keeping 3 backup files)
-    file_handler = RotatingFileHandler('app.log', maxBytes=5 * 1024 * 1024, backupCount=3)
+    file_handler = RotatingFileHandler(
+        "app.log", maxBytes=5 * 1024 * 1024, backupCount=3
+    )
     file_handler.setFormatter(formatter)
     file_handler.addFilter(log_filter)
     logger.addHandler(file_handler)
 
     # Optionally, create more handlers (e.g., for error logs, different log levels, etc.)
-    error_handler = logging.FileHandler('error.log')
+    error_handler = logging.FileHandler("error.log")
     error_handler.setLevel(logging.ERROR)
     error_handler.setFormatter(formatter)
     file_handler.addFilter(log_filter)

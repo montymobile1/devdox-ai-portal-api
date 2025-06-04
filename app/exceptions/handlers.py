@@ -66,7 +66,7 @@ def generic_exception_handler(request: Request, exc: Exception) -> JSONResponse:
         message=app.exceptions.exception_constants.SERVICE_UNAVAILABLE,
         status_code=status_code,
         debug=debug_payload,
-        error_type=exc_type
+        error_type=exc_type,
     )
 
 
@@ -86,8 +86,7 @@ def devdox_base_exception_handler(
     path = request.url.path
     method = getattr(request, "method", None) or request.scope.get("method") or "HTTP"
     exc_error_type = exc.error_type
-    
-    
+
     log_parts = [
         f"[{exc_error_type}] {exc.log_message}",
         f"Path: {path}",
