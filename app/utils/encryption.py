@@ -70,7 +70,7 @@ class EncryptionHelper:
 
         Args:
             plaintext: Data to encrypt
-            user_id: User's ID
+            salt_b64:  Base64-encoded salt for key derivation
 
         Returns:
             Encrypted string
