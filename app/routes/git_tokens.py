@@ -52,9 +52,7 @@ def mask_token(token: str) -> str:
     return f"{prefix}{middle_mask}{suffix}"
 
 
-async def handle_gitlab(
-    payload: GitLabelCreate, encrypted_token: str
-) -> JSONResponse:
+async def handle_gitlab(payload: GitLabelCreate, encrypted_token: str) -> JSONResponse:
     """Handle GitLab token validation and storage"""
     gitlab = GitLabManager(
         base_url="https://gitlab.com", access_token=payload.token_value
@@ -91,9 +89,7 @@ async def handle_gitlab(
         )
 
 
-async def handle_github(
-    payload: GitLabelCreate, encrypted_token: str
-) -> JSONResponse:
+async def handle_github(payload: GitLabelCreate, encrypted_token: str) -> JSONResponse:
     """Handle GitHub token validation and storage"""
     github = GitHubManager(access_token=payload.token_value)
     user = github.get_user()
