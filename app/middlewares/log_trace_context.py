@@ -37,9 +37,26 @@ TRACE_HEADER_NAME = "X-Trace-Id"
 # This allows the trace ID to be injected automatically into log records
 # during the lifecycle of a single request.
 trace_id_var: ContextVar[str] = ContextVar("trace_id", default="-")
+user_id_var: ContextVar[str] = ContextVar("user_id", default="-")
 
 
-class TraceIDLogFilter(logging.Filter):
+def get_trace_id() -> str:
+    return trace_id_var.get()
+
+
+def get_user_id() -> str:
+    return user_id_var.get()
+
+
+def set_trace_id(value: str) -> None:
+    trace_id_var.set(value)
+
+
+def set_user_id(value: str) -> None:
+    user_id_var.set(value)
+
+
+class RequestContextLogFilter(logging.Filter):
     """
     Logging filter that injects the current request's trace ID into each log record.
 
@@ -54,8 +71,9 @@ class TraceIDLogFilter(logging.Filter):
         True (to allow log record propagation)
     """
 
-    def filter(self, record: logging.LogRecord) -> bool:
-        record.trace_id = trace_id_var.get()
+    def filter(self, record):
+        record.trace_id = get_trace_id()
+        record.user_id = get_user_id()
         return True
 
 
@@ -104,7 +122,7 @@ class TraceIDMiddleware(BaseHTTPMiddleware):
         request.state.trace_id = trace_id
 
         # 3. Store in ContextVar for global log access during the request
-        trace_id_var.set(trace_id)
+        set_trace_id(trace_id)
 
         # 4. Continue the request lifecycle and add trace ID to response
         response = await call_next(request)

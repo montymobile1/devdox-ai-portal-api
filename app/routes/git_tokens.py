@@ -51,7 +51,7 @@ def mask_token(token: str) -> str:
     return f"{prefix}{middle_mask}{suffix}"
 
 
-async def handle_gitlab(payload: GitLabelCreate, encrypted_token: str) -> JSONResponse:
+async def handle_gitlab(payload: GitLabelCreate, encrypted_token: str) -> dict[str, Any]:
     """Handle GitLab token validation and storage"""
     gitlab = GitLabManager(
         base_url="https://gitlab.com", access_token=payload.token_value
@@ -87,7 +87,7 @@ async def handle_gitlab(payload: GitLabelCreate, encrypted_token: str) -> JSONRe
         )
 
 
-async def handle_github(payload: GitLabelCreate, encrypted_token: str) -> JSONResponse:
+async def handle_github(payload: GitLabelCreate, encrypted_token: str) -> dict[str, Any]:
     """Handle GitHub token validation and storage"""
     github = GitHubManager(access_token=payload.token_value)
     user = github.get_user()
@@ -131,7 +131,7 @@ async def get_git_labels(
     git_hosting: Optional[str] = Query(
         None, description="Filter by git hosting service"
     ),
-) -> JSONResponse:
+) -> dict[str, Any]:
     """
     Retrieves all stored git labels with masked token values for API response.
 
@@ -200,7 +200,7 @@ async def get_git_label_by_label(
     label: str,
     authenticated_user: AuthenticatedUserDTO = CurrentUser,
     pagination: PaginationParams = Depends(),
-) -> JSONResponse:
+) -> dict[str, Any]:
     """
     Retrieves git labels matching the specified label with masked token values.
 
@@ -305,7 +305,7 @@ async def add_git_token(
 async def delete_git_label(
     git_label_id: str,
     authenticated_user: AuthenticatedUserDTO = CurrentUser,
-) -> JSONResponse:
+) -> dict[str, Any]:
     """
     Deletes a git label with the specified ID.
 
