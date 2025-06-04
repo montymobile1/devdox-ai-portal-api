@@ -549,6 +549,25 @@ class TestAddGitTokenEndpoint:
             assert data["success"] is False
             assert constants.GITLAB_AUTH_FAILED in data["message"]
 
+    async def test_add_git_token_exception(
+        self, client, mock_user_model, mock_encryption_helper, mock_authenticated_user
+    ):
+        # Simulate exception inside encrypt_for_user
+        mock_encryption_helper.side_effect = Exception("Simulated failure")
+
+        payload = {
+            "label": "My Git Token",
+            "git_hosting": "github",
+            "token_value": "some-token",
+        }
+
+        # Use a mock authenticated user header or dependency override
+        headers = {"Authorization": "Bearer dummy_token"}  # Adjust to your auth method
+        response = client.post(TestAddGitTokenEndpoint.get_url(), json=payload)
+
+        assert response.status_code == 500
+        assert response.json()["message"] == constants.SERVICE_UNAVAILABLE
+
 
 class TestDeleteGitLabelEndpoint:
     """Test cases for DELETE /api/v1/git_tokens/{git_label_id} endpoint."""
