@@ -278,7 +278,7 @@ async def add_git_token(
             )
         user = await User.filter(user_id=authenticated_user.id).first()
         encrypted_token = (
-            await EncryptionHelper.encrypt_for_user(token, user.encryption_salt)
+            EncryptionHelper().encrypt_for_user(token, user.encryption_salt)
             if token
             else ""
         )

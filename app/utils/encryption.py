@@ -64,7 +64,7 @@ class EncryptionHelper:
         return cipher.decrypt(encrypted_text.encode()).decode()
 
     @classmethod
-    async def encrypt_for_user(cls, plaintext: str, salt_b64: str) -> str:
+    def encrypt_for_user(cls, plaintext: str, salt_b64: str) -> str:
         """
         Encrypts data for a specific user using their stored salt.
 
