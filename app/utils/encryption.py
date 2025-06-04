@@ -85,7 +85,7 @@ class EncryptionHelper:
         return cipher.encrypt(plaintext.encode()).decode()
 
     @classmethod
-    async def decrypt_for_user(cls, encrypted_text: str, user_id: int) -> str:
+    def decrypt_for_user(cls, encrypted_text: str, salt_b64: str) -> str:
         """
         Decrypts data for a specific user using their stored salt.
 
@@ -96,15 +96,9 @@ class EncryptionHelper:
         Returns:
             Decrypted string
         """
-        from app.models import User
-
-        user = await User.get(id=user_id)
-
-        if not user.encryption_salt:
-            raise ValueError(f"No encryption salt found for user {user_id}")
 
         # Get salt and derive key
-        salt_bytes = base64.urlsafe_b64decode(user.encryption_salt.encode())
+        salt_bytes = base64.urlsafe_b64decode(salt_b64.encode())
         key = cls.derive_key(salt_bytes)
         cipher = Fernet(key)
 
