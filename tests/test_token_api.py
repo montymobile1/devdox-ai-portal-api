@@ -452,7 +452,6 @@ class TestEndpointSecurity:
                 }
 
                 response = client.post("/api/v1/git_tokens/", json=payload)
-                print("response json ", response.json())
                 encryption_instance = mock_encryption_helper.return_value
                 encryption_instance.encrypt_for_user.assert_called_once_with(
                     "ghp_1234567890abcdef", SAMPLE_SALT
@@ -543,9 +542,13 @@ class TestInputValidation:
                 response = client.post("/api/v1/git_tokens/", json=payload)
 
                 # Verify that the token was trimmed before encryption
-                mock_encryption_helper.encrypt.assert_called_with(
-                    "ghp_1234567890abcdef"
+
+                encryption_instance = mock_encryption_helper.return_value
+                encryption_instance.encrypt_for_user.assert_called_once_with(
+                    "ghp_1234567890abcdef", SAMPLE_SALT
                 )
+                call_args = mock_git_label.create.call_args
+                assert "token_value" in call_args.kwargs
 
     def test_slashes_characters_in_label_path(self, client):
         """Test handling of slashes characters in label path parameter"""
@@ -580,18 +583,17 @@ class TestInputValidation:
 class TestEdgeCases:
     """Test edge cases and boundary conditions"""
 
-    def test_very_long_label(self, client, mock_encryption_helper):
+    def test_very_long_label(self, client, mock_encryption_helper, mock_user_model):
         """Test handling of very long labels"""
         long_label = "a" * 1000  # Very long label
         payload = {
             "label": long_label,
             "git_hosting": "github",
             "token_value": "ghp_1234567890abcdef",
-            "user_id": 1,
         }
 
         response = client.post("/api/v1/git_tokens/", json=payload)
-
+        print("response json ", response.json())
         # Should either succeed or return appropriate validation error
         assert response.status_code in [
             status.HTTP_201_CREATED,

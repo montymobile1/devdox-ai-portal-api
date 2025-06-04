@@ -7,7 +7,12 @@ import uuid
 class GitLabelBase(BaseModel):
     """Base schema for GitLabel"""
 
-    label: str = Field(..., description="Label/name for this git configuration")
+    label: str = Field(
+        ..., description="Label/name for this git configuration", max_length=100
+    )
+    # username: str = Field(
+    #     ..., description="Username for the git hosting service", max_length=100
+    # )
     git_hosting: str = Field(
         ..., description="Git hosting service (e.g., 'github', 'gitlab')"
     )
