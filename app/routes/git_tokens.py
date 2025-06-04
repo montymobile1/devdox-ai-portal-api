@@ -277,6 +277,11 @@ async def add_git_token(
                 status_code=status.HTTP_400_BAD_REQUEST,
             )
         user = await User.filter(user_id=authenticated_user.id).first()
+        if not user:
+            return APIResponse.error(
+                message="User not found",
+                status_code=status.HTTP_404_NOT_FOUND,
+            )
         encrypted_token = (
             EncryptionHelper().encrypt_for_user(token, user.encryption_salt)
             if token
