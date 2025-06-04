@@ -106,6 +106,7 @@ def assert_log_message_contains(caplog, fragment):
         fragment in msg for _, _, msg in caplog.record_tuples
     ), f"Expected '{fragment}' in log messages:\n\n{caplog.text}"
 
+
 # ----------------------------
 # Test
 # ----------------------------

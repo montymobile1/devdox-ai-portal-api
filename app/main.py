@@ -58,6 +58,7 @@ app.include_router(api_router, prefix="/api/v1")
 # Register all exception handlers from one place
 register_exception_handlers(app)
 
+
 @app.get("/", tags=["Health"])
 @app.get("/health_check", tags=["Health"])
 async def health_check():

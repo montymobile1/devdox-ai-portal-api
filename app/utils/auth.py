@@ -1,6 +1,7 @@
 """
 Clerk authentication utility for the DevDox AI Portal API.
 """
+
 import logging
 from dataclasses import dataclass, fields
 from typing import Any, ClassVar, Dict
@@ -112,7 +113,7 @@ async def get_current_user(
             log_message=f"Fields from clerk Payload are missing: {missing_payload_fields}",
             log_level="exception",
         )
-    
+
     user_id_var.set(user_dto.id)
 
     return user_dto

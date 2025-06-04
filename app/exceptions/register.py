@@ -20,16 +20,19 @@ Example usage in your main application file:
 from fastapi import FastAPI
 
 from app.exceptions.custom_exceptions import DevDoxAPIException
-from app.exceptions.handlers import devdox_base_exception_handler, generic_exception_handler
+from app.exceptions.handlers import (
+    devdox_base_exception_handler,
+    generic_exception_handler,
+)
 
 
 def register_exception_handlers(app: FastAPI):
-	"""
-	Register all exception handlers with the FastAPI application.
-	
-	Args:
-	    app: The FastAPI application instance to register handlers with.
-	"""
-	
-	app.add_exception_handler(Exception, generic_exception_handler)
-	app.add_exception_handler(DevDoxAPIException, devdox_base_exception_handler)
+    """
+    Register all exception handlers with the FastAPI application.
+
+    Args:
+        app: The FastAPI application instance to register handlers with.
+    """
+
+    app.add_exception_handler(Exception, generic_exception_handler)
+    app.add_exception_handler(DevDoxAPIException, devdox_base_exception_handler)

@@ -17,7 +17,9 @@ class Settings(BaseSettings):
     """Application settings."""
 
     # API configuration
-    API_ENV: Literal["development", "staging", "production", "test", "local"] = "development"
+    API_ENV: Literal["development", "staging", "production", "test", "local"] = (
+        "development"
+    )
     API_DEBUG: bool = True
     SECRET_KEY: str = (
         "f2hCPmuCDiBpAmuZD00ZX4fEXFb-H0WoReklDhJD3bA="  # Only for local/testing

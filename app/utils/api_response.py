@@ -30,19 +30,17 @@ class APIResponse:
             "status_code": status_code,
             "error_type": error_type,
         }
-        
+
         if debug is not None:
             response["debug"] = debug
-        
+
         if details is not None:
             response["details"] = details
 
         return JSONResponse(content=response, status_code=status_code)
 
     @staticmethod
-    def validation_error(
-        message: str, details: Optional[list] = None
-    ) -> JSONResponse:
+    def validation_error(message: str, details: Optional[list] = None) -> JSONResponse:
         """Generate a validation error response."""
         response = {"success": False, "message": message, "status_code": 422}
         if details is not None:
