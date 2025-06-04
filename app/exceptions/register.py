@@ -17,7 +17,7 @@ Example usage in your main application file:
     register_exception_handlers(app)
 """
 
-from fastapi import FastAPI, HTTPException
+from fastapi import FastAPI
 
 from app.exceptions.custom_exceptions import DevDoxAPIException
 from app.exceptions.handlers import devdox_base_exception_handler, generic_exception_handler
