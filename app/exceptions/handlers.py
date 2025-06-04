@@ -33,53 +33,53 @@ generic_exception_handler_status_code = status.HTTP_503_SERVICE_UNAVAILABLE
 
 
 def generic_exception_handler(request: Request, exc: Exception) -> dict[str, Any]:
-	path = request.url.path
-	method = getattr(request, "method", None) or request.scope.get("method") or "HTTP"
-	exc_type = type(exc).__name__
-	status_code = generic_exception_handler_status_code
-	
-	logger.exception(
-		f"[UNHANDLED_EXCEPTION] {exc_type} occurred | Path: {path} | Method: {method} | Status: {status_code}"
-	)
-	
-	return APIResponse.error(
-		message=app.exceptions.exception_constants.SERVICE_UNAVAILABLE,
-		status_code=status_code,
-		debug={"exception": exc_type, "str": str(exc)}
-	)
+    path = request.url.path
+    method = getattr(request, "method", None) or request.scope.get("method") or "HTTP"
+    exc_type = type(exc).__name__
+    status_code = generic_exception_handler_status_code
+
+    logger.exception(
+        f"[UNHANDLED_EXCEPTION] {exc_type} occurred | Path: {path} | Method: {method} | Status: {status_code}"
+    )
+
+    return APIResponse.error(
+        message=app.exceptions.exception_constants.SERVICE_UNAVAILABLE,
+        status_code=status_code,
+        debug={"exception": exc_type, "str": str(exc)},
+    )
 
 
 def devdox_base_exception_handler(request: Request, exc: DevDoxAPIException):
-	path = request.url.path
-	method = getattr(request, "method", None) or request.scope.get("method") or "HTTP"
-	
-	log_parts = [
-		f"[{exc.error_code}] {exc.log_message}",
-		f"Path: {path}",
-		f"Method: {method}",
-		f"Status: {exc.http_status}",
-	]
-	
-	dictionary_response = {
-		"message": exc.user_message,
-		"status_code": exc.http_status,
-		"debug":{"exception": type(exc).__name__, "str": str(exc)}
-	}
-	
-	# Only include internal context if it exists
-	if exc.internal_context:
-		log_parts.append(f"Context: {exc.internal_context}")
-		dictionary_response["details"] = exc.public_context
-	
-	# Combine all parts into the final message
-	log_message = " | ".join(log_parts)
-	
-	# Log with traceback if root_exception is present
-	if exc.log_level == "error":
-		logger.error(log_message, exc_info=exc.root_exception or exc)
-	elif exc.log_level == "exception":
-		logger.exception(log_message, exc_info=exc.root_exception or exc)
-	else:
-		logger.warning(log_message)
-	
-	return APIResponse.error(**dictionary_response)
+    path = request.url.path
+    method = getattr(request, "method", None) or request.scope.get("method") or "HTTP"
+
+    log_parts = [
+        f"[{exc.error_code}] {exc.log_message}",
+        f"Path: {path}",
+        f"Method: {method}",
+        f"Status: {exc.http_status}",
+    ]
+
+    dictionary_response = {
+        "message": exc.user_message,
+        "status_code": exc.http_status,
+        "debug": {"exception": type(exc).__name__, "str": str(exc)},
+    }
+
+    # Only include internal context if it exists
+    if exc.internal_context:
+        log_parts.append(f"Context: {exc.internal_context}")
+        dictionary_response["details"] = exc.public_context
+
+    # Combine all parts into the final message
+    log_message = " | ".join(log_parts)
+
+    # Log with traceback if root_exception is present
+    if exc.log_level == "error":
+        logger.error(log_message, exc_info=exc.root_exception or exc)
+    elif exc.log_level == "exception":
+        logger.exception(log_message, exc_info=exc.root_exception or exc)
+    else:
+        logger.warning(log_message)
+
+    return APIResponse.error(**dictionary_response)

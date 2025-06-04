@@ -37,75 +37,75 @@ from app.exceptions.exception_constants import AUTH_FAILED
 
 
 class DevDoxAPIException(Exception):
-	"""
-	Base exception class for DevDox AI Portal API.
+    """
+    Base exception class for DevDox AI Portal API.
 
-	This exception is designed to cleanly separate:
-	- What is returned to the **user**
-	- What is logged for **developers**
-	
-	example custom exception:
-	```python
-		class RepositorySyncFailed(DevDoxAPIException):
-		    http_status = 502
-		
-		    def __init__(self, repo_id: str, provider: str, cause: Exception):
-		        super().__init__(
-		            user_message="Repository sync failed. Please try again later.",
-		            log_message=f"Sync failed for repo `{repo_id}` on provider `{provider}`",
-		            error_code="REPO_SYNC_FAILED",
-		            public_context=None,
-		            internal_context={"repo_id": repo_id, "provider": provider},
-		            root_exception=cause,
-		        )
-	```
-	"""
-	
-	http_status: int = 400  # Subclasses may override this default
-	
-	def __init__(
-			self,
-			*,
-			user_message: str,
-			log_message: Optional[str] = None,
-			error_code: Optional[str] = None,
-			public_context: Optional[Dict[str, Any]] = None,
-			internal_context: Optional[Dict[str, Any]] = None,
-			root_exception: Optional[Exception] = None,
-			http_status_override: Optional[int] = None,
-			log_level: Optional[str] = None,
-	):
-		"""
-		Args:
-			user_message: Safe, generic message returned to the user.
-			public_context: Optional context to return in the API response (e.g., {"quota": "exceeded"}).
-			
-			log_message: Detailed internal message for logs/debugging.
-			internal_context: Optional context to include in logs only (e.g., {"repo_id": 123}).
-			
-			error_code: Optional machine-readable code.
-			root_exception: Original exception (for traceback chaining).
-			http_status_override: Override the default HTTP status for this exception.
-		"""
-		super().__init__(user_message)
-		
-		self.user_message = user_message
-		self.log_message = log_message or user_message
-		self.error_code = error_code or self.__class__.__name__.upper()
-		self.public_context = public_context or {}
-		self.internal_context = internal_context or {}
-		self.root_exception = root_exception
-		self.http_status = http_status_override or self.http_status
-		self.log_level = log_level.lower() if log_level else "warning"
-	
-	def __str__(self):
-		return f"[{self.error_code}] {self.user_message}"
+    This exception is designed to cleanly separate:
+    - What is returned to the **user**
+    - What is logged for **developers**
+
+    example custom exception:
+    ```python
+            class RepositorySyncFailed(DevDoxAPIException):
+                http_status = 502
+
+                def __init__(self, repo_id: str, provider: str, cause: Exception):
+                    super().__init__(
+                        user_message="Repository sync failed. Please try again later.",
+                        log_message=f"Sync failed for repo `{repo_id}` on provider `{provider}`",
+                        error_code="REPO_SYNC_FAILED",
+                        public_context=None,
+                        internal_context={"repo_id": repo_id, "provider": provider},
+                        root_exception=cause,
+                    )
+    ```
+    """
+
+    http_status: int = 400  # Subclasses may override this default
+
+    def __init__(
+        self,
+        *,
+        user_message: str,
+        log_message: Optional[str] = None,
+        error_code: Optional[str] = None,
+        public_context: Optional[Dict[str, Any]] = None,
+        internal_context: Optional[Dict[str, Any]] = None,
+        root_exception: Optional[Exception] = None,
+        http_status_override: Optional[int] = None,
+        log_level: Optional[str] = None,
+    ):
+        """
+        Args:
+                user_message: Safe, generic message returned to the user.
+                public_context: Optional context to return in the API response (e.g., {"quota": "exceeded"}).
+
+                log_message: Detailed internal message for logs/debugging.
+                internal_context: Optional context to include in logs only (e.g., {"repo_id": 123}).
+
+                error_code: Optional machine-readable code.
+                root_exception: Original exception (for traceback chaining).
+                http_status_override: Override the default HTTP status for this exception.
+        """
+        super().__init__(user_message)
+
+        self.user_message = user_message
+        self.log_message = log_message or user_message
+        self.error_code = error_code or self.__class__.__name__.upper()
+        self.public_context = public_context or {}
+        self.internal_context = internal_context or {}
+        self.root_exception = root_exception
+        self.http_status = http_status_override or self.http_status
+        self.log_level = log_level.lower() if log_level else "warning"
+
+    def __str__(self):
+        return f"[{self.error_code}] {self.user_message}"
 
 
 class UnauthorizedAccess(DevDoxAPIException):
-	http_status = status.HTTP_401_UNAUTHORIZED
-	
-	def __init__(self, reason=AUTH_FAILED, log_message=None, log_level=None):
-		super().__init__(
-			user_message=reason, log_message=log_message, log_level=log_level
-		)
+    http_status = status.HTTP_401_UNAUTHORIZED
+
+    def __init__(self, reason=AUTH_FAILED, log_message=None, log_level=None):
+        super().__init__(
+            user_message=reason, log_message=log_message, log_level=log_level
+        )

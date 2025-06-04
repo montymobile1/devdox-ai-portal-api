@@ -2,10 +2,10 @@
 Configuration settings for the DevDox AI Portal API.
 """
 
-import os
-from pydantic_settings import BaseSettings
 from enum import Enum
-from typing import List, Literal, Optional, Dict, Any
+from typing import Any, Dict, List, Literal, Optional
+
+from pydantic_settings import BaseSettings
 
 
 class GitHosting(str, Enum):

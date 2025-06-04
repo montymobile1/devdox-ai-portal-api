@@ -5,16 +5,15 @@ from unittest.mock import MagicMock, patch
 import pytest
 from clerk_backend_api import models
 from clerk_backend_api.jwks_helpers import AuthErrorReason
-from fastapi import HTTPException, status
+from fastapi import status
 from fastapi.security import HTTPAuthorizationCredentials
 from starlette.datastructures import Headers
 from starlette.requests import Request
 
 import app.exceptions.exception_constants
 from app.exceptions.custom_exceptions import UnauthorizedAccess
-from app.utils import constants
-from app.utils.auth import AuthenticatedUserDTO, get_current_user
 from app.exceptions.exception_constants import INVALID_BEARER_TOKEN_SCHEMA
+from app.utils.auth import AuthenticatedUserDTO, get_current_user
 
 base_clerk_payload_schema = {
 	"sub": "user_abc",
