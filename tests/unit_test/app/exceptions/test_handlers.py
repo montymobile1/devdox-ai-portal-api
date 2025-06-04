@@ -1,4 +1,5 @@
 import logging
+
 import pytest
 from fastapi import FastAPI
 from starlette.testclient import TestClient
@@ -9,6 +10,7 @@ from app.exceptions.handlers import (
     generic_exception_handler,
     generic_exception_handler_status_code,
 )
+
 
 # ----------------------------
 # Fixtures and helpers

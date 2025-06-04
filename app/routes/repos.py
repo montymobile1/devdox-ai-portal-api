@@ -4,20 +4,21 @@ Repository routes for the DevDox AI Portal API
 This module provides endpoints for retrieving and adding Repos with their information.
 """
 
-from fastapi import APIRouter, status, HTTPException, Depends, Path, Query
-from typing import Callable, Tuple, List, Dict, Any, Optional
+from typing import Any, Callable, Dict, List, Optional, Tuple
 
-from app.exceptions.exception_constants import SERVICE_UNAVAILABLE
-from app.schemas.basic import PaginationParams
-from app.schemas.repo import RepoResponse, RepoListResponse
-from app.models.repo import Repo
-from app.models.git_label import GitLabel
-from app.utils.encryption import EncryptionHelper
-from app.utils.api_response import APIResponse
-from app.utils.gitlab_manager import GitLabManager
-from app.utils.github_manager import GitHubManager
-from app.utils import constants
+from fastapi import APIRouter, Depends, HTTPException, Path, status
+
 from app.config import GitHosting
+from app.exceptions.exception_constants import SERVICE_UNAVAILABLE
+from app.models.git_label import GitLabel
+from app.models.repo import Repo
+from app.schemas.basic import PaginationParams
+from app.schemas.repo import RepoListResponse, RepoResponse
+from app.utils import constants
+from app.utils.api_response import APIResponse
+from app.utils.encryption import EncryptionHelper
+from app.utils.github_manager import GitHubManager
+from app.utils.gitlab_manager import GitLabManager
 
 # Create router
 router = APIRouter()

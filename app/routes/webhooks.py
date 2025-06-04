@@ -1,15 +1,16 @@
-from fastapi import APIRouter, status, Request, Response
-import logging
 import base64
+import logging
 import os
+
+from fastapi import APIRouter, Request, Response, status
 from svix.webhooks import Webhook, WebhookVerificationError
 
 import app.exceptions.exception_constants
+from app.config import settings
 from app.models.user import User
-from app.utils.api_response import APIResponse
 from app.schemas.user import WebhookUserData
 from app.utils import constants
-from app.config import settings
+from app.utils.api_response import APIResponse
 
 router = APIRouter()
 

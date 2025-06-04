@@ -1,7 +1,8 @@
+from unittest.mock import AsyncMock, MagicMock, patch
+
 import pytest
-from unittest.mock import AsyncMock, patch, MagicMock
-from svix.webhooks import WebhookVerificationError
 from fastapi import status
+from svix.webhooks import WebhookVerificationError
 
 import app.exceptions.exception_constants
 from app.utils import constants
