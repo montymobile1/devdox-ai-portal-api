@@ -48,7 +48,7 @@ def setup_logging():
     error_handler = logging.FileHandler("error.log")
     error_handler.setLevel(logging.ERROR)
     error_handler.setFormatter(formatter)
-    file_handler.addFilter(log_filter)
+    error_handler.addFilter(log_filter)
     logger.addHandler(error_handler)
 
     return logger
