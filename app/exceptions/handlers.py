@@ -33,13 +33,25 @@ generic_exception_handler_status_code = status.HTTP_503_SERVICE_UNAVAILABLE
 
 
 def generic_exception_handler(request: Request, exc: Exception) -> dict[str, Any]:
+    """
+    Handle all uncaught exceptions with standardized error response.
+    
+    Args:
+        request: The incoming request that triggered the exception
+        exc: The uncaught exception
+    
+    Returns:
+        Standardized error response dictionary
+    """
+    
     path = request.url.path
     method = getattr(request, "method", None) or request.scope.get("method") or "HTTP"
     exc_type = type(exc).__name__
     status_code = generic_exception_handler_status_code
 
     logger.exception(
-        f"[UNHANDLED_EXCEPTION] {exc_type} occurred | Path: {path} | Method: {method} | Status: {status_code}"
+        "[UNHANDLED_EXCEPTION] %s occurred | Path: %s | Method: %s | Status: %s",
+        exc_type, path, method, status_code
     )
 
     return APIResponse.error(
@@ -50,6 +62,16 @@ def generic_exception_handler(request: Request, exc: Exception) -> dict[str, Any
 
 
 def devdox_base_exception_handler(request: Request, exc: DevDoxAPIException):
+    """
+    Handle DevDoxAPIException with structured logging and response.
+
+    Args:
+        request: The incoming request that triggered the exception
+        exc: The DevDoxAPIException instance
+
+    Returns:
+        Standardized error response dictionary with optional debug info
+    """
     path = request.url.path
     method = getattr(request, "method", None) or request.scope.get("method") or "HTTP"
 
