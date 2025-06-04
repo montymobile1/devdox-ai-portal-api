@@ -68,7 +68,7 @@ class DevDoxAPIException(Exception):
         *,
         user_message: str,
         log_message: Optional[str] = None,
-        error_code: Optional[str] = None,
+        error_type: Optional[str] = None,
         public_context: Optional[Dict[str, Any]] = None,
         internal_context: Optional[Dict[str, Any]] = None,
         root_exception: Optional[Exception] = None,
@@ -83,7 +83,7 @@ class DevDoxAPIException(Exception):
                 log_message: Detailed internal message for logs/debugging.
                 internal_context: Optional context to include in logs only (e.g., {"repo_id": 123}).
 
-                error_code: Optional machine-readable code.
+                error_type: Optional machine-readable code.
                 root_exception: Original exception (for traceback chaining).
                 http_status_override: Override the default HTTP status for this exception.
         """
@@ -91,7 +91,7 @@ class DevDoxAPIException(Exception):
 
         self.user_message = user_message
         self.log_message = log_message or user_message
-        self.error_code = error_code or self.__class__.__name__.upper()
+        self.error_type = error_type or self.__class__.__name__.upper()
         self.public_context = public_context or {}
         self.internal_context = internal_context or {}
         self.root_exception = root_exception
@@ -99,7 +99,7 @@ class DevDoxAPIException(Exception):
         self.log_level = log_level.lower() if log_level else "warning"
 
     def __str__(self):
-        return f"[{self.error_code}] {self.user_message}"
+        return f"[{self.error_type}] {self.user_message}"
 
 
 class UnauthorizedAccess(DevDoxAPIException):

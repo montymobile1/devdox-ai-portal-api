@@ -18,12 +18,13 @@ This ensures a clean separation of concerns:
 """
 
 import logging
-from typing import Any
 
 from starlette import status
 from starlette.requests import Request
+from starlette.responses import JSONResponse
 
 import app.exceptions.exception_constants
+from app.config import settings
 from app.exceptions.custom_exceptions import DevDoxAPIException
 from app.utils.api_response import APIResponse
 
@@ -32,18 +33,18 @@ logger = logging.getLogger(__name__)
 generic_exception_handler_status_code = status.HTTP_503_SERVICE_UNAVAILABLE
 
 
-def generic_exception_handler(request: Request, exc: Exception) -> dict[str, Any]:
+def generic_exception_handler(request: Request, exc: Exception) -> JSONResponse:
     """
     Handle all uncaught exceptions with standardized error response.
-    
+
     Args:
         request: The incoming request that triggered the exception
         exc: The uncaught exception
-    
+
     Returns:
         Standardized error response dictionary
     """
-    
+
     path = request.url.path
     method = getattr(request, "method", None) or request.scope.get("method") or "HTTP"
     exc_type = type(exc).__name__
@@ -51,17 +52,27 @@ def generic_exception_handler(request: Request, exc: Exception) -> dict[str, Any
 
     logger.exception(
         "[UNHANDLED_EXCEPTION] %s occurred | Path: %s | Method: %s | Status: %s",
-        exc_type, path, method, status_code
+        exc_type,
+        path,
+        method,
+        status_code,
     )
+
+    debug_payload = None
+    if settings.API_ENV in ["development", "test"]:
+        debug_payload = {"exception": type(exc).__name__, "str": str(exc)}
 
     return APIResponse.error(
         message=app.exceptions.exception_constants.SERVICE_UNAVAILABLE,
         status_code=status_code,
-        debug={"exception": exc_type, "str": str(exc)},
+        debug=debug_payload,
+        error_type=exc_type
     )
 
 
-def devdox_base_exception_handler(request: Request, exc: DevDoxAPIException):
+def devdox_base_exception_handler(
+    request: Request, exc: DevDoxAPIException
+) -> JSONResponse:
     """
     Handle DevDoxAPIException with structured logging and response.
 
@@ -74,24 +85,18 @@ def devdox_base_exception_handler(request: Request, exc: DevDoxAPIException):
     """
     path = request.url.path
     method = getattr(request, "method", None) or request.scope.get("method") or "HTTP"
-
+    exc_error_type = exc.error_type
+    
+    
     log_parts = [
-        f"[{exc.error_code}] {exc.log_message}",
+        f"[{exc_error_type}] {exc.log_message}",
         f"Path: {path}",
         f"Method: {method}",
-        f"Status: {exc.http_status}",
+        f"Http Status: {exc.http_status}",
     ]
 
-    dictionary_response = {
-        "message": exc.user_message,
-        "status_code": exc.http_status,
-        "debug": {"exception": type(exc).__name__, "str": str(exc)},
-    }
-
-    # Only include internal context if it exists
     if exc.internal_context:
         log_parts.append(f"Context: {exc.internal_context}")
-        dictionary_response["details"] = exc.public_context
 
     # Combine all parts into the final message
     log_message = " | ".join(log_parts)
@@ -104,4 +109,14 @@ def devdox_base_exception_handler(request: Request, exc: DevDoxAPIException):
     else:
         logger.warning(log_message)
 
-    return APIResponse.error(**dictionary_response)
+    debug_payload = None
+    if settings.API_ENV in ["development", "test"]:
+        debug_payload = {"exception": type(exc).__name__, "str": str(exc)}
+
+    return APIResponse.error(
+        message=exc.user_message,
+        status_code=exc.http_status,
+        details=exc.public_context,
+        debug=debug_payload,
+        error_type=exc_error_type,
+    )
