@@ -26,80 +26,80 @@ router = APIRouter()
 
 
 def build_repo_dict(repo_info: Dict[str, Any], platform: str) -> Dict[str, Any]:
-	"""Builds a unified repository dictionary for GitHub or GitLab."""
-	common_fields = {
-		"id": str(repo_info.get("id")),
-		"repo_name": repo_info.get("name"),
-		"description": repo_info.get("description"),
-		"default_branch": repo_info.get("default_branch", "main"),
-		"forks_count": repo_info.get("forks_count", 0),
-		"stargazers_count": repo_info.get("stargazers_count")
-		                    or repo_info.get("star_count", 0),
-	}
-	
-	if platform == GitHosting.GITLAB:
-		common_fields.update(
-			{
-				"visibility": repo_info.get("visibility"),
-				"html_url": repo_info.get("http_url_to_repo"),
-				"private": None,  # GitLab uses visibility instead
-			}
-		)
-	elif platform == GitHosting.GITHUB:
-		common_fields.update(
-			{
-				"private": repo_info.get("private"),
-				"html_url": repo_info.get("html_url"),
-				"visibility": None,  # GitHub uses private flag instead
-			}
-		)
-	
-	return common_fields
+    """Builds a unified repository dictionary for GitHub or GitLab."""
+    common_fields = {
+        "id": str(repo_info.get("id")),
+        "repo_name": repo_info.get("name"),
+        "description": repo_info.get("description"),
+        "default_branch": repo_info.get("default_branch", "main"),
+        "forks_count": repo_info.get("forks_count", 0),
+        "stargazers_count": repo_info.get("stargazers_count")
+        or repo_info.get("star_count", 0),
+    }
+
+    if platform == GitHosting.GITLAB:
+        common_fields.update(
+            {
+                "visibility": repo_info.get("visibility"),
+                "html_url": repo_info.get("http_url_to_repo"),
+                "private": None,  # GitLab uses visibility instead
+            }
+        )
+    elif platform == GitHosting.GITHUB:
+        common_fields.update(
+            {
+                "private": repo_info.get("private"),
+                "html_url": repo_info.get("html_url"),
+                "visibility": None,  # GitHub uses private flag instead
+            }
+        )
+
+    return common_fields
 
 
 def fetch_gitlab_repos(
-		access_token: str, pagination: PaginationParams
+    access_token: str, pagination: PaginationParams
 ) -> Tuple[List[Dict[str, Any]], int]:
-	"""Fetch repositories from GitLab."""
-	gitlab = GitLabManager(base_url="https://gitlab.com", access_token=access_token)
-	raw_repos = gitlab.get_repos(page=pagination.offset + 1, per_page=pagination.limit)
-	
-	return [
-		build_repo_dict(repo, GitHosting.GITLAB)
-		for repo in raw_repos.get("repositories", [])
-	], raw_repos.get("pagination_info", {}).get(
-		"total_count", len(raw_repos.get("repositories", []))
-	)
+    """Fetch repositories from GitLab."""
+    gitlab = GitLabManager(base_url="https://gitlab.com", access_token=access_token)
+    raw_repos = gitlab.get_repos(page=pagination.offset + 1, per_page=pagination.limit)
+
+    return [
+        build_repo_dict(repo, GitHosting.GITLAB)
+        for repo in raw_repos.get("repositories", [])
+    ], raw_repos.get("pagination_info", {}).get(
+        "total_count", len(raw_repos.get("repositories", []))
+    )
 
 
 def fetch_github_repos(
-		access_token: str, pagination: PaginationParams
+    access_token: str, pagination: PaginationParams
 ) -> Tuple[List[Dict[str, Any]], int]:
-	"""Fetch repositories from GitHub."""
-	github = GitHubManager(access_token=access_token)
-	result = github.get_user_repositories(
-		page=pagination.offset + 1, per_page=pagination.limit
-	)
-	
-	repos = [
-		build_repo_dict(repo, GitHosting.GITHUB)
-		for repo in result.get("repositories", [])
-	]
-	total_count = result.get("pagination_info", {}).get("total_count", 0)
-	
-	return repos, total_count
+    """Fetch repositories from GitHub."""
+    github = GitHubManager(access_token=access_token)
+    result = github.get_user_repositories(
+        page=pagination.offset + 1, per_page=pagination.limit
+    )
+
+    repos = [
+        build_repo_dict(repo, GitHosting.GITHUB)
+        for repo in result.get("repositories", [])
+    ]
+    total_count = result.get("pagination_info", {}).get("total_count", 0)
+
+    return repos, total_count
 
 
 def get_git_repo_fetcher(
-		hosting: str,
+    hosting: str,
 ) -> Optional[Callable[[str, PaginationParams], Tuple[List[Dict[str, Any]], int]]]:
-	"""Maps git_hosting to the appropriate repo fetcher function."""
-	provider_map = {
-		GitHosting.GITLAB: fetch_gitlab_repos,
-		GitHosting.GITHUB: fetch_github_repos,
-	}
-	
-	return provider_map.get(hosting)
+    """Maps git_hosting to the appropriate repo fetcher function."""
+    provider_map = {
+        GitHosting.GITLAB: fetch_gitlab_repos,
+        GitHosting.GITHUB: fetch_github_repos,
+    }
+
+    return provider_map.get(hosting)
 
 
 @router.get(
@@ -110,7 +110,7 @@ def get_git_repo_fetcher(
     description="Retrieve a paginated list of repositories for a user",
 )
 async def get_repos(
-        authenticated_user: AuthenticatedUserDTO = CurrentUser,
+    authenticated_user: AuthenticatedUserDTO = CurrentUser,
     pagination: PaginationParams = Depends(),
 ) -> dict[str, Any] | RepoListResponse:
     """
@@ -135,18 +135,17 @@ async def get_repos(
     return RepoListResponse(total_count=total_count, repos=repo_responses)
 
 
-
 @router.get(
-	"/git_repos/{user_id}/{token_id}",
-	response_model=Dict[str, Any],
-	status_code=status.HTTP_200_OK,
-	summary="Get all repos from provider",
-	description="Retrieve a paginated list of repositories based on provider sent for a user",
+    "/git_repos/{user_id}/{token_id}",
+    response_model=Dict[str, Any],
+    status_code=status.HTTP_200_OK,
+    summary="Get all repos from provider",
+    description="Retrieve a paginated list of repositories based on provider sent for a user",
 )
 async def get_repos_from_git(
-		token_id: str = Path(..., description="Git token ID"),
-		user_id: str = Path(..., description="User ID"),
-		pagination: PaginationParams = Depends(),
+    token_id: str = Path(..., description="Git token ID"),
+    user_id: str = Path(..., description="User ID"),
+    pagination: PaginationParams = Depends(),
 ) -> Dict[str, Any]:
     """
     Retrieves paginated repositories from any Git provider using a strategy map.
