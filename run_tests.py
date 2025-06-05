@@ -11,15 +11,15 @@ cov = coverage.Coverage(
         "*/__pycache__/*",
         "*/tests/*",
         "*/migrations/*",
-    ]
+    ],
 )
 cov.start()
 
 # Run pytest
 pytest_args = [
-    "tests",               # test directory
-    "-v",                  # verbose
-    "--tb=short",          # shorter traceback
+    "tests",  # test directory
+    "-v",  # verbose
+    "--tb=short",  # shorter traceback
 ]
 exit_code = pytest.main(pytest_args)
 

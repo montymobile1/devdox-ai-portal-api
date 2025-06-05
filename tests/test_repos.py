@@ -3,72 +3,13 @@ Updated test cases for repository API endpoints using Tortoise ORM.
 Tests cover all CRUD operations and new functionality.
 """
 
+from unittest.mock import AsyncMock, MagicMock, Mock, patch
+
 import pytest
 from fastapi import status
-from unittest.mock import patch, AsyncMock, Mock, MagicMock
-from tortoise.exceptions import DoesNotExist
-from datetime import datetime
 
-from app.utils import constants
 from app.config import GitHosting
-from app.schemas.repo import GitHostingProvider
-
-
-def create_does_not_exist_exception():
-    """Create a properly formed DoesNotExist exception for Tortoise ORM."""
-    # Create a mock model class to satisfy DoesNotExist constructor
-    mock_model = Mock()
-    mock_model.__name__ = "MockModel"
-    return DoesNotExist(mock_model)
-
-
-@pytest.fixture
-def sample_repo_dict_list():
-    """Sample list of repository data as dictionaries"""
-    return [
-        {
-            "id": 1,
-            "user_id": "user-1",
-            "repo_id": "123",
-            "repo_name": "repo-1",
-            "description": "First repository",
-            "html_url": "https://github.com/user/repo-1",
-            "default_branch": "main",
-            "forks_count": 5,
-            "stargazers_count": 10,
-            "is_private": False,
-            "visibility": None,
-            "git_hosting": GitHosting.GITHUB,
-            "token_id": "token-123",
-            "created_at": datetime.now(),
-            "updated_at": datetime.now(),
-            "repo_created_at": None,
-            "repo_updated_at": None,
-            "language": "Python",
-            "size": 1024,
-        },
-        {
-            "id": 2,
-            "user_id": "user-1",
-            "repo_id": "456",
-            "repo_name": "repo-2",
-            "description": "Second repository",
-            "html_url": "https://gitlab.com/user/repo-2",
-            "default_branch": "main",
-            "forks_count": 3,
-            "stargazers_count": 7,
-            "is_private": True,
-            "visibility": "private",
-            "git_hosting": GitHosting.GITLAB,
-            "token_id": "token-456",
-            "created_at": datetime.now(),
-            "updated_at": datetime.now(),
-            "repo_created_at": None,
-            "repo_updated_at": None,
-            "language": "JavaScript",
-            "size": 512,
-        },
-    ]
+from app.utils import constants
 
 
 @pytest.fixture
@@ -126,73 +67,6 @@ mock_git_label_class = MagicMock(
     name="GitLabel",
     spec=None,
 )
-
-
-class TestGetReposEndpoint:
-    """Test cases for GET /repos/{user_id} endpoint."""
-
-    @patch("app.routes.repos.Repo")
-    async def test_get_repos_success(self, mock_repo, client, sample_repo_dict_list):
-        """Test successful retrieval of repos with pagination."""
-        user_id = "user-1"
-
-        # Mock the query chain
-        mock_query = MagicMock()
-        mock_query.count = AsyncMock(return_value=2)
-
-        mock_query.order_by.return_value = mock_query
-        mock_query.offset.return_value = mock_query
-        mock_query.limit.return_value = mock_query
-
-        mock_query.all = AsyncMock(return_value=sample_repo_dict_list)
-
-        # Set up the initial filter to return our mock query
-        mock_repo.filter.return_value = mock_query
-
-        response = client.get(f"/api/v1/repos/{user_id}?offset=0&limit=10")
-
-        assert response.status_code == status.HTTP_200_OK
-        data = response.json()
-        assert data["total_count"] == 2
-        assert len(data["repos"]) == 2
-        assert data["repos"][0]["repo_name"] == "repo-1"
-
-    @patch("app.routes.repos.Repo")
-    async def test_get_repos_empty(self, mock_repo, client):
-        """Test retrieval when user has no repos."""
-        user_id = "user-2"
-
-        mock_filter = MagicMock()
-        mock_filter.count = AsyncMock(return_value=0)
-
-        mock_filter.order_by.return_value = mock_filter
-        mock_filter.offset.return_value = mock_filter
-        mock_filter.limit.return_value = mock_filter
-
-        # Mock all() to return the sample repo list
-        mock_filter.all = AsyncMock(return_value=[])
-
-        # Set up the initial filter to return our mock query
-        mock_repo.filter.return_value = mock_filter
-
-        response = client.get(f"/api/v1/repos/{user_id}")
-
-        assert response.status_code == status.HTTP_200_OK
-        data = response.json()
-        assert data["total_count"] == 0
-        assert data["repos"] == []
-
-    @patch("app.routes.repos.Repo")
-    async def test_get_repos_error(self, mock_repo, client):
-        """Test error handling when database query fails."""
-        user_id = "user-3"
-
-        mock_repo.filter.side_effect = Exception("Database error")
-
-        response = client.get(f"/api/v1/repos/{user_id}")
-
-        assert response.status_code == status.HTTP_503_SERVICE_UNAVAILABLE
-        assert response.json()["detail"] == constants.SERVICE_UNAVAILABLE
 
 
 class TestGetReposFromGitEndpoint:

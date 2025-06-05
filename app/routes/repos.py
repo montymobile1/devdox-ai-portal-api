@@ -4,18 +4,22 @@ Repository routes for the DevDox AI Portal API
 This module provides endpoints for retrieving and adding Repos with their information.
 """
 
-from fastapi import APIRouter, status, HTTPException, Depends, Path, Query
-from typing import Callable, Tuple, List, Dict, Any, Optional
-from app.schemas.basic import PaginationParams
-from app.schemas.repo import RepoResponse, RepoListResponse
-from app.models.repo import Repo
-from app.models.git_label import GitLabel
-from app.utils.encryption import EncryptionHelper
-from app.utils.api_response import APIResponse
-from app.utils.gitlab_manager import GitLabManager
-from app.utils.github_manager import GitHubManager
-from app.utils import constants
+from typing import Any, Callable, Dict, List, Optional, Tuple
+
+from fastapi import APIRouter, Depends, Path, status
+
+import app.exceptions.exception_constants
 from app.config import GitHosting
+from app.models.git_label import GitLabel
+from app.models.repo import Repo
+from app.schemas.basic import PaginationParams
+from app.schemas.repo import RepoListResponse, RepoResponse
+from app.utils import constants, CurrentUser
+from app.utils.api_response import APIResponse
+from app.utils.auth import AuthenticatedUserDTO
+from app.utils.encryption import EncryptionHelper
+from app.utils.github_manager import GitHubManager
+from app.utils.gitlab_manager import GitLabManager
 
 # Create router
 router = APIRouter()
@@ -99,45 +103,36 @@ def get_git_repo_fetcher(
 
 
 @router.get(
-    "/{user_id}",
+    "/",
     response_model=RepoListResponse,
     status_code=status.HTTP_200_OK,
     summary="Get all repos",
     description="Retrieve a paginated list of repositories for a user",
 )
 async def get_repos(
-    user_id: str = Path(
-        ..., description="The ID of the user to retrieve repositories for"
-    ),
+    authenticated_user: AuthenticatedUserDTO = CurrentUser,
     pagination: PaginationParams = Depends(),
-) -> RepoListResponse:
+) -> dict[str, Any] | RepoListResponse:
     """
     Retrieves all repos based on user_id for API response.
 
     Returns:
         A paginated list of repositories with total count.
     """
-    try:
-        query = Repo.filter(user_id=user_id)
+    query = Repo.filter(user_id=authenticated_user.id)
 
-        total_count = await query.count()
-        repos = (
-            await query.order_by("-created_at")
-            .offset(pagination.offset)
-            .limit(pagination.limit)
-            .all()
-        )
+    total_count = await query.count()
+    repos = (
+        await query.order_by("-created_at")
+        .offset(pagination.offset)
+        .limit(pagination.limit)
+        .all()
+    )
 
-        # Convert to response format
-        repo_responses = [RepoResponse.model_validate(repo) for repo in repos]
+    # Convert to response format
+    repo_responses = [RepoResponse.model_validate(repo) for repo in repos]
 
-        return RepoListResponse(total_count=total_count, repos=repo_responses)
-
-    except Exception as e:
-        raise HTTPException(
-            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
-            detail=constants.SERVICE_UNAVAILABLE,
-        ) from e
+    return RepoListResponse(total_count=total_count, repos=repo_responses)
 
 
 @router.get(
@@ -187,6 +182,6 @@ async def get_repos_from_git(
 
     except Exception:
         return APIResponse.error(
-            message=constants.SERVICE_UNAVAILABLE,
+            message=app.exceptions.exception_constants.SERVICE_UNAVAILABLE,
             status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
         )
