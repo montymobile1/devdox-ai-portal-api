@@ -12,6 +12,7 @@ from typing import Any, Dict, Optional
 from fastapi import APIRouter, Body, Depends, Query, Request, status
 from starlette.responses import JSONResponse
 
+import app.exceptions.exception_constants
 from app.config import GitHosting
 from app.exceptions.exception_constants import SERVICE_UNAVAILABLE
 from app.models.git_label import GitLabel
@@ -342,7 +343,7 @@ async def delete_git_label(
             await git_label.delete()
         else:
             return APIResponse.error(
-                message=constants.TOKEN_NOT_FOUND,
+                message=app.exceptions.exception_constants.TOKEN_NOT_FOUND,
                 status_code=status.HTTP_404_NOT_FOUND,
             )
 

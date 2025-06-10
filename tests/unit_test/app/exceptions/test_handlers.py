@@ -145,7 +145,7 @@ class TestDevDoxAPIExceptionHandlerWarningException:
     def test_status_and_exception_type(self, fastapi_permissive_client):
         """Asserts correct status code and exception class in debug."""
         resp = fastapi_permissive_client.get("/boom/custom-warning")
-        assert resp.status_code == 400
+        assert resp.status_code == DevDoxAPIException.http_status
         assert resp.json()["debug"]["exception"] == "DevDoxAPIException"
 
     def test_logs_as_warning(self, fastapi_permissive_client, caplog):
@@ -161,9 +161,9 @@ class TestDevDoxAPIExceptionHandlerErrorException:
     """
 
     def test_status_and_user_message(self, fastapi_permissive_client):
-        """Ensures the user message is returned in the response with 400 status."""
+        """Ensures the user message is returned in the response with 500 status."""
         resp = fastapi_permissive_client.get("/boom/custom-error")
-        assert resp.status_code == 400
+        assert resp.status_code == DevDoxAPIException.http_status
         assert resp.json()["message"] == "err-msg"
 
     def test_logs_with_custom_message(self, fastapi_permissive_client, caplog):
