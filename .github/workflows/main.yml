@@ -25,6 +25,10 @@ jobs:
           python -m pip install --upgrade pip
           pip install .[dev]
           pip install coverage
+      - name: Run Clair scan
+        uses: docker://quay.io/coreos/clair:v4.7.4
+        with:
+          args: clairctl report testnew:latest
 
       - name: Run tests and generate coverage
         run: |
