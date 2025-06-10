@@ -1,17 +1,54 @@
-from typing import Any, Dict, Optional
+from typing import Any, Dict, List, Optional, Union
 
+from pydantic import BaseModel
 from starlette.responses import JSONResponse
+
+Serializable = Union[
+    BaseModel,
+    List[BaseModel],
+    Any,
+]
+
+def serialize_api_response_data(data: Optional[Serializable]) -> Any:
+    """
+    Serializes API response data into primitive types for JSONResponse compatibility.
+
+    This utility currently supports:
+    - Single Pydantic BaseModel instance → converted via `.model_dump()`
+    - List of Pydantic BaseModel instances → each converted via `.model_dump()`
+    - Later: could support dict[str, BaseModel] or nested serialization if needed.
+    
+    Any other type is returned as-is and assumed to be JSON-serializable.
+
+    Args:
+        data (Any): The data to serialize for API response. Can be a Pydantic model,
+                    a list of models, or any other value.
+
+    Returns:
+        Any: A serialized version of the input suitable for use in JSONResponse.
+    #
+    """
+
+    if isinstance(data, BaseModel):
+        data = data.model_dump()
+    elif isinstance(data, list) and all(isinstance(item, BaseModel) for item in data):
+        data = [item.model_dump() for item in data]
+    elif isinstance(data, dict):
+        return {key: serialize_api_response_data(value) for key, value in data.items()}
+
+    return data  # Return everything else as-is
 
 
 class APIResponse:
     """Utility class for standardized API responses."""
 
     @staticmethod
-    def success(message: str, data: Optional[Dict[str, Any]] = None) -> JSONResponse:
+    def success(message: str, data: Optional[Serializable] = None) -> JSONResponse:
         """Generate a success response."""
         response = {"success": True, "message": message, "status_code": 200}
+
         if data is not None:
-            response["data"] = data
+            response["data"] = serialize_api_response_data(data)
 
         return JSONResponse(content=response, status_code=200)
 

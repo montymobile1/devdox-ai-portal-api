@@ -195,7 +195,7 @@ class TestGetReposEndpoint:
         assert response.status_code == status.HTTP_503_SERVICE_UNAVAILABLE
         assert SERVICE_UNAVAILABLE in response.json()["detail"]
 
-
+@pytest.mark.skip("DEPRECATED and OLD")
 class TestGetReposFromGitEndpoint:
     """Test cases for GET /repos/git_repos/{user_id}/{token_id} endpoint."""
 

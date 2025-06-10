@@ -33,7 +33,11 @@ from typing import Any, Dict, Optional
 
 from starlette import status
 
-from app.exceptions.exception_constants import AUTH_FAILED
+from app.exceptions.exception_constants import (
+    AUTH_FAILED,
+    GENERIC_BAD_REQUEST,
+    GENERIC_RESOURCE_NOT_FOUND,
+)
 
 
 class DevDoxAPIException(Exception):
@@ -61,7 +65,7 @@ class DevDoxAPIException(Exception):
     ```
     """
 
-    http_status: int = 400  # Subclasses may override this default
+    http_status= status.HTTP_500_INTERNAL_SERVER_ERROR  # Subclasses may override this default
 
     def __init__(
         self,
@@ -109,3 +113,18 @@ class UnauthorizedAccess(DevDoxAPIException):
         super().__init__(
             user_message=reason, log_message=log_message, log_level=log_level
         )
+
+class BadRequest(DevDoxAPIException):
+    http_status = status.HTTP_400_BAD_REQUEST
+
+    def __init__(self, reason=GENERIC_BAD_REQUEST):
+        super().__init__(
+            user_message=reason
+        )
+
+
+class ResourceNotFound(DevDoxAPIException):
+    http_status = status.HTTP_404_NOT_FOUND
+
+    def __init__(self, reason=GENERIC_RESOURCE_NOT_FOUND):
+        super().__init__(user_message=reason)
