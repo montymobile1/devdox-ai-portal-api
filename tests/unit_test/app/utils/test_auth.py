@@ -13,7 +13,28 @@ from starlette.requests import Request
 import app.exceptions.exception_constants
 from app.exceptions.custom_exceptions import UnauthorizedAccess
 from app.exceptions.exception_constants import INVALID_BEARER_TOKEN_SCHEMA
-from app.utils.auth import AuthenticatedUserDTO, get_current_user
+from app.utils import get_authenticated_user
+from app.utils.auth import (
+    AuthenticatedUserDTO,
+    ClerkUserAuthenticator,
+    get_current_user,
+    UserClaims,
+)
+from tests.test_doubles.utils.auth.fake_authenticator import (
+    FakeAuthResult,
+    FakeFailureAuthenticator,
+    FakeInvalidTokenAuthenticator,
+    FakeRequest,
+    FakeSuccessAuthenticator,
+)
+from tests.test_doubles.utils.auth.stub_http_header import (
+    MalformedSchemeTokensStub,
+    valid_bearer_token,
+)
+
+# ===================================================================================
+# TODO: THIS SECTION WILL BE DEPRECATED SLOWLY AS WE GO IN FAVOR OF THE OTHER NEW PART
+# ===================================================================================
 
 base_clerk_payload_schema = {
     "sub": "user_abc",
@@ -194,3 +215,93 @@ class TestGetCurrentUserEdgeCases:
             assert (
                 app.exceptions.exception_constants.AUTH_FAILED in exc.value.user_message
             )
+
+# ===================================================================================
+# TODO: This is the new easily testable, less complicated Auth system
+# ===================================================================================
+
+class TestGetAuthenticationUser:
+
+    @pytest.mark.asyncio
+    async def test_success(self):
+        request = Request({"type": "http"})
+        header = valid_bearer_token()
+
+        user = await get_authenticated_user(request, header, authenticator=FakeSuccessAuthenticator())
+        assert isinstance(user, UserClaims)
+        assert user.sub == "user-123"
+
+    @pytest.mark.parametrize("header", MalformedSchemeTokensStub.malformed_scheme_tokens())
+    @pytest.mark.asyncio
+    async def test_invalid_or_missing_scheme_raises(self, header):
+        request = Request({"type": "http"})
+
+        with pytest.raises(UnauthorizedAccess) as exc:
+            await get_authenticated_user(
+                request, header, authenticator=FakeSuccessAuthenticator()
+            )
+
+        assert MalformedSchemeTokensStub.error_msg in exc.value.log_message
+
+    @pytest.mark.asyncio
+    async def test_authenticator_fails(self):
+        request = Request({"type": "http"})
+        header = valid_bearer_token()
+
+        with pytest.raises(Exception) as exc:
+            await get_authenticated_user(request, header, authenticator=FakeFailureAuthenticator())
+
+        assert FakeFailureAuthenticator.exception_msg in str(exc.value)
+
+    @pytest.mark.asyncio
+    async def test_clerk_token_invalid(self):
+        request = Request({"type": "http"})
+        header = valid_bearer_token()
+
+        with pytest.raises(UnauthorizedAccess) as exc:
+            await get_authenticated_user(
+                request, header, authenticator=FakeInvalidTokenAuthenticator()
+            )
+
+        assert FakeInvalidTokenAuthenticator.log_message in exc.value.log_message
+        assert FakeInvalidTokenAuthenticator.reason in exc.value.user_message
+
+class TestClerkUserAuthenticator:
+
+    @staticmethod
+    def __patch_clerk_authentication_result(monkeypatch, *, signed_in, payload=None, reason_name=None, message=None):
+        reason = type("Reason", (), {"name": reason_name})() if reason_name else None
+        result = FakeAuthResult(signed_in, payload=payload, reason=reason, message=message)
+        monkeypatch.setattr("app.utils.auth.authenticate_request", lambda *_: result)
+
+    @pytest.mark.asyncio
+    async def test_successful_authentication(self, monkeypatch):
+        fake_payload = {"sub": "user-1", "email": "a@b.com", "name": "Test"}
+        self.__patch_clerk_authentication_result(monkeypatch, signed_in=True, payload=fake_payload)
+
+        request = FakeRequest(headers={"authorization": "Bearer token"})
+        user = await ClerkUserAuthenticator().authenticate(request)
+
+        assert isinstance(user, UserClaims)
+        assert user.sub == fake_payload["sub"]
+
+    @pytest.mark.asyncio
+    async def test_signed_out_with_reason(self, monkeypatch):
+        self.__patch_clerk_authentication_result(monkeypatch, signed_in=False, reason_name="TOKEN_EXPIRED", message="Token expired")
+
+        request = FakeRequest(headers={"authorization": "Bearer token"})
+        with pytest.raises(UnauthorizedAccess) as exc:
+            await ClerkUserAuthenticator().authenticate(request)
+
+        assert "TOKEN_EXPIRED" in exc.value.log_message
+        assert "Token expired" in exc.value.log_message
+
+    @pytest.mark.asyncio
+    async def test_signed_out_without_reason(self, monkeypatch):
+        self.__patch_clerk_authentication_result(monkeypatch, signed_in=False)
+
+        request = FakeRequest(headers={"authorization": "Bearer token"})
+        with pytest.raises(UnauthorizedAccess) as exc:
+            await ClerkUserAuthenticator().authenticate(request)
+
+        assert "UNKNOWN" in exc.value.log_message
