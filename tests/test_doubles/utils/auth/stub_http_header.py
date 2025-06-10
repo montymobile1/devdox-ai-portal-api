@@ -31,6 +31,9 @@ class MalformedSchemeTokensStub:
             pytest.param(None, id="missing_header"),
         ]
 
+
 def auth_stub_factory(signed_in, payload=None, reason_name=None, message=None):
     reason = type("Reason", (), {"name": reason_name})() if reason_name else None
-    return lambda req, options: FakeAuthResult(signed_in, payload=payload, reason=reason, message=message)
+    return lambda req, options: FakeAuthResult(
+        signed_in, payload=payload, reason=reason, message=message
+    )

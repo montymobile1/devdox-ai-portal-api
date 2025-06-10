@@ -1,11 +1,13 @@
+import base64
 import os
 from typing import Optional
 
 import pytest
 from cryptography.fernet import Fernet, InvalidToken
-import base64
+
 from app.utils import constants
 from app.utils.encryption import EncryptionHelper, FernetEncryptionHelper
+
 
 # ===================================================================================
 # TODO: THIS SECTION WILL BE DEPRECATED SLOWLY AS WE GO IN FAVOR OF THE OTHER NEW PART

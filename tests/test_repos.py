@@ -128,6 +128,7 @@ mock_git_label_class = MagicMock(
     spec=None,
 )
 
+
 @pytest.mark.skip("OUTDATED WILL BE REMOVED IN FUTURE")
 class TestGetReposEndpoint:
     """Test cases for GET /repos/{user_id} endpoint."""
@@ -292,5 +293,3 @@ class TestGetReposFromGitEndpoint:
         assert response.status_code == status.HTTP_400_BAD_REQUEST
         data = response.json()
         assert "Unsupported Git hosting provider" in data["message"]
-
-

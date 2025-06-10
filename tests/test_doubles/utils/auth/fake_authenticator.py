@@ -27,14 +27,17 @@ class FakeInvalidTokenAuthenticator(IUserAuthenticator):
     async def authenticate(self, request: Requestish):
         raise UnauthorizedAccess(reason=self.reason, log_message=self.log_message)
 
+
 class FakeRequest:
     def __init__(self, headers):
         self.headers = headers
 
 
 class FakeAuthResult:
-    def __init__(self, signed_in:bool, payload=None, reason=None, message=None):
-        self.status = AuthStatus.SIGNED_IN.value if signed_in else AuthStatus.SIGNED_OUT.value
+    def __init__(self, signed_in: bool, payload=None, reason=None, message=None):
+        self.status = (
+            AuthStatus.SIGNED_IN.value if signed_in else AuthStatus.SIGNED_OUT.value
+        )
         self.payload = payload or {}
         self.reason = reason
         self._message = message

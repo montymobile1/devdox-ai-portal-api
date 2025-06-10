@@ -4,7 +4,7 @@ Clerk authentication utility for the DevDox AI Portal API.
 
 import logging
 from dataclasses import dataclass, fields
-from typing import Any, ClassVar, Dict, Mapping, Optional, Protocol
+from typing import Any, ClassVar, Dict, Optional, Protocol
 
 from clerk_backend_api import (
     authenticate_request,

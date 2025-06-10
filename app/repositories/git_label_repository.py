@@ -4,7 +4,10 @@ from app.models import GitLabel
 
 
 class IGitLabelStore(Protocol):
-    async def get_by_id_and_user(self, token_id: str, user_id: str) -> Optional[GitLabel]: ...
+    async def get_by_id_and_user(
+        self, token_id: str, user_id: str
+    ) -> Optional[GitLabel]: ...
+
 
 class TortoiseGitLabelStore(IGitLabelStore):
     async def get_by_id_and_user(self, token_id: str, user_id: str):

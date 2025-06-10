@@ -216,9 +216,11 @@ class TestGetCurrentUserEdgeCases:
                 app.exceptions.exception_constants.AUTH_FAILED in exc.value.user_message
             )
 
+
 # ===================================================================================
 # TODO: This is the new easily testable, less complicated Auth system
 # ===================================================================================
+
 
 class TestGetAuthenticationUser:
 
@@ -227,11 +229,15 @@ class TestGetAuthenticationUser:
         request = Request({"type": "http"})
         header = valid_bearer_token()
 
-        user = await get_authenticated_user(request, header, authenticator=FakeSuccessAuthenticator())
+        user = await get_authenticated_user(
+            request, header, authenticator=FakeSuccessAuthenticator()
+        )
         assert isinstance(user, UserClaims)
         assert user.sub == "user-123"
 
-    @pytest.mark.parametrize("header", MalformedSchemeTokensStub.malformed_scheme_tokens())
+    @pytest.mark.parametrize(
+        "header", MalformedSchemeTokensStub.malformed_scheme_tokens()
+    )
     @pytest.mark.asyncio
     async def test_invalid_or_missing_scheme_raises(self, header):
         request = Request({"type": "http"})
@@ -249,7 +255,9 @@ class TestGetAuthenticationUser:
         header = valid_bearer_token()
 
         with pytest.raises(Exception) as exc:
-            await get_authenticated_user(request, header, authenticator=FakeFailureAuthenticator())
+            await get_authenticated_user(
+                request, header, authenticator=FakeFailureAuthenticator()
+            )
 
         assert FakeFailureAuthenticator.exception_msg in str(exc.value)
 
@@ -266,18 +274,25 @@ class TestGetAuthenticationUser:
         assert FakeInvalidTokenAuthenticator.log_message in exc.value.log_message
         assert FakeInvalidTokenAuthenticator.reason in exc.value.user_message
 
+
 class TestClerkUserAuthenticator:
 
     @staticmethod
-    def __patch_clerk_authentication_result(monkeypatch, *, signed_in, payload=None, reason_name=None, message=None):
+    def __patch_clerk_authentication_result(
+        monkeypatch, *, signed_in, payload=None, reason_name=None, message=None
+    ):
         reason = type("Reason", (), {"name": reason_name})() if reason_name else None
-        result = FakeAuthResult(signed_in, payload=payload, reason=reason, message=message)
+        result = FakeAuthResult(
+            signed_in, payload=payload, reason=reason, message=message
+        )
         monkeypatch.setattr("app.utils.auth.authenticate_request", lambda *_: result)
 
     @pytest.mark.asyncio
     async def test_successful_authentication(self, monkeypatch):
         fake_payload = {"sub": "user-1", "email": "a@b.com", "name": "Test"}
-        self.__patch_clerk_authentication_result(monkeypatch, signed_in=True, payload=fake_payload)
+        self.__patch_clerk_authentication_result(
+            monkeypatch, signed_in=True, payload=fake_payload
+        )
 
         request = FakeRequest(headers={"authorization": "Bearer token"})
         user = await ClerkUserAuthenticator().authenticate(request)
@@ -287,7 +302,12 @@ class TestClerkUserAuthenticator:
 
     @pytest.mark.asyncio
     async def test_signed_out_with_reason(self, monkeypatch):
-        self.__patch_clerk_authentication_result(monkeypatch, signed_in=False, reason_name="TOKEN_EXPIRED", message="Token expired")
+        self.__patch_clerk_authentication_result(
+            monkeypatch,
+            signed_in=False,
+            reason_name="TOKEN_EXPIRED",
+            message="Token expired",
+        )
 
         request = FakeRequest(headers={"authorization": "Bearer token"})
         with pytest.raises(UnauthorizedAccess) as exc:
