@@ -28,12 +28,13 @@ jobs:
 
       - name: Build Docker image
         run: docker build -t testnew:latest .
-      
-      - name: Run Clair scan
-        uses: docker://quay.io/coreos/clair:v4.3.6
+
+      - name: Run Trivy vulnerability scanner
+        uses: aquasecurity/trivy-action@master
         with:
-          args: clairctl report testnew:latest
-          options: --network host -v /var/run/docker.sock:/var/run/docker.sock
+            image-ref: testnew:latest
+            format: 'table'
+            exit-code: '1'  # Fail the build if vulnerabilities found
 
       - name: Run tests and generate coverage
         run: |
