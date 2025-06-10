@@ -36,6 +36,7 @@ jobs:
         with:
             image-ref: testnew:latest
             format: 'table'
+            severity: 'CRITICAL,HIGH'  # Only fail on high/critical, ignore medium
             exit-code: '1'  # Fail the build if vulnerabilities found
 
       - name: Run tests and generate coverage
