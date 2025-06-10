@@ -19,12 +19,21 @@ jobs:
         uses: actions/setup-python@v5
         with:
           python-version: 3.12  # or your actual version
-
+      
       - name: Install dependencies
         run: |
           python -m pip install --upgrade pip
           pip install .[dev]
           pip install coverage
+
+      - name: Build Docker image
+        run: docker build -t testnew:latest .
+      
+      - name: Run Clair scan
+        uses: docker://quay.io/coreos/clair:v4.3.6
+        with:
+          args: clairctl report testnew:latest
+          options: --network host -v /var/run/docker.sock:/var/run/docker.sock
 
       - name: Run tests and generate coverage
         run: |
@@ -66,7 +75,7 @@ jobs:
   
             IFS='.' read -r MAJOR MINOR PATCH <<< "$VERSION"
   
-            PATCH=$((PATCH  + 1))
+            PATCH=$((PATCH   1))
   
             NEW_VERSION="$MAJOR.$MINOR.$PATCH"
   
@@ -87,75 +96,4 @@ jobs:
           env:
 
             GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }} # requires a PAT with repo write access
-
-  scan:
-    runs-on: ubuntu-latest
-
-    services:
-      # 1. Clair Database
-      clair-db:
-        image: arminc/clair-db:latest
-        ports:
-          - 5432:5432
-        options: >-
-          --health-cmd pg_isready
-          --health-interval 10s
-          --health-timeout 5s
-          --health-retries 5
-
-      # 2. Clair Server
-      clair:
-        image: arminc/clair-local-scan:latest
-        ports:
-          - 6060:6060
-        depends-on:
-          - clair-db
-        options: >-
-          --health-cmd 'curl -f http://localhost:6060/healthz'
-          --health-interval 10s
-          --health-timeout 5s
-          --health-retries 5
-        env:
-          CLAIR_DATABASE_CONNECTIONSTRING: "postgresql://postgres:password@clair-db:5432/clair?sslmode=disable"
-          CLAIR_UPDATE_INTERVAL: "1h" # Adjust as needed
-
-    steps:
-      - name: Checkout code
-        uses: actions/checkout@v4
-
-      - name: Build Docker image (example)
-        run: docker build -t testnew:latest .
-        # Replace 'testnew:latest' with the actual image you want to scan
-
-      - name: Wait for Clair server to be ready
-        run: |
-          echo "Waiting for Clair server to be ready..."
-          # This is a basic wait. The `services` health checks are more robust.
-          # You might still need a small sleep here, or a more sophisticated wait-for-it script.
-          sleep 30 
-          echo "Clair server should be ready."
-
-      - name: Run Clair scan with cplee/clair-scanner
-        uses: docker://cplee/clair-scanner
-        with:
-          args: >
-            --clair=http://clair:6060 
-            --ip=clair 
-            --report=/github/workspace/clair-report.json 
-            --format=json 
-            testnew:latest
-        env:
-          # If your Clair server requires specific environment variables for connection, define them here.
-          # For arminc/clair-local-scan, the connection is usually configured via CLAIR_DATABASE_CONNECTIONSTRING on the server side.
-          # The cplee/clair-scanner uses --clair and --ip args.
-          DOCKER_HOST: unix:///var/run/docker.sock # Essential for clair-scanner to access local docker daemon
-
-      - name: Upload Clair scan report
-        uses: actions/upload-artifact@v4
-        with:
-          name: clair-report
-          path: clair-report.json
-
-      - name: Display Clair scan report (optional)
-        run: cat clair-report.json
 
