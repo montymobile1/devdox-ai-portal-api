@@ -261,14 +261,11 @@ async def add_git_token(
     request: Request,
     payload: GitLabelBase = Body(...),
     authenticated_user: AuthenticatedUserDTO = CurrentUser,
-) -> JSONResponse | dict[str, Any]:
+) -> JSONResponse:
     """
     Add a new git token configuration with validation based on hosting service.
     """
     try:
-        # Override user_id with authenticated user ID for security
-        # payload.user_id = authenticated_user.id
-
         token = payload.token_value.replace(" ", "")
         if not token:
             return APIResponse.error(
@@ -329,6 +326,7 @@ async def delete_git_label(
 
     Args:
             git_label_id: The unique identifier of the git label to delete.
+            authenticated_user: The dependency injection defining the that this route requires authentication.
 
     Returns:
             A success response if the git label was deleted, or an error response if not found.
