@@ -30,7 +30,7 @@ jobs:
         run: docker build -t testnew:latest .
 
       - name: Run Trivy vulnerability scanner
-        uses: aquasecurity/trivy-action@v0.37.4
+        uses: aquasecurity/trivy-action@0.28.0
         env:
           TRIVY_DISABLE_VEX_NOTICE: "true"
         with:
