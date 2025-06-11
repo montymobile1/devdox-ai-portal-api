@@ -77,7 +77,7 @@ dependencies = [
     "python-gitlab==5.6.0",
     "GitPython==3.1.44",
     "PyGithub==2.6.1",
-    "requests==2.32.0",
+    "requests==2.32.4",
     
     # Real-time and webhooks
     "realtime==2.4.3",
