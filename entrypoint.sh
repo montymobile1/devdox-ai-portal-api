@@ -1,6 +1,9 @@
 #!/bin/bash
 set -e
 
+echo "Fetching secrets from Supabase Vault..."
+python fetch_secrets.py
+
 echo "Running migrations..."
 python run_migrations.py
 

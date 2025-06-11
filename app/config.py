@@ -22,12 +22,14 @@ class Settings(BaseSettings):
     SECRET_KEY: str = (
         "f2hCPmuCDiBpAmuZD00ZX4fEXFb-H0WoReklDhJD3bA="  # Only for local/testing
     )
-
+    # SUPABASE VAULT
+    SUPABASE_VAULT_ENABLED: bool = True
     # SUPABASE settings
     SUPABASE_URL: str = "https://your-project.supabase.co"
     SUPABASE_SECRET_KEY: str = "test-supabase-key"
 
     SUPABASE_REST_API: bool = True
+    VAULT_KEYS: str = ""
 
     SUPABASE_HOST: str = "https://locahost"
     SUPABASE_USER: str = "postgres"
@@ -69,6 +71,7 @@ class Settings(BaseSettings):
         env_file = ".env"
         case_sensitive = True
         git_hosting: Optional[GitHosting] = None
+        extra = "ignore"
 
 
 # Initialize settings instance
@@ -107,6 +110,7 @@ def get_database_config() -> Dict[str, Any]:
             "user": "postgres",
             "password": settings.SUPABASE_SECRET_KEY,
             "database": "postgres",
+            "server_settings": {"search_path": "vault,public"},
         }
 
     # Method 2: Supabase postgress sql
@@ -118,6 +122,7 @@ def get_database_config() -> Dict[str, Any]:
             "user": settings.SUPABASE_USER,
             "password": settings.SUPABASE_PASSWORD,
             "database": settings.SUPABASE_DB_NAME,
+            "server_settings": {"search_path": "vault,public"},
         }
 
     return {"engine": "tortoise.backends.asyncpg", "credentials": credentials}
@@ -125,6 +130,8 @@ def get_database_config() -> Dict[str, Any]:
 
 def get_tortoise_config():
     db_config = get_database_config()
+    # Add server_settings to the credentials
+    db_config["credentials"]["server_settings"] = {"search_path": "vault,public"}
 
     return {
         "connections": {"default": db_config},
@@ -133,10 +140,12 @@ def get_tortoise_config():
                 "models": [
                     "app.models",
                     "aerich.models",  # Required for aerich migrations
-                ],  # Replace with your actual models module
+                ],
                 "default_connection": "default",
             }
         },
+        "use_tz": False,
+        "timezone": "UTC",
     }
 
 

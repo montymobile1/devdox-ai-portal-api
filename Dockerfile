@@ -1,7 +1,14 @@
-FROM python:3.12-slim
+FROM python:3.12-alpine
+
+# Install bash and required packages
+RUN apk add --no-cache \
+    bash \
+    gcc \
+    musl-dev \
+    linux-headers
 
 # Create a non-root user and group
-RUN addgroup --system appgroup && adduser --system --ingroup appgroup appuser
+RUN addgroup -S appgroup && adduser -S appuser -G appgroup
 
 # Set working directory
 WORKDIR /app
@@ -26,6 +33,7 @@ COPY entrypoint.sh ./entrypoint.sh
 # Create migrations directory (will be mounted as volume)
 RUN mkdir -p /app/migrations
 COPY run_migrations.py ./run_migrations.py
+COPY fetch_secrets.py ./fetch_secrets.py
 
 COPY aerich.ini ./aerich.ini
 COPY pyproject.toml ./pyproject.toml
@@ -38,4 +46,5 @@ RUN chown -R appuser:appgroup /app \
 
 # Switch to the non-root user (this should be LAST)
 USER appuser
-ENTRYPOINT ["./entrypoint.sh"]
+
+ENTRYPOINT ["/bin/bash", "./entrypoint.sh"]
