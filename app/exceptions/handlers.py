@@ -33,6 +33,14 @@ logger = logging.getLogger(__name__)
 generic_exception_handler_status_code = status.HTTP_503_SERVICE_UNAVAILABLE
 
 
+def include_debug_payload(exc):
+    debug_payload = None
+    if settings.API_ENV in ["development", "test"]:
+        debug_payload = {"exception": type(exc).__name__, "str": str(exc)}
+    
+    return debug_payload
+
+
 def generic_exception_handler(request: Request, exc: Exception) -> JSONResponse:
     """
     Handle all uncaught exceptions with standardized error response.
@@ -57,10 +65,8 @@ def generic_exception_handler(request: Request, exc: Exception) -> JSONResponse:
         method,
         status_code,
     )
-
-    debug_payload = None
-    if settings.API_ENV in ["development", "test"]:
-        debug_payload = {"exception": type(exc).__name__, "str": str(exc)}
+    
+    debug_payload = include_debug_payload(exc)
 
     return APIResponse.error(
         message=app.exceptions.exception_constants.SERVICE_UNAVAILABLE,
@@ -108,10 +114,8 @@ def devdox_base_exception_handler(
     else:
         logger.warning(log_message)
 
-    debug_payload = None
-    if settings.API_ENV in ["development", "test"]:
-        debug_payload = {"exception": type(exc).__name__, "str": str(exc)}
-
+    debug_payload = include_debug_payload(exc)
+    
     return APIResponse.error(
         message=exc.user_message,
         status_code=exc.http_status,
