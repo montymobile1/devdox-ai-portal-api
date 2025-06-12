@@ -25,7 +25,9 @@ class RepoQueryService:
         repos = await self.repo_store.get_all_by_user(
             user.sub, pagination.offset, pagination.limit
         )
-        repo_responses = [RepoResponse.model_validate(repo) for repo in repos]
+        repo_responses = [
+            RepoResponse.model_validate(repo, from_attributes=True) for repo in repos
+        ]
 
         return total_count, repo_responses
 
