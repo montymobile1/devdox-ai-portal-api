@@ -9,6 +9,7 @@ Serializable = Union[
     Any,
 ]
 
+
 def serialize_api_response_data(data: Optional[Serializable]) -> Any:
     """
     Serializes API response data into primitive types for JSONResponse compatibility.
@@ -17,7 +18,7 @@ def serialize_api_response_data(data: Optional[Serializable]) -> Any:
     - Single Pydantic BaseModel instance → converted via `.model_dump()`
     - List of Pydantic BaseModel instances → each converted via `.model_dump()`
     - Later: could support dict[str, BaseModel] or nested serialization if needed.
-    
+
     Any other type is returned as-is and assumed to be JSON-serializable.
 
     Args:
