@@ -13,11 +13,16 @@ async def fetch_and_append_secrets():
     await Tortoise.init(config=TORTOISE_ORM)
     from tortoise import connections
 
-    conn = connections.get("default")
-    columns, rows = await conn.execute_query("SELECT * FROM vault.decrypted_secrets")
-    with open(".env", "a") as env_file:
-        for result in rows:
-            env_file.write(f"{result['name']}={result['decrypted_secret']}\n")
+    try:
+        conn = connections.get("default")
+        columns, rows = await conn.execute_query(
+            "SELECT * FROM vault.decrypted_secrets"
+        )
+        with open(".env", "a") as env_file:
+            for result in rows:
+                env_file.write(f"{result['name']}={result['decrypted_secret']}\n")
+    finally:
+        await Tortoise.close_connections()
 
 
 if __name__ == "__main__":
