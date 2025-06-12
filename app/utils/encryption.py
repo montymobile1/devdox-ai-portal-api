@@ -112,6 +112,7 @@ class EncryptionHelper:
 
         return cipher.decrypt(encrypted_text.encode()).decode()
 
+
 # ===================================================================================
 # TODO: This is the new easily testable, less complicated Auth system
 # ===================================================================================
@@ -122,6 +123,7 @@ class IEncryptionHelper(Protocol):
     def decrypt(self, encrypted_text: str) -> str: ...
     def encrypt_for_user(self, plaintext: str, salt_b64: str) -> str: ...
     def decrypt_for_user(self, encrypted_text: str, salt_b64: str) -> str: ...
+
 
 class FernetEncryptionHelper(IEncryptionHelper):
     SECRET_KEY = settings.SECRET_KEY
@@ -149,5 +151,7 @@ class FernetEncryptionHelper(IEncryptionHelper):
         return cipher.decrypt(encrypted_text.encode()).decode()
 
     def _derive_key(self, salt: bytes) -> bytes:
-        kdf = PBKDF2HMAC(algorithm=hashes.SHA256(), length=32, salt=salt, iterations=100000)
+        kdf = PBKDF2HMAC(
+            algorithm=hashes.SHA256(), length=32, salt=salt, iterations=100000
+        )
         return base64.urlsafe_b64encode(kdf.derive(self.SECRET_KEY.encode()))
