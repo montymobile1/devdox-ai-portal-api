@@ -124,7 +124,4 @@ class TestWebhookEndpoint:
         )
 
         assert response.status_code == status.HTTP_500_INTERNAL_SERVER_ERROR
-        assert (
-            response.json()["message"]
-            == exception_constants.SERVICE_UNAVAILABLE
-        )
+        assert response.json()["message"] == exception_constants.SERVICE_UNAVAILABLE

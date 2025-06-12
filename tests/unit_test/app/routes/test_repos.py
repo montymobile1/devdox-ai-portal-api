@@ -58,7 +58,9 @@ class TestGetReposEndpoint:
     @pytest.fixture
     def override_dependencies(self):
         def _override(user=None, service=None):
-            app.dependency_overrides[get_authenticated_user] = lambda: user or self.test_user
+            app.dependency_overrides[get_authenticated_user] = (
+                lambda: user or self.test_user
+            )
             app.dependency_overrides[repo_query_service_dependency_definition] = (
                 lambda: service or self.mock_service
             )

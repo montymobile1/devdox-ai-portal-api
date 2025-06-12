@@ -140,6 +140,7 @@ class UserClaims(BaseModel):
 
     model_config = ConfigDict(extra="ignore")
 
+
 class IUserAuthenticator(Protocol):
     async def authenticate(self, request: Requestish) -> UserClaims: ...
 
