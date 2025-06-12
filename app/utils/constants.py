@@ -19,3 +19,5 @@ USER_CREATED_SUCCESS = "User created"
 INVALID_WEBHOOK_SIGNATURE = "Webhook verification failed"
 
 ENCRYPTION_KEY_NOT_FOUND = "Encryption key is not set."
+
+RESOURCE_RETRIEVED_SUCCESSFULLY="Resource retrieved successfully"
