@@ -1,8 +1,5 @@
 from typing import List, Tuple
 
-from tortoise.transactions import in_transaction
-
-from app.models import Repo
 from app.repositories.git_label_repository import (
     IRepoStore,
     TortoiseRepoStore,

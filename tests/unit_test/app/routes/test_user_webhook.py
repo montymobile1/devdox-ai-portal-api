@@ -4,7 +4,7 @@ import pytest
 from fastapi import status
 from svix.webhooks import WebhookVerificationError
 
-import app.exceptions.exception_constants
+from app.exceptions import exception_constants
 from app.utils import constants
 
 
@@ -126,5 +126,5 @@ class TestWebhookEndpoint:
         assert response.status_code == status.HTTP_500_INTERNAL_SERVER_ERROR
         assert (
             response.json()["message"]
-            == app.exceptions.exception_constants.SERVICE_UNAVAILABLE
+            == exception_constants.SERVICE_UNAVAILABLE
         )

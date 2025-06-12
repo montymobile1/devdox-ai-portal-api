@@ -13,7 +13,7 @@ from clerk_backend_api import (
 )
 from fastapi import Depends, Request
 from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
-from pydantic import BaseModel
+from pydantic import BaseModel, ConfigDict
 
 from app.config import settings
 from app.exceptions.custom_exceptions import UnauthorizedAccess
@@ -138,6 +138,7 @@ class UserClaims(BaseModel):
     email: Optional[str] = None
     name: Optional[str] = None
 
+    model_config = ConfigDict(extra="ignore")
 
 class IUserAuthenticator(Protocol):
     async def authenticate(self, request: Requestish) -> UserClaims: ...

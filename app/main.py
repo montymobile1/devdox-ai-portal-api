@@ -48,12 +48,11 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
+# Register all exception handlers from one place
+register_exception_handlers(app)
 
 # Include API routes
 app.include_router(api_router, prefix="/api/v1")
-
-# Register all exception handlers from one place
-register_exception_handlers(app)
 
 
 @app.get("/", tags=["Health"])

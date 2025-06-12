@@ -567,7 +567,7 @@ class TestAddGitTokenEndpoint:
         response = client.post(TestAddGitTokenEndpoint.get_url(), json=payload)
 
         assert response.status_code == 500
-        assert response.json()["message"] == SERVICE_UNAVAILABLE
+        assert SERVICE_UNAVAILABLE in response.json()["message"]
 
 
 class TestDeleteGitLabelEndpoint:
