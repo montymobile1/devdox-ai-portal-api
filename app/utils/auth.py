@@ -13,7 +13,6 @@ from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
 from app.config import settings
 from app.exceptions.custom_exceptions import UnauthorizedAccess
 from app.exceptions.exception_constants import INVALID_BEARER_TOKEN_SCHEMA
-from app.middlewares.log_trace_context import user_id_var
 
 http_bearer_security_schema = HTTPBearer(auto_error=False)
 
@@ -113,8 +112,6 @@ async def get_current_user(
             log_message=f"Fields from clerk Payload are missing: {missing_payload_fields}",
             log_level="exception",
         )
-
-    user_id_var.set(user_dto.id)
 
     return user_dto
 
