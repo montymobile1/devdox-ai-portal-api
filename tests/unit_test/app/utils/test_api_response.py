@@ -16,8 +16,7 @@ class TestSerializeApiResponseData:
 
     def test_list_pydantic_base_model_instance(self):
         model_list = [
-            self.PydanticTemporarySchema(id=str(i), name=f"Test {i}")
-            for i in range(3)
+            self.PydanticTemporarySchema(id=str(i), name=f"Test {i}") for i in range(3)
         ]
         serialized = serialize_api_response_data(data=model_list)
         assert isinstance(serialized, list)
@@ -30,8 +29,7 @@ class TestSerializeApiResponseData:
 
     def test_nested_level_1_list_pydantic_base_model_instance(self):
         model_list_1 = [
-            self.PydanticTemporarySchema(id=str(i), name=f"Test {i}")
-            for i in range(3)
+            self.PydanticTemporarySchema(id=str(i), name=f"Test {i}") for i in range(3)
         ]
 
         model_list_2 = [
@@ -43,7 +41,7 @@ class TestSerializeApiResponseData:
             data={
                 "total": len(model_list_1) + len(model_list_2),
                 "models_1": model_list_1,
-                "models_2": model_list_2
+                "models_2": model_list_2,
             }
         )
 
@@ -58,14 +56,16 @@ class TestSerializeApiResponseData:
                 {"id": "0", "name": "Test 2 0"},
                 {"id": "1", "name": "Test 2 1"},
                 {"id": "2", "name": "Test 2 2"},
-            ]
+            ],
         }
 
     def test_nested_level_1_single_pydantic_base_model_instance(self):
         single_model_1 = self.PydanticTemporarySchema(id="1", name="Test")
         single_model_2 = self.PydanticTemporarySchema(id="1", name="Test 2")
 
-        serialized = serialize_api_response_data(data={"total": 2, "models_1": single_model_1, "models_2": single_model_2})
+        serialized = serialize_api_response_data(
+            data={"total": 2, "models_1": single_model_1, "models_2": single_model_2}
+        )
 
         assert serialized == {
             "total": 2,
@@ -111,5 +111,3 @@ class TestSerializeApiResponseData:
                 {"id": "2", "name": "Test 2 2"},
             ],
         }
-    
-    

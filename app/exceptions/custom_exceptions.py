@@ -65,7 +65,9 @@ class DevDoxAPIException(Exception):
     ```
     """
 
-    http_status= status.HTTP_500_INTERNAL_SERVER_ERROR  # Subclasses may override this default
+    http_status = (
+        status.HTTP_500_INTERNAL_SERVER_ERROR
+    )  # Subclasses may override this default
 
     def __init__(
         self,
@@ -114,13 +116,12 @@ class UnauthorizedAccess(DevDoxAPIException):
             user_message=reason, log_message=log_message, log_level=log_level
         )
 
+
 class BadRequest(DevDoxAPIException):
     http_status = status.HTTP_400_BAD_REQUEST
 
     def __init__(self, reason=GENERIC_BAD_REQUEST):
-        super().__init__(
-            user_message=reason
-        )
+        super().__init__(user_message=reason)
 
 
 class ResourceNotFound(DevDoxAPIException):
