@@ -11,7 +11,10 @@ from app.main import app
 from app.schemas.repo import RepoResponse
 from app.utils.auth import UserClaims
 from app.utils.constants import RESOURCE_RETRIEVED_SUCCESSFULLY
-from app.routes.repos import get_authenticated_user, repo_query_service_dependency_definition
+from app.routes.repos import (
+    get_authenticated_user,
+    repo_query_service_dependency_definition,
+)
 
 
 class TestGetReposEndpoint:
@@ -19,8 +22,14 @@ class TestGetReposEndpoint:
     @pytest.fixture(autouse=True)
     def setup(self):
         self.endpoint = "/api/v1/repos/"
-        self.test_user = UserClaims(sub="test-user", email="test@example.com", name="Test User")
-        date_time = datetime.datetime.combine(datetime.datetime.now(datetime.timezone.utc).date(), datetime.time.min, tzinfo=datetime.timezone.utc)
+        self.test_user = UserClaims(
+            sub="test-user", email="test@example.com", name="Test User"
+        )
+        date_time = datetime.datetime.combine(
+            datetime.datetime.now(datetime.timezone.utc).date(),
+            datetime.time.min,
+            tzinfo=datetime.timezone.utc,
+        )
 
         self.test_repos = [
             RepoResponse(
@@ -42,12 +51,17 @@ class TestGetReposEndpoint:
                 repo_updated_at=date_time,
                 language="Python",
                 size=100,
-                git_hosting=GitHosting.GITHUB.value, )
+                git_hosting=GitHosting.GITHUB.value,
+            )
         ]
 
     def override_deps(self, user=None, service=None):
-        app.dependency_overrides[get_authenticated_user] = lambda: user or self.test_user
-        app.dependency_overrides[repo_query_service_dependency_definition] = lambda: service or self.mock_service
+        app.dependency_overrides[get_authenticated_user] = (
+            lambda: user or self.test_user
+        )
+        app.dependency_overrides[repo_query_service_dependency_definition] = (
+            lambda: service or self.mock_service
+        )
 
     def clear_deps(self):
         app.dependency_overrides.clear()

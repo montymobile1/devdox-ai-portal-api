@@ -15,17 +15,19 @@ from app.utils.auth import UserClaims
 class RepoQueryService:
     def __init__(self, repo_store: IRepoStore):
         self.repo_store = repo_store
-    
+
     async def get_all_user_repositories(
         self, user: UserClaims, pagination: PaginationParams
     ) -> Tuple[int, List[RepoResponse]]:
-        
+
         total_count = await self.repo_store.count_by_user(user.sub)
-        
+
         if total_count == 0:
             return total_count, []
-        
-        repos = await self.repo_store.get_all_by_user(user.sub, pagination.offset, pagination.limit)
+
+        repos = await self.repo_store.get_all_by_user(
+            user.sub, pagination.offset, pagination.limit
+        )
         repo_responses = [RepoResponse.model_validate(repo) for repo in repos]
 
         return total_count, repo_responses

@@ -29,6 +29,7 @@ from app.utils.gitlab_manager import GitLabManager
 # Create router
 router = APIRouter()
 
+
 @router.get(
     "/",
     response_model=RepoListResponse,
@@ -41,12 +42,17 @@ async def get_repos(
     repo_service: RepoQueryService = Depends(repo_query_service_dependency_definition),
     pagination: PaginationParams = Depends(),
 ) -> JSONResponse:
-    
-    total_count, repo_responses = await repo_service.get_all_user_repositories(user, pagination)
+
+    total_count, repo_responses = await repo_service.get_all_user_repositories(
+        user, pagination
+    )
     return APIResponse.success(
         message=RESOURCE_RETRIEVED_SUCCESSFULLY,
-        data=RepoListResponse(total_count=total_count, repos=repo_responses).model_dump(mode="json")
+        data=RepoListResponse(total_count=total_count, repos=repo_responses).model_dump(
+            mode="json"
+        ),
     )
+
 
 def build_repo_dict(repo_info: Dict[str, Any], platform: str) -> Dict[str, Any]:
     """Builds a unified repository dictionary for GitHub or GitLab."""
@@ -123,7 +129,6 @@ def get_git_repo_fetcher(
     }
 
     return provider_map.get(hosting)
-
 
 
 @router.get(

@@ -17,7 +17,7 @@ class FakeRepoStore(IRepoStore):
         self._repos = repos
 
     async def get_all_by_user(self, user_id: str, offset: int, limit: int):
-        return self._repos[offset:offset+limit]
+        return self._repos[offset : offset + limit]
 
     async def count_by_user(self, user_id: str) -> int:
         return len(self._repos)
@@ -26,9 +26,13 @@ class FakeRepoStore(IRepoStore):
 class TestRepoQueryService:
     @pytest.fixture
     def service(self):
-        
-        date_time = datetime.datetime.combine(datetime.datetime.now(datetime.timezone.utc).date(), datetime.time.min, tzinfo=datetime.timezone.utc)
-        
+
+        date_time = datetime.datetime.combine(
+            datetime.datetime.now(datetime.timezone.utc).date(),
+            datetime.time.min,
+            tzinfo=datetime.timezone.utc,
+        )
+
         repos = [
             RepoResponse(
                 id=uuid.UUID("9479c7f8-9d4e-4b9a-8627-8c2082a6f7f1"),
@@ -48,7 +52,8 @@ class TestRepoQueryService:
                 repo_id=f"repo_id-{i}",
                 token_id=None,
                 created_at=date_time,
-                updated_at=date_time)
+                updated_at=date_time,
+            )
             for i in range(10)
         ]
         return RepoQueryService(repo_store=FakeRepoStore(repos))

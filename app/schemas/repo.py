@@ -28,7 +28,9 @@ class RepoBase(BaseModel):
     visibility: Optional[str] = Field(
         None, description="Repository visibility (GitLab)", max_length=50
     )
-    git_hosting: Optional[GitHostingProvider] = Field(None, description="Git hosting provider")
+    git_hosting: Optional[GitHostingProvider] = Field(
+        None, description="Git hosting provider"
+    )
     language: Optional[str] = Field(
         None, description="Primary programming language", max_length=100
     )
