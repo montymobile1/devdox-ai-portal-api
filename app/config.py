@@ -8,6 +8,9 @@ from enum import Enum
 from typing import List, Optional, Dict, Any
 
 
+search_path = "vault,public"
+
+
 class GitHosting(str, Enum):
     GITLAB = "gitlab"
     GITHUB = "github"
@@ -110,7 +113,7 @@ def get_database_config() -> Dict[str, Any]:
             "user": "postgres",
             "password": settings.SUPABASE_SECRET_KEY,
             "database": "postgres",
-            "server_settings": {"search_path": "vault,public"},
+            "server_settings": {"search_path": search_path},
         }
 
     # Method 2: Supabase postgress sql
@@ -122,7 +125,7 @@ def get_database_config() -> Dict[str, Any]:
             "user": settings.SUPABASE_USER,
             "password": settings.SUPABASE_PASSWORD,
             "database": settings.SUPABASE_DB_NAME,
-            "server_settings": {"search_path": "vault,public"},
+            "server_settings": {"search_path": search_path},
         }
 
     return {"engine": "tortoise.backends.asyncpg", "credentials": credentials}
@@ -131,7 +134,7 @@ def get_database_config() -> Dict[str, Any]:
 def get_tortoise_config():
     db_config = get_database_config()
     # Add server_settings to the credentials
-    db_config["credentials"]["server_settings"] = {"search_path": "vault,public"}
+    db_config["credentials"]["server_settings"] = {"search_path": search_path}
 
     return {
         "connections": {"default": db_config},
