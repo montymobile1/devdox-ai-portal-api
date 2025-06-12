@@ -157,7 +157,6 @@ class ClerkUserAuthenticator(IUserAuthenticator):
 
         payload = auth_result.payload
         user = UserClaims(**payload)
-        user_id_var.set(user.sub)
         return user
 
 def get_user_authenticator_dependency() -> IUserAuthenticator:
