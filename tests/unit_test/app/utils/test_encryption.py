@@ -490,9 +490,9 @@ class TestFernetEncryptionHelper:
             helper.decrypt_for_user(encrypted, salt2)
 
     def test_get_cipher_fails_if_secret_missing(self, monkeypatch):
-        monkeypatch.setattr("app.utils.encryption.FernetEncryptionHelper.SECRET_KEY", None)
-        helper = FernetEncryptionHelper()
+        
         with pytest.raises(ValueError) as exc:
+            helper = FernetEncryptionHelper(secret_key=None)
             helper.encrypt("test")
         assert constants.ENCRYPTION_KEY_NOT_FOUND in str(exc.value)
 
