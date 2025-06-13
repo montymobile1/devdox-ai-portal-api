@@ -11,6 +11,7 @@ from app.utils import constants
 # TODO: THIS SECTION WILL BE DEPRECATED SLOWLY AS WE GO IN FAVOR OF THE OTHER NEW PART
 # ===================================================================================
 
+
 class EncryptionHelper:
     """Helper class for encrypting and decrypting tokens."""
 
@@ -109,6 +110,7 @@ class EncryptionHelper:
 
         return cipher.decrypt(encrypted_text.encode()).decode()
 
+
 # ===================================================================================
 # TODO: This is the new easily testable, less complicated Auth system
 # ===================================================================================
@@ -120,14 +122,15 @@ class IEncryptionHelper(Protocol):
     def encrypt_for_user(self, plaintext: str, salt_b64: str) -> str: ...
     def decrypt_for_user(self, encrypted_text: str, salt_b64: str) -> str: ...
 
+
 class FernetEncryptionHelper(IEncryptionHelper):
-    
-    def __init__(self, secret_key:str = settings.SECRET_KEY):
+
+    def __init__(self, secret_key: str = settings.SECRET_KEY):
         if not secret_key:
             raise ValueError(constants.ENCRYPTION_KEY_NOT_FOUND)
-        
+
         self.secret_key = secret_key
-    
+
     def encrypt(self, plaintext: str) -> str:
         return Fernet(self.secret_key).encrypt(plaintext.encode()).decode()
 
@@ -145,5 +148,7 @@ class FernetEncryptionHelper(IEncryptionHelper):
         return cipher.decrypt(encrypted_text.encode()).decode()
 
     def _derive_key(self, salt: bytes) -> bytes:
-        kdf = PBKDF2HMAC(algorithm=hashes.SHA256(), length=32, salt=salt, iterations=100000)
+        kdf = PBKDF2HMAC(
+            algorithm=hashes.SHA256(), length=32, salt=salt, iterations=100000
+        )
         return base64.urlsafe_b64encode(kdf.derive(self.secret_key.encode()))

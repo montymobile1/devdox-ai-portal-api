@@ -458,6 +458,7 @@ class TestEncryptionHelperUserSpecific:
 # TODO: This is the new easily testable, less complicated Auth system
 # ===================================================================================
 
+
 class TestFernetEncryptionHelper:
 
     @pytest.fixture
@@ -490,7 +491,7 @@ class TestFernetEncryptionHelper:
             helper.decrypt_for_user(encrypted, salt2)
 
     def test_get_cipher_fails_if_secret_missing(self, monkeypatch):
-        
+
         with pytest.raises(ValueError) as exc:
             helper = FernetEncryptionHelper(secret_key=None)
             helper.encrypt("test")
