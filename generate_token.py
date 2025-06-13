@@ -29,18 +29,17 @@ def generate_clerk_token(user_id: str, expires_in_seconds: int | None = None) ->
 
             return token.jwt
 
-
     except ValueError:
 
-       logging.exception("Token generation failed: no JWT returned.")
+        logging.exception("Token generation failed: no JWT returned.")
 
-       raise
+        raise
 
     except (ConnectionError, TimeoutError) as e:
 
-       logging.exception("Failed to generate Clerk token due to network error.")
+        logging.exception("Failed to generate Clerk token due to network error.")
 
-       raise
+        raise
 
 
 if __name__ == "__main__":

@@ -1,7 +1,10 @@
+from unittest.mock import AsyncMock, MagicMock, patch
+
 import pytest
-from unittest.mock import AsyncMock, patch, MagicMock
-from svix.webhooks import WebhookVerificationError
 from fastapi import status
+from svix.webhooks import WebhookVerificationError
+
+import app.exceptions.exception_constants
 from app.utils import constants
 
 
@@ -56,9 +59,7 @@ class TestWebhookEndpoint:
         )
 
         assert response.status_code == status.HTTP_200_OK
-        assert (
-            response.json()["message"] == constants.USER_CREATED_SUCCESS
-        )
+        assert response.json()["message"] == constants.USER_CREATED_SUCCESS
         mock_create.assert_called_once()  # Verify user creation was attempted
         mock_filter.assert_called_once_with(user_id="user_123")  # Verify user lookup
 
@@ -123,4 +124,7 @@ class TestWebhookEndpoint:
         )
 
         assert response.status_code == status.HTTP_500_INTERNAL_SERVER_ERROR
-        assert response.json()["message"] == constants.SERVICE_UNAVAILABLE
+        assert (
+            response.json()["message"]
+            == app.exceptions.exception_constants.SERVICE_UNAVAILABLE
+        )

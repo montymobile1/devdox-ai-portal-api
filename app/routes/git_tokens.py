@@ -10,8 +10,11 @@ import uuid
 from typing import Any, Dict, Optional
 
 from fastapi import APIRouter, Body, Depends, Query, Request, status
+from starlette.responses import JSONResponse
 
+import app.exceptions.exception_constants
 from app.config import GitHosting
+from app.exceptions.exception_constants import SERVICE_UNAVAILABLE
 from app.models.git_label import GitLabel
 from app.models.user import User
 from app.schemas.basic import PaginationParams
@@ -50,9 +53,7 @@ def mask_token(token: str) -> str:
     return f"{prefix}{middle_mask}{suffix}"
 
 
-async def handle_gitlab(
-    payload: GitLabelCreate, encrypted_token: str
-) -> Dict[str, Any]:
+async def handle_gitlab(payload: GitLabelCreate, encrypted_token: str) -> JSONResponse:
     """Handle GitLab token validation and storage"""
     gitlab = GitLabManager(
         base_url="https://gitlab.com", access_token=payload.token_value
@@ -84,14 +85,12 @@ async def handle_gitlab(
         )
 
         return APIResponse.error(
-            message=constants.SERVICE_UNAVAILABLE,
+            message=SERVICE_UNAVAILABLE,
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
         )
 
 
-async def handle_github(
-    payload: GitLabelCreate, encrypted_token: str
-) -> Dict[str, Any]:
+async def handle_github(payload: GitLabelCreate, encrypted_token: str) -> JSONResponse:
     """Handle GitHub token validation and storage"""
     github = GitHubManager(access_token=payload.token_value)
     user = github.get_user()
@@ -135,7 +134,7 @@ async def get_git_labels(
     git_hosting: Optional[str] = Query(
         None, description="Filter by git hosting service"
     ),
-) -> Dict[str, Any]:
+) -> JSONResponse:
     """
     Retrieves all stored git labels with masked token values for API response.
 
@@ -188,7 +187,7 @@ async def get_git_labels(
         logger.exception("Failed to retrieve git labels")
 
         return APIResponse.error(
-            message=constants.SERVICE_UNAVAILABLE,
+            message=SERVICE_UNAVAILABLE,
             status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
         )
 
@@ -204,7 +203,7 @@ async def get_git_label_by_label(
     label: str,
     authenticated_user: AuthenticatedUserDTO = CurrentUser,
     pagination: PaginationParams = Depends(),
-) -> Dict[str, Any]:
+) -> JSONResponse:
     """
     Retrieves git labels matching the specified label with masked token values.
 
@@ -246,7 +245,7 @@ async def get_git_label_by_label(
             "Unexpected Failure while attempting to retrieve git labels on Path = '[GET] /api/v1/git_tokens/{label}'"
         )
         return APIResponse.error(
-            message=constants.SERVICE_UNAVAILABLE,
+            message=SERVICE_UNAVAILABLE,
             status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
         )
 
@@ -262,7 +261,7 @@ async def add_git_token(
     request: Request,
     payload: GitLabelBase = Body(...),
     authenticated_user: AuthenticatedUserDTO = CurrentUser,
-) -> Dict[str, Any]:
+) -> JSONResponse | dict[str, Any]:
     """
     Add a new git token configuration with validation based on hosting service.
     """
@@ -309,7 +308,7 @@ async def add_git_token(
         )
 
         return APIResponse.error(
-            message=constants.SERVICE_UNAVAILABLE,
+            message=SERVICE_UNAVAILABLE,
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
         )
 
@@ -324,7 +323,7 @@ async def add_git_token(
 async def delete_git_label(
     git_label_id: str,
     authenticated_user: AuthenticatedUserDTO = CurrentUser,
-) -> Dict[str, Any]:
+) -> JSONResponse:
     """
     Deletes a git label with the specified ID.
 
@@ -344,7 +343,7 @@ async def delete_git_label(
             await git_label.delete()
         else:
             return APIResponse.error(
-                message=constants.TOKEN_NOT_FOUND,
+                message=app.exceptions.exception_constants.TOKEN_NOT_FOUND,
                 status_code=status.HTTP_404_NOT_FOUND,
             )
 
@@ -365,6 +364,6 @@ async def delete_git_label(
         )
 
         return APIResponse.error(
-            message=constants.SERVICE_UNAVAILABLE,
+            message=SERVICE_UNAVAILABLE,
             status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
         )
