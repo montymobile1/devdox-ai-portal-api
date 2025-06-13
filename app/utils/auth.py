@@ -6,7 +6,11 @@ import logging
 from dataclasses import dataclass, fields
 from typing import Any, ClassVar, Dict, Optional, Protocol
 
-from clerk_backend_api import authenticate_request, AuthenticateRequestOptions, Requestish
+from clerk_backend_api import (
+    authenticate_request,
+    AuthenticateRequestOptions,
+    Requestish,
+)
 from fastapi import Depends, Request
 from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
 from pydantic import BaseModel, ConfigDict
@@ -23,6 +27,7 @@ logger = logging.getLogger(__name__)
 # ===================================================================================
 # TODO: THIS SECTION WILL BE DEPRECATED SLOWLY AS WE GO IN FAVOR OF THE OTHER NEW PART
 # ===================================================================================
+
 
 @dataclass
 class AuthenticatedUserDTO:
