@@ -71,6 +71,7 @@ class Settings(BaseSettings):
         env_file = ".env"
         case_sensitive = True
         git_hosting: Optional[GitHosting] = None
+        extra = "ignore"
 
 
 # Initialize settings instance
