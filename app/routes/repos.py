@@ -7,6 +7,7 @@ This module provides endpoints for retrieving and adding Repos with their inform
 from typing import Any, Callable, Dict, List, Optional, Tuple
 
 from fastapi import APIRouter, Depends, HTTPException, Path, status
+from starlette.responses import JSONResponse
 
 from app.config import GitHosting
 from app.exceptions.exception_constants import SERVICE_UNAVAILABLE
@@ -14,8 +15,14 @@ from app.models.git_label import GitLabel
 from app.models.repo import Repo
 from app.schemas.basic import PaginationParams
 from app.schemas.repo import RepoListResponse, RepoResponse
+from app.services.repository_service import (
+    repo_query_service_dependency_definition,
+    RepoQueryService,
+)
 from app.utils import constants
 from app.utils.api_response import APIResponse
+from app.utils.auth import get_authenticated_user, UserClaims
+from app.utils.constants import RESOURCE_RETRIEVED_SUCCESSFULLY
 from app.utils.encryption import EncryptionHelper
 from app.utils.github_manager import GitHubManager
 from app.utils.gitlab_manager import GitLabManager
@@ -102,45 +109,27 @@ def get_git_repo_fetcher(
 
 
 @router.get(
-    "/{user_id}",
+    "/",
     response_model=RepoListResponse,
     status_code=status.HTTP_200_OK,
     summary="Get all repos",
     description="Retrieve a paginated list of repositories for a user",
 )
 async def get_repos(
-    user_id: str = Path(
-        ..., description="The ID of the user to retrieve repositories for"
-    ),
+    user: UserClaims = Depends(get_authenticated_user),
+    repo_service: RepoQueryService = Depends(repo_query_service_dependency_definition),
     pagination: PaginationParams = Depends(),
-) -> RepoListResponse:
-    """
-    Retrieves all repos based on user_id for API response.
+) -> JSONResponse:
 
-    Returns:
-        A paginated list of repositories with total count.
-    """
-    try:
-        query = Repo.filter(user_id=user_id)
-
-        total_count = await query.count()
-        repos = (
-            await query.order_by("-created_at")
-            .offset(pagination.offset)
-            .limit(pagination.limit)
-            .all()
-        )
-
-        # Convert to response format
-        repo_responses = [RepoResponse.model_validate(repo) for repo in repos]
-
-        return RepoListResponse(total_count=total_count, repos=repo_responses)
-
-    except Exception as e:
-        raise HTTPException(
-            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
-            detail=SERVICE_UNAVAILABLE,
-        ) from e
+    total_count, repo_responses = await repo_service.get_all_user_repositories(
+        user, pagination
+    )
+    return APIResponse.success(
+        message=RESOURCE_RETRIEVED_SUCCESSFULLY,
+        data=RepoListResponse(total_count=total_count, repos=repo_responses).model_dump(
+            mode="json"
+        ),
+    )
 
 
 @router.get(
