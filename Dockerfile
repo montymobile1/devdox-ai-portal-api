@@ -33,6 +33,7 @@ COPY entrypoint.sh ./entrypoint.sh
 # Create migrations directory (will be mounted as volume)
 RUN mkdir -p /app/migrations
 COPY run_migrations.py ./run_migrations.py
+COPY fetch_secrets.py ./fetch_secrets.py
 
 COPY aerich.ini ./aerich.ini
 COPY pyproject.toml ./pyproject.toml

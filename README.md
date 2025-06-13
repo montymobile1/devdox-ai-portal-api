@@ -94,25 +94,25 @@ my_flask_supabase_app/
 
 - Python **&ge;** 3.12
 - This project uses Tortoise ORM to interact with the PostgreSQL database hosted on Supabase.
+- Supabase project with vault extension enabled
 - Choose your preferred connection method: API-based connection using Supabase keys, or direct PostgreSQL connection using database credentials
 - Clerk account with API credentials
+- Required environment variables configured
 - SonarCloud for code quality scanning
 
 ### Installation
 
-1. Clone the repository:
+1. [x] Clone the repository:
    ```
    git clone https://github.com/montymobile1/devdox-ai-portal-api.git
    cd devdox-ai-portal-api
    ```
-
-2. Create a virtual environment and activate it:
+2. [x] Create a virtual environment and activate it:
    ```
    python -m venv venv
    source venv/bin/activate  # On Windows: venv\Scripts\activate
    ```
-
-3. Install dependencies:
+3. [x] Install dependencies:
    ```
    pip install -r requirements.txt
    ```
@@ -123,8 +123,19 @@ my_flask_supabase_app/
    > https://github.com/MagicStack/uvloop/issues/25  
    > If you're on Windows, installation may fail or silently skip `uvloop`. The application will still run, but without
    the performance optimizations provided by `uvloop`.
+4. [x] Supabase Vault Setup
+   Your Supabase project should have the vault extension enabled with a decrypted_secrets view that returns:
 
-4. Create a `.env` file in the root directory with your credentials:
+   name: The environment variable name
+   decrypted_secret: The decrypted secret value
+
+   **Security Considerations**
+
+   _Service Role Key_: The script uses the Supabase service role key, which has elevated permissions. Store this securely.
+   _Vault Keys_: Multiple encryption keys can be specified (comma-separated) for vault access.
+   _Local .env_: The generated .env file will contain sensitive data. Ensure it's in your .gitignore.
+
+5. [x] Create a `.env` file in the root directory with your credentials:
 
    | Variable Name             | Required | Deprecated | Description                                                                 |
    |---------------------------|----------|------------|-----------------------------------------------------------------------------|
@@ -146,8 +157,12 @@ my_flask_supabase_app/
 # Running the Application
 
 ```
-uvicorn app.main:app --reload
+./entrypoint.sh
 ```
+
+This bash script orchestrates the complete application initialization process by first fetching encrypted secrets from your Supabase vault and appending them to the local .env file,
+then running the automated database migration system that handles both initial database setup and subsequent schema updates using Tortoise ORM and Aerich, 
+and finally starting the FastAPI application server on host 0.0.0.0 port 8000 using Uvicorn. The script uses set -e to ensure it stops immediately if any step fails, providing a fail-fast approach that prevents the application from starting with incomplete configuration or database setup, making it ideal for containerized deployments where proper initialization is critical before serving requests.
 
 > ⚠️ **Note:**  
 > The `--reload` flag enables hot-reloading during development, but on some machines or larger projects it can
