@@ -6,17 +6,15 @@ This module provides endpoints for retrieving and adding Repos with their inform
 
 from typing import Any, Callable, Dict, List, Optional, Tuple
 
-from fastapi import APIRouter, Depends, HTTPException, Path, status
+from fastapi import APIRouter, Depends, Path, status
 from starlette.responses import JSONResponse
 
 from app.config import GitHosting
 from app.exceptions.exception_constants import SERVICE_UNAVAILABLE
 from app.models.git_label import GitLabel
-from app.models.repo import Repo
 from app.schemas.basic import PaginationParams
-from app.schemas.repo import RepoListResponse, RepoResponse
+from app.schemas.repo import RepoListResponse
 from app.services.repository_service import (
-    repo_query_service_dependency_definition,
     RepoQueryService,
 )
 from app.utils import constants
@@ -117,11 +115,11 @@ def get_git_repo_fetcher(
 )
 async def get_repos(
     user: UserClaims = Depends(get_authenticated_user),
-    repo_service: RepoQueryService = Depends(repo_query_service_dependency_definition),
+    service: RepoQueryService = Depends(RepoQueryService),
     pagination: PaginationParams = Depends(),
 ) -> JSONResponse:
 
-    total_count, repo_responses = await repo_service.get_all_user_repositories(
+    total_count, repo_responses = await service.get_all_user_repositories(
         user, pagination
     )
     return APIResponse.success(
@@ -130,7 +128,6 @@ async def get_repos(
             mode="json"
         ),
     )
-
 
 @router.get(
     "/git_repos/{user_id}/{token_id}",

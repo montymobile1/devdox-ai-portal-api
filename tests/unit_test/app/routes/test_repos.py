@@ -1,108 +1,115 @@
 import datetime
-import uuid
+from http import HTTPStatus
+from uuid import uuid4
 
 import pytest
-from fastapi import status
 from fastapi.testclient import TestClient
-from unittest.mock import AsyncMock
 
 from app.config import GitHosting
 from app.main import app
 from app.schemas.repo import RepoResponse
-from app.utils.auth import UserClaims
-from app.utils.constants import RESOURCE_RETRIEVED_SUCCESSFULLY
-from app.routes.repos import get_authenticated_user, repo_query_service_dependency_definition
+from app.services.repository_service import RepoQueryService
+from app.utils.auth import get_authenticated_user, UserClaims
 
 
-class TestGetReposEndpoint:
+class TestRepoRouter:
 
     @pytest.fixture(autouse=True)
     def setup(self):
-        self.endpoint = "/api/v1/repos/"
-        self.test_user = UserClaims(sub="test-user", email="test@example.com", name="Test User")
-        date_time = datetime.datetime.combine(datetime.datetime.now(datetime.timezone.utc).date(), datetime.time.min, tzinfo=datetime.timezone.utc)
-
-        self.test_repos = [
-            RepoResponse(
-                id=uuid.UUID("8e0cead3-953c-4aa3-8b38-933045fde176"),
-                user_id="test-user",
-                repo_id="123",
-                repo_name="repo-one",
-                description="A test repo",
-                html_url="https://example.com/repo-one",
-                default_branch="main",
-                forks_count=3,
-                stargazers_count=7,
-                is_private=False,
-                visibility="public",
-                token_id="token-xyz",
-                created_at=date_time,
-                updated_at=date_time,
-                repo_created_at=date_time,
-                repo_updated_at=date_time,
-                language="Python",
-                size=100,
-                git_hosting=GitHosting.GITHUB.value, )
-        ]
+        self.user = UserClaims(sub="router-123", email="r@example.com", name="RouterUser")
+        self.repo = RepoResponse(
+            id=uuid4(),
+            user_id="router-123",
+            repo_id="repo-1",
+            repo_name="test-repo",
+            description="Test repository",
+            html_url="https://example.com/repo",
+            default_branch="main",
+            forks_count=10,
+            stargazers_count=20,
+            is_private=True,
+            visibility="private",
+            git_hosting=GitHosting.GITHUB.value,
+            language="Python",
+            size=512,
+            repo_created_at=datetime.datetime.now(),
+            repo_updated_at=datetime.datetime.now(),
+            created_at=datetime.datetime.now(),
+            updated_at=datetime.datetime.now(),
+            token_id="token-1",
+        )
 
     @pytest.fixture
     def override_dependencies(self):
         def _override(user=None, service=None):
-            app.dependency_overrides[get_authenticated_user] = lambda: user or self.test_user
-            app.dependency_overrides[repo_query_service_dependency_definition] = (
-                lambda: service or self.mock_service
-            )
-
+            app.dependency_overrides[get_authenticated_user] = lambda: user or self.user
+            app.dependency_overrides[RepoQueryService] = lambda: service or self.mock_service
         yield _override
-
         app.dependency_overrides.clear()
 
     @pytest.mark.asyncio
-    async def test_success(self, override_dependencies):
-        self.mock_service = AsyncMock()
-        self.mock_service.get_all_user_repositories.return_value = (1, self.test_repos)
+    async def test_successful_repo_fetch(self, override_dependencies):
+        repo = self.repo  # capture repo from outer scope
+
+        class MockService:
+            async def get_all_user_repositories(self, *args, **kwargs):
+                return 1, [repo]
+
+        self.mock_service = MockService()
         override_dependencies()
 
         with TestClient(app) as client:
-            response = client.get(self.endpoint)
-            assert response.status_code == status.HTTP_200_OK
-            body = response.json()
-            assert body["message"] == RESOURCE_RETRIEVED_SUCCESSFULLY
-            assert body["data"]["total_count"] == 1
-            assert body["data"]["repos"][0]["repo_name"] == "repo-one"
+            response = client.get("/api/v1/repos/")
+            assert response.status_code == HTTPStatus.OK
+            data = response.json()["data"]
+            assert data["total_count"] == 1
+            assert data["repos"][0]["repo_name"] == repo.repo_name
 
     @pytest.mark.asyncio
     async def test_empty_repo_list(self, override_dependencies):
-        self.mock_service = AsyncMock()
-        self.mock_service.get_all_user_repositories.return_value = (0, [])
+        class MockService:
+            async def get_all_user_repositories(self, *args, **kwargs):
+                return 0, []
+
+        self.mock_service = MockService()
         override_dependencies()
 
         with TestClient(app) as client:
-            response = client.get(self.endpoint)
-            assert response.status_code == status.HTTP_200_OK
+            response = client.get("/api/v1/repos/")
+            assert response.status_code == HTTPStatus.OK
             data = response.json()["data"]
             assert data["total_count"] == 0
             assert data["repos"] == []
 
     @pytest.mark.asyncio
-    async def test_service_throws_exception(self, override_dependencies):
-        self.mock_service = AsyncMock()
-        self.mock_service.get_all_user_repositories.side_effect = Exception("DB down")
+    async def test_service_exception_handling(self, override_dependencies):
+        class MockService:
+            async def get_all_user_repositories(self, *args, **kwargs):
+                raise Exception("Unexpected failure")
+
+        self.mock_service = MockService()
         override_dependencies()
 
         with TestClient(app, raise_server_exceptions=False) as client:
-            response = client.get(self.endpoint)
-            assert response.status_code == status.HTTP_503_SERVICE_UNAVAILABLE
+            response = client.get("/api/v1/repos/")
+            assert response.status_code == HTTPStatus.SERVICE_UNAVAILABLE
 
     @pytest.mark.asyncio
-    async def test_with_pagination(self, override_dependencies):
-        self.mock_service = AsyncMock()
-        self.mock_service.get_all_user_repositories.return_value = (1, self.test_repos)
+    async def test_with_pagination_params(self, override_dependencies):
+        repo = self.repo  # capture the repo in the outer scope
+
+        class MockService:
+            async def get_all_user_repositories(self, user, pagination):
+                assert pagination.limit == 10
+                assert pagination.offset == 20
+                return 1, [repo]
+
+        self.mock_service = MockService()
         override_dependencies()
 
         with TestClient(app) as client:
-            response = client.get(f"{self.endpoint}?offset=0&limit=1")
-            assert response.status_code == status.HTTP_200_OK
+            response = client.get("/api/v1/repos/?limit=10&offset=20")
+            assert response.status_code == HTTPStatus.OK
             data = response.json()["data"]
             assert data["total_count"] == 1
             assert len(data["repos"]) == 1

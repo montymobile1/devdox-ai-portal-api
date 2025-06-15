@@ -1,84 +1,106 @@
 import datetime
-import uuid
-from typing import List
+from uuid import uuid4
 
 import pytest
 
-from app.config import GitHosting
-from app.repositories.git_label_repository import IRepoStore
 from app.schemas.basic import PaginationParams
 from app.schemas.repo import RepoResponse
 from app.services.repository_service import RepoQueryService
 from app.utils.auth import UserClaims
 
 
-class FakeRepoStore(IRepoStore):
-    def __init__(self, repos: List[RepoResponse]):
-        self._repos = repos
+class StubRepo:
+    def __init__(self, token_id="t1"):
+        self.id = uuid4()
+        self.user_id = "user123"
+        self.repo_id = "r123"
+        self.repo_name = "test"
+        self.description = "desc"
+        self.html_url = "http://test.com"
+        self.default_branch = "main"
+        self.forks_count = 1
+        self.stargazers_count = 2
+        self.is_private = True
+        self.visibility = "public"
+        self.language = "Python"
+        self.size = 100
+        self.repo_created_at = datetime.datetime.now()
+        self.repo_updated_at = datetime.datetime.now()
+        self.created_at = datetime.datetime.now()
+        self.updated_at = datetime.datetime.now()
+        self.token_id = token_id
+        self.git_hosting = None
 
-    async def get_all_by_user(self, user_id: str, offset: int, limit: int):
-        return self._repos[offset : offset + limit]
 
-    async def count_by_user(self, user_id: str) -> int:
-        return len(self._repos)
+class StubRepoStore:
+    def __init__(self, count=1, repos=None):
+        self._count = count
+        self._repos = repos or []
+
+    async def count_by_user(self, user_id):
+        return self._count
+
+    async def get_all_by_user(self, user_id, offset, limit):
+        return self._repos
 
 
+class StubLabelStore:
+    def __init__(self, labels):
+        self.labels = labels
+
+    async def get_git_hosting_map_by_token_id(self, token_ids):
+        return self.labels
+
+
+@pytest.mark.asyncio
 class TestRepoQueryService:
+
     @pytest.fixture
-    def service(self):
+    def pagination(self):
+        return PaginationParams(limit=10, offset=0)
 
-        date_time = datetime.datetime.combine(
-            datetime.datetime.now(datetime.timezone.utc).date(),
-            datetime.time.min,
-            tzinfo=datetime.timezone.utc,
+    @pytest.fixture
+    def user(self):
+        return UserClaims(sub="user123", email="u@example.com", name="User")
+
+    async def test_returns_empty_if_no_repo(self, user, pagination):
+        service = RepoQueryService(
+            repo_store=StubRepoStore(count=0),
+            gl_store=StubLabelStore(labels=[])
         )
-
-        repos = [
-            RepoResponse(
-                id=uuid.UUID("9479c7f8-9d4e-4b9a-8627-8c2082a6f7f1"),
-                repo_name=f"repo_{i}",
-                html_url=f"https://example.com/repo_{i}",
-                is_private=False,
-                visibility="public",
-                repo_created_at=date_time,
-                repo_updated_at=date_time,
-                forks_count=0,
-                stargazers_count=0,
-                language="Python",
-                size=123,
-                description=None,
-                git_hosting=GitHosting.GITHUB.value,
-                user_id=f"user_id-{i}",
-                repo_id=f"repo_id-{i}",
-                token_id=None,
-                created_at=date_time,
-                updated_at=date_time,
-            )
-            for i in range(10)
-        ]
-        return RepoQueryService(repo_store=FakeRepoStore(repos))
-
-    @pytest.mark.asyncio
-    async def test_get_all_user_repositories_within_bounds(self, service):
-        pagination = PaginationParams(offset=0, limit=5)
-        user = UserClaims(sub="test_user")
         total, repos = await service.get_all_user_repositories(user, pagination)
-        assert total == 10
-        assert len(repos) == 5
-        assert all(isinstance(repo, RepoResponse) for repo in repos)
-
-    @pytest.mark.asyncio
-    async def test_get_all_user_repositories_offset_exceeds(self, service):
-        pagination = PaginationParams(offset=15, limit=5)
-        user = UserClaims(sub="test_user")
-        total, repos = await service.get_all_user_repositories(user, pagination)
-        assert total == 10
+        assert total == 0
         assert repos == []
 
-    @pytest.mark.asyncio
-    async def test_get_all_user_repositories_exact_bounds(self, service):
-        pagination = PaginationParams(offset=5, limit=5)
-        user = UserClaims(sub="test_user")
+    async def test_enriches_git_hosting(self, user, pagination):
+        repo = StubRepo(token_id="token123")
+        service = RepoQueryService(
+            repo_store=StubRepoStore(repos=[repo]),
+            gl_store=StubLabelStore(labels=[{"id": "token123", "git_hosting": "github"}])
+        )
         total, repos = await service.get_all_user_repositories(user, pagination)
-        assert total == 10
-        assert len(repos) == 5
+        assert total == 1
+        assert repos[0].git_hosting == "github"
+
+    async def test_git_hosting_missing_stays_none(self, user, pagination):
+        repo = StubRepo(token_id="unknown")
+        service = RepoQueryService(
+            repo_store=StubRepoStore(repos=[repo]),
+            gl_store=StubLabelStore(labels=[])
+        )
+        total, repos = await service.get_all_user_repositories(user, pagination)
+        assert repos[0].git_hosting is None
+
+    async def test_all_fields_transform_correctly(self, user, pagination):
+        repo = StubRepo()
+        service = RepoQueryService(
+            repo_store=StubRepoStore(repos=[repo]),
+            gl_store=StubLabelStore(labels=[{"id": "t1", "git_hosting": "gitlab"}])
+        )
+        total, repos = await service.get_all_user_repositories(user, pagination)
+        response = repos[0]
+        assert isinstance(response, RepoResponse)
+        assert response.repo_name == "test"
+        assert response.repo_id == "r123"
+        assert response.token_id == "t1"
+        assert response.git_hosting == "gitlab"
