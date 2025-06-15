@@ -41,7 +41,7 @@ class StubRepoStore:
         return self._count
 
     async def get_all_by_user(self, user_id, offset, limit):
-        return self._repos
+        return self._repos[offset : offset + limit]
 
 
 class StubLabelStore:
