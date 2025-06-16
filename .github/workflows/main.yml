@@ -28,14 +28,14 @@ jobs:
           pip install coverage
 
       - name: Build Docker image
-        run: docker compose build --tag testnew
+        run: docker compose build
 
       - name: Run Trivy vulnerability scanner
         uses: aquasecurity/trivy-action@0.28.0
         env:
           TRIVY_DISABLE_VEX_NOTICE: "true"
         with:
-            image-ref: testnew:latest
+            image-ref: devdox:latest
             format: 'table'
             severity: 'CRITICAL,HIGH'  # Only fail on high/critical, ignore medium
             exit-code: '1'  # Fail the build if vulnerabilities found
