@@ -1,11 +1,12 @@
-from typing import Collection, Dict, List
+from typing import Collection, Dict, List, Union
+from uuid import UUID
 
 from app.models import GitLabel
 
 
 class TortoiseGitLabelStore:
     async def get_git_hosting_map_by_token_id(
-        self, token_ids: Collection[str]
+        self, token_ids: Collection[Union[str, UUID]]
     ) -> List[Dict]:
         if not token_ids:
             return []
