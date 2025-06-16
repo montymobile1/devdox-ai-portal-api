@@ -1,0 +1,6 @@
+AUTH_FAILED = "Access denied. Please log in again."
+INVALID_BEARER_TOKEN_SCHEMA = "Missing or malformed Authorization header"
+SERVICE_UNAVAILABLE = "Service temporarily unavailable. Please try again later."
+GENERIC_BAD_REQUEST = "Bad Request"
+GENERIC_RESOURCE_NOT_FOUND = "Resource Not Found"
+TOKEN_NOT_FOUND = "Token not found"

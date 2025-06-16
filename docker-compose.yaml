@@ -1,12 +1,33 @@
 version: '3.8'
 
 services:
-  app:
-    build: .
+  vault-fetcher:
+    build: ./vault-fetcher
+    env_file:
+      - .env
+    environment:
+      - SUPABASE_URL=${SUPABASE_URL}
+      - SUPABASE_SECRET_KEY=${SUPABASE_SECRET_KEY}
+    volumes:
+      - secrets:/app/secrets:rw  # Ensure read-write access
+    command: python fetch_secrets.py
+    restart: "no"  # Run once and exit
+
+  devdox:
+    build: ./devdox
+    env_file:
+      - .env
+    depends_on:
+      - vault-fetcher
     volumes:
       # Mount migrations folder to persist changes
       - ./migrations:/app/migrations
+      - ./secrets:/app/secrets:ro  # Read-only for the app
       # Optional: mount other directories you want to persist
       - ./logs:/app/logs
     ports:
       - "8000:8000"
+    command: sh -c "while [ ! -f /app/secrets/.ready ]; do sleep 1; done && ./entrypoint.sh"
+
+volumes:
+  secrets:
