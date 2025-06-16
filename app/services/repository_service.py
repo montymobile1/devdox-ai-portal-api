@@ -4,7 +4,7 @@ from fastapi import Depends
 
 from app.repositories.git_label_repository import TortoiseGitLabelStore
 from app.repositories.repo_repository import TortoiseRepoStore
-from app.schemas.basic import PaginationParams
+from app.schemas.basic import RequiredPaginationParams
 from app.schemas.repo import RepoResponse
 from app.utils.auth import UserClaims
 
@@ -19,7 +19,7 @@ class RepoQueryService:
         self.gl_store = gl_store
 
     async def get_all_user_repositories(
-        self, user: UserClaims, pagination: PaginationParams
+        self, user: UserClaims, pagination: RequiredPaginationParams
     ) -> Tuple[int, List[RepoResponse]]:
 
         total_count = await self.repo_store.count_by_user(user.sub)
@@ -33,7 +33,7 @@ class RepoQueryService:
 
         token_ids = {str(repo.token_id) for repo in repos if repo.token_id}
         labels = await self.gl_store.get_git_hosting_map_by_token_id(token_ids)
-        label_map = label_map = {str(label["id"]): label["git_hosting"] for label in labels}
+        label_map = {str(label["id"]): label["git_hosting"] for label in labels}
 
         repo_responses = []
 
