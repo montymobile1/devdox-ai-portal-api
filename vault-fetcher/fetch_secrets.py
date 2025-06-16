@@ -44,7 +44,14 @@ def inject_secrets():
     # Write to the correct location that matches the volume mount
     secrets_dir = "/app/secrets"
     env_file_path = os.path.join(secrets_dir, ".env")
-    ready_file_path = os.path.join(secrets_dir, ".ready")
+    existing_secret_names = set()
+
+    if os.path.exists(env_file_path):
+        with open(env_file_path, "r") as env_file:
+            for line in env_file:
+                if "=" in line:
+                    key = line.split("=", 1)[0].strip()
+                    existing_secret_names.add(key)
 
     # Ensure secrets directory exists
     os.makedirs(secrets_dir, exist_ok=True)
@@ -52,21 +59,20 @@ def inject_secrets():
     try:
         print(f"Writing secrets to {env_file_path}...")
 
-        with open(env_file_path, "w") as env_file:  # Use 'w' to overwrite
+        with open(env_file_path, "a") as env_file:  # Use 'w' to overwrite
             for i, result in enumerate(data):
                 secret_name = result.get("name", f"SECRET_{i}")
-                secret_value = result.get("decrypted_secret", "")
 
+                if secret_name in existing_secret_names:
+                    print(f"Skipping existing secret: {secret_name}")
+                    continue
+
+                secret_value = result.get("decrypted_secret", "")
                 print(f"Writing secret: {secret_name}")
                 env_file.write(f"{secret_name}={secret_value}\n")
                 env_file.flush()
 
-        # Create the ready file to signal completion
-        with open(ready_file_path, "w") as ready_file:
-            ready_file.write("secrets_loaded\n")
-
         print("All secrets written successfully!")
-        print(f"Created ready signal file: {ready_file_path}")
 
     except Exception as e:
         print(f"Error writing secrets: {e}")

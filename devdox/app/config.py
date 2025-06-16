@@ -72,7 +72,7 @@ class Settings(BaseSettings):
     class Config:
         """Pydantic config class."""
 
-        env_file = ".env"
+        env_file = "app/secrets/.env"
         case_sensitive = True
         git_hosting: Optional[GitHosting] = None
         extra = "ignore"
