@@ -31,7 +31,7 @@ class RepoQueryService:
             user.sub, pagination.offset, pagination.limit
         )
 
-        token_ids = {str(repo.token_id) for repo in repos if repo.token_id}
+        token_ids = {repo.token_id for repo in repos if repo.token_id}
         labels = await self.gl_store.get_git_hosting_map_by_token_id(token_ids)
         label_map = {str(label["id"]): label["git_hosting"] for label in labels}
 
