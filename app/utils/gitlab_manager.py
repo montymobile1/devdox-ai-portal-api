@@ -1,42 +1,42 @@
 import gitlab
 import requests
+from gitlab import Gitlab, GitlabError
+
+from app.exceptions.custom_exceptions import DevDoxAPIException
 
 
-class GitLabManager:
-    def __init__(self, base_url="https://gitlab.com", project_id="", access_token=""):
-        self.base_url = base_url.rstrip("/")
-        self.project_id = project_id
-        self.headers = {"PRIVATE-TOKEN": access_token}
+class AuthenticatedGitLabManager:
 
-        self.session = requests.Session()
+    def __init__(self, base_url, git_client, access_token, rq=requests):
+        self.base_url = base_url
+        self._header = {"PRIVATE-TOKEN": access_token}
+        self._git_client:Gitlab = git_client
+        self._rq= rq.Session()
+
+    def get_project(self, project_id):
         try:
-            self.gl = gitlab.Gitlab(url=self.base_url, private_token=access_token)
-            self.gl.auth()
-            self.project = self.get_project()
-            self.auth_status = True
-        except Exception as e:
-            print(f"Error initializing GitLabManager: {e}")
-            self.project = None
-            self.gl = None
-            self.auth_status = False
-
-    def get_project(self):
-        if self.project_id != "":
-            return self.gl.projects.get(self.project_id)
-        else:
-            return None
+            return self._git_client.projects.get(project_id)
+        except GitlabError as e:
+            raise DevDoxAPIException(
+                user_message="Unable to fetch GitLab project",
+                log_message="GitLab project fetch failed",
+                root_exception=e,
+            )
 
     def get_user(self):
         try:
             url = f"{self.base_url}/api/v4/user"
-            response = self.session.get(url, headers=self.headers)
+            response = self._rq.get(url, headers=self._header)
             response.raise_for_status()
             return response.json()
         except requests.exceptions.RequestException as e:
-            print(f"Error fetching repos: {e}")
-            return False
+            raise DevDoxAPIException(
+                user_message="Unable to fetch GitLab user.",
+                log_message="GitLab user fetch failed",
+                root_exception=e,
+            )
 
-    def get_repos(self, page=1, per_page=20):
+    def get_user_repositories(self, page=1, per_page=20):
         try:
             per_page = max(1, min(per_page, 100))
             page = max(1, page)
@@ -45,7 +45,7 @@ class GitLabManager:
                 f"{self.base_url}/api/v4/projects"
                 f"?membership=true&min_access_level=30&per_page={per_page}&page={page}"
             )
-            response = self.session.get(url, headers=self.headers)
+            response = self._rq.get(url, headers=self._header)
             response.raise_for_status()
 
             repos = response.json()
@@ -58,12 +58,28 @@ class GitLabManager:
             }
             return {"repositories": repos, "pagination_info": pagination}
         except requests.exceptions.RequestException as e:
-            self.log_error("GitLab API request failed", e)
-            return []
+            raise DevDoxAPIException(
+                user_message="Unable to fetch GitLab repositories.",
+                log_message="GitLab repository list fetch failed",
+                root_exception=e,
+            )
 
-    def log_error(self, message, exception):
-        """Logs an error with traceback details."""
-        print(f"{message}: {exception}")
-        import traceback
+class GitLabManager:
 
-        traceback.print_exc()
+    default_base_url = "https://gitlab.com"
+
+    def __init__(self, base_url=default_base_url):
+        self.base_url = base_url.rstrip("/")
+
+    def authenticate(self, access_token):
+        try:
+            gl = gitlab.Gitlab(url=self.base_url, private_token=access_token)
+            gl.auth()
+            return AuthenticatedGitLabManager(base_url=self.base_url, git_client=gl, access_token=access_token)
+
+        except Exception as e:
+            raise DevDoxAPIException(
+                user_message="GitLab authentication failed",
+                log_message="Failed to authenticate GitLabManager",
+                root_exception=e
+            )

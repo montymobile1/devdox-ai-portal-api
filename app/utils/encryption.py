@@ -152,3 +152,6 @@ class FernetEncryptionHelper(IEncryptionHelper):
             algorithm=hashes.SHA256(), length=32, salt=salt, iterations=100000
         )
         return base64.urlsafe_b64encode(kdf.derive(self.secret_key.encode()))
+
+def get_encryption_helper() -> FernetEncryptionHelper:
+    return FernetEncryptionHelper()

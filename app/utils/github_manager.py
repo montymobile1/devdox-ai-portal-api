@@ -1,44 +1,29 @@
 from github import Github
 from github.GithubException import GithubException
-import traceback
+
+from app.exceptions.custom_exceptions import DevDoxAPIException
 
 
-class GitHubManager:
-    def __init__(
-        self,
-        base_url="https://api.github.com",
-        owner="",
-        repo="",
-        access_token="",
-        per_page=20,
-        page=1,
-    ):
-        """Initialize GitHub manager with PyGithub."""
-        # For GitHub Enterprise, you can specify base_url
-        if base_url == "https://api.github.com":
-            self.gh = Github(access_token)
-        else:
-            self.gh = Github(base_url=base_url, login_or_token=access_token)
+class AuthenticatedGitHubManager:
 
-        self.owner = owner
-        self.repo = repo
-        self.project = self.get_project()
+    def __init__(self, base_url, git_client):
+        self.base_url = base_url
+        self._git_client:Github = git_client
 
-    def get_project(self):
-        """Get the GitHub repository object."""
-        if self.owner != "" and self.repo != "":
-            try:
-                return self.gh.get_repo(f"{self.owner}/{self.repo}")
-            except Exception as e:
-                print(f"Error getting repository: {e}")
-                return None
-        else:
-            return None
+    def get_project(self, owner: str, repo: str):
+        try:
+            return self._git_client.get_repo(f"{owner}/{repo}")
+        except GithubException as e:
+            raise DevDoxAPIException(
+                user_message="Unable to fetch GithHub project",
+                log_message="GitHub project fetch failed",
+                root_exception=e
+            )
 
     def get_user(self):
         """Get the authenticated user information using PyGithub."""
         try:
-            user = self.gh.get_user()
+            user = self._git_client.get_user()
             return {
                 "login": user.login,
                 "id": user.id,
@@ -48,29 +33,30 @@ class GitHubManager:
                 "html_url": user.html_url,
             }
         except GithubException as e:
-            print(f"Error fetching user: {e}")
-            return False
-        except Exception as e:
-            print(f"Unexpected error fetching user: {e}")
-            return False
+            raise DevDoxAPIException(
+                user_message="Unable to fetch GitHub user.",
+                log_message="GitHub user fetch failed",
+                root_exception=e,
+            )
 
     def get_user_repositories(
         self,
+        page=1,
+        per_page=20,
         visibility="all",
         affiliation="owner,collaborator,organization_member",
         sort="updated",
         direction="desc",
-        page=1,
-        per_page=20,
     ):
         """
         Get list of repositories that the authenticated user has access to with pagination.
         """
         try:
-            per_page = self._validate_per_page(per_page)
-            page = self._validate_page(page)
+            per_page = GitHubManager.validate_per_page(per_page)
+            page = GitHubManager.validate_page(page)
 
-            user = self.gh.get_user()
+            user = self._git_client.get_user()
+
             repos_paginated = user.get_repos(
                 visibility=visibility,
                 affiliation=affiliation,
@@ -80,9 +66,9 @@ class GitHubManager:
             repos_paginated.per_page = per_page
 
             repos_page = repos_paginated.get_page(page - 1)
-            repo_list = [self._extract_repo_info(repo) for repo in repos_page]
+            repo_list = [GitHubManager.extract_repo_info(repo) for repo in repos_page]
 
-            pagination_info = self._get_pagination_info(
+            pagination_info = GitHubManager.get_pagination_info(
                 total_count=repos_paginated.totalCount,
                 page=page,
                 per_page=per_page,
@@ -94,35 +80,48 @@ class GitHubManager:
             }
 
         except GithubException as e:
-            self.log_error("Error fetching user repositories", e)
-            return False
-        except Exception as e:
-            self.log_error("Unexpected error fetching user repositories", e)
-            return False
+            raise DevDoxAPIException(
+                user_message="Unable to fetch GitHub repositories.",
+                log_message="GitHub repository list fetch failed",
+                root_exception=e,
+            )
 
-    def _validate_per_page(self, per_page):
+class GitHubManager:
+
+    default_base_url = "https://api.github.com"
+
+    def __init__(self, base_url=default_base_url):
+        self.base_url = base_url
+
+    def authenticate(self, access_token: str) -> AuthenticatedGitHubManager:
+
+        try:
+            if self.base_url == self.default_base_url:
+                github_client = Github(access_token)
+            else:
+                github_client = Github(base_url=self.base_url, login_or_token=access_token)
+
+            return AuthenticatedGitHubManager(
+                base_url=self.base_url, git_client=github_client
+            )
+
+        except GithubException as e:
+            raise DevDoxAPIException(
+                user_message="GitHub authentication failed",
+                log_message="Failed to authenticate GitHubManager",
+                root_exception=e
+            )
+
+    @staticmethod
+    def validate_per_page(per_page):
         return per_page if 1 <= per_page <= 100 else 30
 
-    def _validate_page(self, page):
+    @staticmethod
+    def validate_page(page):
         return page if page >= 1 else 1
-
-    def _get_pagination_info(self, total_count, page, per_page):
-        total_pages = (total_count + per_page - 1) // per_page
-        has_next_page = page < total_pages
-        has_prev_page = page > 1
-
-        return {
-            "current_page": page,
-            "per_page": per_page,
-            "total_count": total_count,
-            "total_pages": total_pages,
-            "has_next_page": has_next_page,
-            "has_prev_page": has_prev_page,
-            "next_page": page + 1 if has_next_page else None,
-            "prev_page": page - 1 if has_prev_page else None,
-        }
-
-    def _extract_repo_info(self, repo):
+    
+    @staticmethod
+    def extract_repo_info(repo):
         return {
             "id": repo.id,
             "name": repo.name,
@@ -147,18 +146,31 @@ class GitHubManager:
                 "id": repo.owner.id,
                 "type": repo.owner.type,
             },
-            "permissions": self._get_repo_permissions(repo),
+            "permissions": GitHubManager._get_repo_permissions(repo),
         }
-
-    def _get_repo_permissions(self, repo):
+    
+    @staticmethod
+    def _get_repo_permissions(repo):
         permissions = getattr(repo, "permissions", None)
         return {
             "admin": getattr(permissions, "admin", False),
             "push": getattr(permissions, "push", False),
             "pull": getattr(permissions, "pull", False),
         }
+    
+    @staticmethod
+    def get_pagination_info(total_count, page, per_page):
+        total_pages = (total_count + per_page - 1) // per_page
+        has_next_page = page < total_pages
+        has_prev_page = page > 1
 
-    def log_error(self, message, exception):
-        """Logs an error with traceback details."""
-        print(f"{message}: {exception}")
-        traceback.print_exc()
+        return {
+            "current_page": page,
+            "per_page": per_page,
+            "total_count": total_count,
+            "total_pages": total_pages,
+            "has_next_page": has_next_page,
+            "has_prev_page": has_prev_page,
+            "next_page": page + 1 if has_next_page else None,
+            "prev_page": page - 1 if has_prev_page else None,
+        }
