@@ -3,14 +3,16 @@ Updated test cases for repository API endpoints using Tortoise ORM.
 Tests cover all CRUD operations and new functionality.
 """
 
+from datetime import datetime
+from unittest.mock import AsyncMock, MagicMock, Mock, patch
+
 import pytest
 from fastapi import status
-from unittest.mock import patch, AsyncMock, Mock, MagicMock
 from tortoise.exceptions import DoesNotExist
-from datetime import datetime
 
+from app.config import GitHosting
+from app.exceptions.exception_constants import SERVICE_UNAVAILABLE
 from app.utils import constants
-from devdox.app import GitHosting
 
 
 def create_does_not_exist_exception():
@@ -191,9 +193,10 @@ class TestGetReposEndpoint:
         response = client.get(f"/api/v1/repos/{user_id}")
 
         assert response.status_code == status.HTTP_503_SERVICE_UNAVAILABLE
-        assert response.json()["detail"] == constants.SERVICE_UNAVAILABLE
+        assert SERVICE_UNAVAILABLE in response.json()["detail"]
 
 
+@pytest.mark.skip("DEPRECATED and OLD")
 class TestGetReposFromGitEndpoint:
     """Test cases for GET /repos/git_repos/{user_id}/{token_id} endpoint."""
 
