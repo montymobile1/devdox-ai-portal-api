@@ -4,6 +4,7 @@ from urllib.parse import quote
 import pytest
 from fastapi import status
 
+from app.exceptions.custom_exceptions import DevDoxAPIException
 from app.exceptions.exception_constants import SERVICE_UNAVAILABLE
 from app.routes.git_tokens import mask_token
 from app.utils import constants
@@ -398,10 +399,8 @@ class TestAddGitTokenEndpoint:
         mock_authenticated_user,
     ):
         """Test GitHub token creation with authentication failure."""
-        with patch("app.routes.git_tokens.GitHubManager") as mock_github_manager:
-            mock_instance = MagicMock()
-            mock_instance.get_user.return_value = None
-            mock_github_manager.return_value = mock_instance
+        with patch("app.routes.git_tokens.GitHubManager.authenticate") as mock_auth:
+            mock_auth.return_value.get_user.return_value = None
 
             response = client.post(
                 TestAddGitTokenEndpoint.get_url(), json=token_payload_github
@@ -412,40 +411,11 @@ class TestAddGitTokenEndpoint:
             assert data["success"] is False
             assert "Failed to authenticate with GitHub" in data["message"]
 
-    def test_add_gitlab_token_authentication_failure(
-        self,
-        client,
-        mock_user_model,
-        token_payload_gitlab,
-        mock_encryption_helper,
-        mock_authenticated_user,
-    ):
-        """Test GitLab token creation with authentication failure."""
-        with patch("app.routes.git_tokens.GitLabManager") as mock_gitlab_manager:
-            # Setup failed GitLab manager
-            mock_instance = MagicMock()
-            mock_instance.auth_status = False
-            mock_gitlab_manager.return_value = mock_instance
-
-            response = client.post(
-                TestAddGitTokenEndpoint.get_url(), json=token_payload_gitlab
-            )
-
-            assert response.status_code == status.HTTP_400_BAD_REQUEST
-            data = response.json()
-            assert data["success"] is False
-            assert "Failed to authenticate with GitLab" in data["message"]
-
     def test_add_gitlab_token_user_fetch_failure(
         self, client, mock_user_model, mock_encryption_helper, mock_authenticated_user
     ):
-        """Test GitLab token creation with user fetch failure."""
-        with patch("app.routes.git_tokens.GitLabManager") as mock_gitlab_manager:
-            # Mock GitLab auth success but user fetch failure
-            mock_instance = MagicMock()
-            mock_instance.auth_status = True
-            mock_instance.get_user.return_value = None
-            mock_gitlab_manager.return_value = mock_instance
+        with patch("app.routes.git_tokens.GitLabManager.authenticate") as mock_auth:
+            mock_auth.return_value.get_user.return_value = None
 
             payload = {
                 "label": "Test GitLab Token",
@@ -459,9 +429,6 @@ class TestAddGitTokenEndpoint:
             data = response.json()
             assert data["success"] is False
             assert constants.GITLAB_USER_RETRIEVE_FAILED in data["message"]
-
-            # Verify user data was attempted to be fetched
-            mock_gitlab_manager.return_value.get_user.assert_called_once()
 
     def test_add_token_unsupported_provider(
         self, client, mock_user_model, mock_encryption_helper, mock_authenticated_user
@@ -525,30 +492,6 @@ class TestAddGitTokenEndpoint:
                 # Verify that GitLabel.create was called with the authenticated user ID, not the provided one
                 call_args = mock_git_label.create.call_args
                 assert call_args.kwargs["user_id"] == mock_authenticated_user.id
-
-    def test_add_gitlab_auth_status_false(
-        self, client, mock_user_model, mock_encryption_helper, mock_authenticated_user
-    ):
-        """Test GitLab token creation auth status failure."""
-        with patch("app.routes.git_tokens.GitLabManager") as mock_gitlab_manager:
-            # Mock GitLab auth success but user fetch failure
-            mock_instance = MagicMock()
-            mock_instance.auth_status = False
-            mock_instance.get_user.return_value = None
-            mock_gitlab_manager.return_value = mock_instance
-
-            payload = {
-                "label": "Test GitLab Token",
-                "git_hosting": "gitlab",
-                "token_value": "glpat-1234567890abcdef",
-            }
-
-            response = client.post(TestAddGitTokenEndpoint.get_url(), json=payload)
-
-            assert response.status_code == status.HTTP_400_BAD_REQUEST
-            data = response.json()
-            assert data["success"] is False
-            assert constants.GITLAB_AUTH_FAILED in data["message"]
 
     async def test_add_git_token_exception(
         self, client, mock_user_model, mock_encryption_helper, mock_authenticated_user

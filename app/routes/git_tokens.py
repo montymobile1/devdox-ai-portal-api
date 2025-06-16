@@ -55,12 +55,7 @@ def mask_token(token: str) -> str:
 
 async def handle_gitlab(payload: GitLabelCreate, encrypted_token: str) -> JSONResponse:
     """Handle GitLab token validation and storage"""
-    gitlab = GitLabManager(
-        base_url="https://gitlab.com", access_token=payload.token_value
-    )
-
-    if not gitlab.auth_status:
-        return APIResponse.error(message=constants.GITLAB_AUTH_FAILED)
+    gitlab = GitLabManager().authenticate(access_token=payload.token_value)
 
     user = gitlab.get_user()
     if not user:
@@ -92,7 +87,7 @@ async def handle_gitlab(payload: GitLabelCreate, encrypted_token: str) -> JSONRe
 
 async def handle_github(payload: GitLabelCreate, encrypted_token: str) -> JSONResponse:
     """Handle GitHub token validation and storage"""
-    github = GitHubManager(access_token=payload.token_value)
+    github = GitHubManager().authenticate(access_token=payload.token_value)
     user = github.get_user()
 
     if not user:

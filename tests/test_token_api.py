@@ -514,7 +514,10 @@ class TestInputValidation:
             "token_value": "ghp_1234567890abcdef",
         }
 
-        response = client.post("/api/v1/git_tokens/", json=payload)
+        with patch("app.utils.github_manager.GitHubManager.authenticate") as mock_auth:
+            mock_auth.return_value.get_user.return_value = {"login": "test-user"}
+
+            response = client.post("/api/v1/git_tokens/", json=payload)
 
         # Should return validation error or handle gracefully
         assert response.status_code in [status.HTTP_400_BAD_REQUEST]
