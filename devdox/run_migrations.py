@@ -105,21 +105,13 @@ async def run():
     try:
         if not os.path.exists(MIGRATIONS_DIR):
             _ = run_command("aerich init -t app.config.TORTOISE_ORM")
-        _ = run_command("aerich init-db")
-        # if await needs_initialization():
-        #     logger.info("Initializing database: Running aerich init and init-db...")
-        #
-        #     # Only run aerich init if migrations directory doesn't exist
-        #     if not os.path.exists(MIGRATIONS_DIR):
-        #         run_command("aerich init -t app.config.TORTOISE_ORM")
 
-        # else:
-        #     logger.info("Running aerich migrate and upgrade...")
-        #     run_command("aerich migrate")
-        #     run_command("aerich upgrade")
+        _ = run_command("aerich init-db")
+
         logger.info("Running aerich migrate and upgrade...")
         _ = run_command("aerich migrate")
         _ = run_command("aerich upgrade")
+
         # Optional: ensure Tortoise connection is valid
         await ensure_tortoise_connected()
 
