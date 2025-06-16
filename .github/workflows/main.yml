@@ -28,7 +28,7 @@ jobs:
           pip install coverage
 
       - name: Build Docker image
-        run: docker build -t testnew:latest .
+        run: docker compose build --tag testnew
 
       - name: Run Trivy vulnerability scanner
         uses: aquasecurity/trivy-action@0.28.0
