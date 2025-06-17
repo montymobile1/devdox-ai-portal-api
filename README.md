@@ -64,28 +64,39 @@ The DevDox AI Portal API communicates with:
 ## Project Structure
 
 ```
-my_flask_supabase_app/
-├── app/                            # Application package (actual FastAPI app code)
-│   ├── __init__.py                 # Initialize FastAPI app, Supabase client, config
-│   ├── config.py                   # Configuration settings (e.g., Supabase URL, API keys, etc.)
-│   ├── routes/                     # Route definitions (FastAPI route functions)
-│   │   ├── __init__.py             # Initialize API routers
-│   │   └── example_routes.py       # Example route module (e.g., endpoints for one feature)
-│   ├── services/                   # Service layer (business logic and external API calls)
-│   │   ├── __init__.py
-│   │   └── supabase_client.py      # Supabase API interaction logic (REST/RPC calls via HTTP)
-│   ├── models/                     # Data models using Pydantic
-│   │   └── __init__.py
-│   ├── utils/                      # Utility functions (helpers, etc.)
-│   │   └── __init__.py
-│   └── main.py                     # Application entry point (creates FastAPI app and registers routes)
-├── tests/                          # Test suite for TDD (mirrors app structure for clarity)
+
+devdox-ai-portal-api/
+├── devdox/
+│   ├── app/                         # Main FastAPI app code
+│   ├── tests/                       # Test suite
 │   ├── __init__.py
-│   ├── test_routes.py              # Tests for FastAPI endpoints (routes)
-│   └── test_services.py            # Tests for service logic (including Supabase integration)
-├── .env                            # Environment variables (Supabase URL, keys, secrets; not in version control)
-├── requirements.txt                # Python dependencies
-└── README.md                       # Project documentation and setup instructions
+│   ├── aerich.ini                   # DB migrations config (Tortoise ORM)
+│   ├── app.log
+│   ├── Dockerfile                   # Docker image definition for devdox app
+│   ├── entrypoint.sh                # Entrypoint for container
+│   ├── error.log
+│   ├── pyproject.toml               # Python package config
+│   ├── pytest.ini                   # Pytest config
+│   ├── run_migrations.py            # Script to run DB migrations
+│   ├── run_sonar.sh                 # Script to run SonarQube scan
+│   ├── run_tests.py                 # Script to run tests
+│   └── sonar-project.properties     # SonarQube project config
+├── migrations/                      # DB migration files
+├── secrets/  
+│   └── .env                         # Environment variables (Supabase URL, keys, secrets; not in version control)
+├── vault-fetcher/                   # Secret fetching module
+│   ├── Dockerfile                   # Dockerfile for Vault fetcher
+│   ├── fetch_secrets.py             # Main script for fetching secrets and add to .env
+│   └── requirements.txt             # Python dependencies for vault fetcher
+├── .dockerignore
+├── .gitignore
+├── decryption_key.py                # Decryption logic
+├── docker-compose.yaml              # Docker Compose setup
+├── error.log
+├── generate_token.py                # Token generation logic
+├── LICENSE
+└── README.md                        # Project documentation
+
 ```
 
 ## Development Setup
@@ -269,7 +280,7 @@ Next step: Connecting FastAPI to Supabase.
 ## Step 5: Connect FastAPI to Supabase
 
 The `devdoxAI` backend communicates with Supabase via its REST API interface. To enable this, you must configure the
-following environment variables in your `.env` file:
+following environment variables in your `.env` file in `secrets` folder:
 
 ```env
 SUPABASE_URL=https://your-project-id.supabase.co
@@ -360,7 +371,7 @@ Navigate to your project in the Clerk dashboard:
 
 1. Click **"Configure"**
 2. Under **"Developers" > "API Keys"**, find the `Clerk Secret Key`
-3. Add to `.env`:
+3. Add to `secrets/.env`:
 
 ```env
 CLERK_API_KEY=sk_test_XXXXXXXXXXXXXXXX
@@ -369,7 +380,7 @@ CLERK_API_KEY=sk_test_XXXXXXXXXXXXXXXX
 ### 🔐 Public JWT Key
 
 1. Still under **"API Keys"**, locate the **"JWT Public Key"**
-2. Add to `.env`:
+2. Add to `secrets/.env`:
 
 ```env
 CLERK_JWT_PUBLIC_KEY=pk_test_XXXXXXXXXXXXXXXX
@@ -379,7 +390,7 @@ CLERK_JWT_PUBLIC_KEY=pk_test_XXXXXXXXXXXXXXXX
 
 ## Step 3: Configure Environment Variables
 
-Ensure your `.env` includes:
+Ensure your `secrets/.env` includes:
 
 ```env
 CLERK_API_KEY=sk_test_...

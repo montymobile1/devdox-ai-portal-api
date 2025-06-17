@@ -82,8 +82,6 @@ class Settings(BaseSettings):
 # Initialize settings instance
 settings = Settings()
 
-print("SECRET_KEY ", settings.SECRET_KEY)
-
 
 def get_database_config() -> Dict[str, Any]:
     """
