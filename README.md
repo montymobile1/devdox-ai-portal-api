@@ -119,13 +119,6 @@ devdox-ai-portal-api/
    cd devdox-ai-portal-api
    ```
 
-
-   > ⚠️ **Important Note for Windows Users:**  
-   > The library `uvloop` is **not supported on Windows**.  
-   > This is a known limitation and is unlikely to change, as confirmed by the maintainers:  
-   > https://github.com/MagicStack/uvloop/issues/25  
-   > If you're on Windows, installation may fail or silently skip `uvloop`. The application will still run, but without
-   the performance optimizations provided by `uvloop`.
 2. [x] Supabase Vault Setup
    Your Supabase project should have the vault extension enabled with a decrypted_secrets view that returns:
 
@@ -164,9 +157,9 @@ devdox-ai-portal-api/
 
 5.[x]  Run the application
 
-```
-docker compose up -d
-```
+   ```bash
+   docker compose up -d
+
 
 This Docker Compose-based setup orchestrates the complete application initialization process in a fail-safe and containerized manner:
 
@@ -277,7 +270,7 @@ python3 run_migrations.py
 
 Next step: Connecting FastAPI to Supabase.
 
-## Step 5: Connect FastAPI to Supabase
+## Step 4: Connect FastAPI to Supabase
 
 The `devdoxAI` backend communicates with Supabase via its REST API interface. To enable this, you must configure the
 following environment variables in your `.env` file in `secrets` folder:
@@ -344,7 +337,7 @@ For context and developer discussions on this behavior, see:
 
 This behavior is part of Supabase's underlying infrastructure and not an issue within the `devdoxAI` codebase.
 
-# Setting Up Clerk Authentication
+## Step 5: Setting Up Clerk Authentication
 
 This guide explains how to configure Clerk authentication for the `devdoxAI` FastAPI backend using [https://clerk.dev](https://clerk.dev).
 
@@ -388,16 +381,13 @@ CLERK_JWT_PUBLIC_KEY=pk_test_XXXXXXXXXXXXXXXX
 
 ---
 
-## Step 3: Configure Environment Variables
+## Step 3: Required environment variables configured
 
-Ensure your `secrets/.env` includes:
-
-```env
-CLERK_API_KEY=sk_test_...
-CLERK_JWT_PUBLIC_KEY=pk_test_...
-CLERK_USER_ID=user_...
-CLERK_WEBHOOK_SECRET=whsec_...
+```markdown
+Make sure your `secrets/.env` file includes all the necessary keys.
+Refer to `secrets/.env.example`.
 ```
+
 
 ---
 ## Step 4 :  Generates secure JWT tokens
