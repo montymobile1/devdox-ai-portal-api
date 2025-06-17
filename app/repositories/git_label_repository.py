@@ -1,0 +1,13 @@
+from typing import Collection, Dict, List, Union
+from uuid import UUID
+
+from app.models import GitLabel
+
+
+class TortoiseGitLabelStore:
+    async def get_git_hosting_map_by_token_id(
+        self, token_ids: Collection[Union[str, UUID]]
+    ) -> List[Dict]:
+        if not token_ids:
+            return []
+        return await GitLabel.filter(id__in=token_ids).values("id", "git_hosting")

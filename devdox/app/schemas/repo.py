@@ -1,3 +1,5 @@
+import uuid
+
 from pydantic import BaseModel, Field, ConfigDict
 from typing import Optional, List
 from datetime import datetime
@@ -26,7 +28,7 @@ class RepoBase(BaseModel):
     visibility: Optional[str] = Field(
         None, description="Repository visibility (GitLab)", max_length=50
     )
-    git_hosting: GitHostingProvider = Field(..., description="Git hosting provider")
+    git_hosting: Optional[GitHostingProvider] = Field(None, description="Git hosting provider")
     language: Optional[str] = Field(
         None, description="Primary programming language", max_length=100
     )
@@ -44,7 +46,7 @@ class RepoResponse(RepoBase):
 
     model_config = ConfigDict(from_attributes=True)
 
-    id: int = Field(..., description="Primary key")
+    id: uuid.UUID = Field(..., description="Primary key")
     user_id: str = Field(..., description="User ID who owns this repository")
     repo_id: str = Field(..., description="Repository ID from the Git provider")
     token_id: Optional[str] = Field(None, description="Associated token ID")
