@@ -1,6 +1,9 @@
 import gitlab
 import requests
 
+# ==================================================================================================================
+# TODO: THIS SECTION WILL BE DEPRECATED SLOWLY AS WE GO IN FAVOR OF THE OTHER NEW PART IN app/utils/git_managers.py
+# ==================================================================================================================
 
 class GitLabManager:
     def __init__(self, base_url="https://gitlab.com", project_id="", access_token=""):

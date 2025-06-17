@@ -2,6 +2,9 @@ from github import Github
 from github.GithubException import GithubException
 import traceback
 
+# ==================================================================================================================
+# TODO: THIS SECTION WILL BE DEPRECATED SLOWLY AS WE GO IN FAVOR OF THE OTHER NEW PART IN app/utils/git_managers.py
+# ==================================================================================================================
 
 class GitHubManager:
     def __init__(
