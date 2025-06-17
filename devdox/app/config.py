@@ -27,7 +27,6 @@ class Settings(BaseSettings):
     SECRET_KEY: str = (
         "f2hCPmuCDiBpAmuZD00ZX4fEXFb-H0WoReklDhJD3bA="  # Only for local/testing
     )
-    print("SECRET_KEY ", SECRET_KEY)
     # SUPABASE VAULT
     SUPABASE_VAULT_ENABLED: bool = True
     # SUPABASE settings
@@ -82,6 +81,8 @@ class Settings(BaseSettings):
 
 # Initialize settings instance
 settings = Settings()
+
+print("SECRET_KEY ", settings.SECRET_KEY)
 
 
 def get_database_config() -> Dict[str, Any]:
