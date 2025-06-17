@@ -1,4 +1,4 @@
-from typing import Any, Callable, List, Protocol, Tuple
+from typing import Callable, List, Protocol, Tuple
 
 from github.Repository import Repository
 from gitlab.v4.objects import Project
@@ -12,13 +12,14 @@ class IRepoFetcher(Protocol):
     async def fetch_user_repositories(
         self, token: str, offset: int, limit: int
     ) -> Tuple[int, List[GitRepoResponse]]: ...
-
-
+    
+    async def fetch_single_repo(self, token: str, full_name_or_id: str | int): ...
+    
 class GitHubRepoFetcher(IRepoFetcher):
     def __init__(self, base_url: str = GitHubManager.default_base_url):
         self.manager = GitHubManager(base_url)
 
-    async def fetch_repo(
+    async def fetch_user_repositories(
         self, token: str, offset: int, limit: int
     ) -> Tuple[int, List[GitRepoResponse]]:
         authenticated_github_manager = self.manager.authenticate(token)
@@ -53,7 +54,7 @@ class GitLabRepoFetcher(IRepoFetcher):
     def __init__(self, base_url: str = GitLabManager.default_base_url):
         self.manager = GitLabManager(base_url)
 
-    async def fetch_repo(
+    async def fetch_user_repositories(
         self, token: str, offset: int, limit: int
     ) -> Tuple[int, List[GitRepoResponse]]:
         authenticated_gitlab_manager = self.manager.authenticate(token)

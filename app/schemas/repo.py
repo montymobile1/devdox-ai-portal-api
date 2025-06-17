@@ -87,15 +87,17 @@ class GitRepoResponseTransformer:
 
     @staticmethod
     def from_gitlab(data: Project) -> GitRepoResponse:
-
-        if data.visibility.lower() in ("private", "internal"):
-            derived_private = True
-        else:
-            derived_private = False
+        
+        derived_private = None
+        if hasattr(data, "visibility"):
+            if data.visibility.lower() in ("private", "internal"):
+                derived_private = True
+            else:
+                derived_private = False
 
         return GitRepoResponseTransformer._build_common_fields(
             data,
-            size=data.statistics.get("storage_size"),
+            size=data.statistics.get("storage_size") if hasattr(data, "statistics") else 0,
             stargazers_count=data.star_count or 0,
             html_url=data.http_url_to_repo,
             private=derived_private,
@@ -119,7 +121,7 @@ class GitRepoResponseTransformer:
         private: Any,
         size: Optional[int] = None,
     ) -> GitRepoResponse:
-
+        
         return GitRepoResponse(
             id=str(data.id),
             repo_name=data.name,
@@ -129,7 +131,7 @@ class GitRepoResponseTransformer:
             stargazers_count=stargazers_count,
             html_url=html_url,
             private=private,
-            visibility=data.visibility,
+            visibility=data.visibility if hasattr(data, "visibility") else None,
             size=size or 0,
             repo_created_at=data.created_at,
         )
