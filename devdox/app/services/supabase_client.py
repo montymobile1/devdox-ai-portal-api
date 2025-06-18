@@ -1,6 +1,6 @@
 from tortoise import Tortoise, connections
 
-from typing import Dict, List, Any, Optional, Union
+from typing import Dict, List, Any, Optional
 import logging
 from app.config import settings
 

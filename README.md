@@ -64,28 +64,39 @@ The DevDox AI Portal API communicates with:
 ## Project Structure
 
 ```
-my_flask_supabase_app/
-├── app/                            # Application package (actual FastAPI app code)
-│   ├── __init__.py                 # Initialize FastAPI app, Supabase client, config
-│   ├── config.py                   # Configuration settings (e.g., Supabase URL, API keys, etc.)
-│   ├── routes/                     # Route definitions (FastAPI route functions)
-│   │   ├── __init__.py             # Initialize API routers
-│   │   └── example_routes.py       # Example route module (e.g., endpoints for one feature)
-│   ├── services/                   # Service layer (business logic and external API calls)
-│   │   ├── __init__.py
-│   │   └── supabase_client.py      # Supabase API interaction logic (REST/RPC calls via HTTP)
-│   ├── models/                     # Data models using Pydantic
-│   │   └── __init__.py
-│   ├── utils/                      # Utility functions (helpers, etc.)
-│   │   └── __init__.py
-│   └── main.py                     # Application entry point (creates FastAPI app and registers routes)
-├── tests/                          # Test suite for TDD (mirrors app structure for clarity)
+
+devdox-ai-portal-api/
+├── devdox/
+│   ├── app/                         # Main FastAPI app code
+│   ├── tests/                       # Test suite
 │   ├── __init__.py
-│   ├── test_routes.py              # Tests for FastAPI endpoints (routes)
-│   └── test_services.py            # Tests for service logic (including Supabase integration)
-├── .env                            # Environment variables (Supabase URL, keys, secrets; not in version control)
-├── requirements.txt                # Python dependencies
-└── README.md                       # Project documentation and setup instructions
+│   ├── aerich.ini                   # DB migrations config (Tortoise ORM)
+│   ├── app.log
+│   ├── Dockerfile                   # Docker image definition for devdox app
+│   ├── entrypoint.sh                # Entrypoint for container
+│   ├── error.log
+│   ├── pyproject.toml               # Python package config
+│   ├── pytest.ini                   # Pytest config
+│   ├── run_migrations.py            # Script to run DB migrations
+│   ├── run_sonar.sh                 # Script to run SonarQube scan
+│   ├── run_tests.py                 # Script to run tests
+│   └── sonar-project.properties     # SonarQube project config
+├── migrations/                      # DB migration files
+├── secrets/  
+│   └── .env                         # Environment variables (Supabase URL, keys, secrets; not in version control)
+├── vault-fetcher/                   # Secret fetching module
+│   ├── Dockerfile                   # Dockerfile for Vault fetcher
+│   ├── fetch_secrets.py             # Main script for fetching secrets and add to .env
+│   └── requirements.txt             # Python dependencies for vault fetcher
+├── .dockerignore
+├── .gitignore
+├── decryption_key.py                # Decryption logic
+├── docker-compose.yaml              # Docker Compose setup
+├── error.log
+├── generate_token.py                # Token generation logic
+├── LICENSE
+└── README.md                        # Project documentation
+
 ```
 
 ## Development Setup
@@ -94,37 +105,33 @@ my_flask_supabase_app/
 
 - Python **&ge;** 3.12
 - This project uses Tortoise ORM to interact with the PostgreSQL database hosted on Supabase.
+- Supabase project with vault extension enabled
 - Choose your preferred connection method: API-based connection using Supabase keys, or direct PostgreSQL connection using database credentials
 - Clerk account with API credentials
+- Required environment variables configured
 - SonarCloud for code quality scanning
 
 ### Installation
 
-1. Clone the repository:
+1. [x] Clone the repository:
    ```
    git clone https://github.com/montymobile1/devdox-ai-portal-api.git
    cd devdox-ai-portal-api
    ```
 
-2. Create a virtual environment and activate it:
-   ```
-   python -m venv venv
-   source venv/bin/activate  # On Windows: venv\Scripts\activate
-   ```
+2. [x] Supabase Vault Setup
+   Your Supabase project should have the vault extension enabled with a decrypted_secrets view that returns:
 
-3. Install dependencies:
-   ```
-   pip install -r requirements.txt
-   ```
+   name: The environment variable name
+   decrypted_secret: The decrypted secret value
 
-   > ⚠️ **Important Note for Windows Users:**  
-   > The library `uvloop` is **not supported on Windows**.  
-   > This is a known limitation and is unlikely to change, as confirmed by the maintainers:  
-   > https://github.com/MagicStack/uvloop/issues/25  
-   > If you're on Windows, installation may fail or silently skip `uvloop`. The application will still run, but without
-   the performance optimizations provided by `uvloop`.
+   **Security Considerations**
 
-4. Create a `.env` file in the root directory with your credentials:
+   _Service Role Key_: The script uses the Supabase service role key, which has elevated permissions. Store this securely.
+   _Vault Keys_: Multiple encryption keys can be specified (comma-separated) for vault access.
+   _Local .env_: The generated .env file will contain sensitive data. Ensure it's in your .gitignore.
+
+3. [x] Create a `.env` file in the secrets  directory with your credentials:
 
    | Variable Name             | Required | Deprecated | Description                                                                 |
    |---------------------------|----------|------------|-----------------------------------------------------------------------------|
@@ -143,11 +150,45 @@ my_flask_supabase_app/
    | `HOST`                    | ✅ Yes   | ❌ No      | The host address to bind the server to                                     |
    | `PORT`                    | ✅ Yes   | ❌ No      | The port for the FastAPI server                                            |
 
-# Running the Application
+### Option 1: Docker (Recommended for Production/Staging)
+   
+   1. [x] Build the Docker containers using Docker Compose:
+      ```bash
+      docker compose build
+      
+   
+   2.[x]  Run the application
+   
+      ```bash
+      docker compose up -d
+      
+   3.[X] Notes:
 
-```
-uvicorn app.main:app --reload
-```
+   This Docker Compose-based setup orchestrates the complete application initialization process in a fail-safe and containerized manner:
+
+   1. The `vault-fetcher` service is responsible for securely retrieving encrypted secrets from the Supabase Vault. These secrets are written to `app/secrets/.env` inside the container filesystem.
+
+   2. Once `vault-fetcher` completes successfully, the `devdox` service is started. This service uses the previously fetched secrets from `app/secrets/.env` as its environment configuration file.
+
+   3. Inside `devdox`, the application performs automated database migrations using Tortoise ORM and Aerich. These migrations ensure the database is properly initialized and schema changes are applied before the application starts.
+
+   4. Finally, the FastAPI application is launched using Uvicorn, listening on host `0.0.0.0` and port `8000`.
+
+   This containerized workflow ensures strict dependency ordering and initialization integrity. The use of Docker Compose service dependencies (`depends_on`) and environment volume mounts provides a reliable and repeatable deployment pipeline suitable for development and production environments.
+
+
+###  Option 2: Local Development
+   
+*    Set up environment variables by coping from template:
+      cp secrets/.env.example devdox/app/secrets/.env
+   
+*    Edit devdox/app/secrets/.env with your local values
+   
+   
+*    Run the application locally:
+   bash./entrypoint.sh
+
+
 
 > ⚠️ **Note:**  
 > The `--reload` flag enables hot-reloading during development, but on some machines or larger projects it can
@@ -213,48 +254,30 @@ For more info visit: [Supabase Docs](https://supabase.com/docs/guides/database/c
 
 ---
 
-## Step 3: Apply Database Migrations via SQL Editor
+## Step 3: Apply Database Migrations Automatically
 
-> ❗️ **Important:**  
-> An **automated migration system is NOT implemented yet**. All migrations **must be manually applied via SQL Editor**
-> on Supabase. Automation is **planned for a future update**.
+> ✅ **Update:**  
+> An **automated migration system _is now implemented_** using Tortoise ORM and Aerich.  
+> Migrations are applied by running a Python script: `python3 run_migrations.py`.
 
-Once the project is ready:
+This script handles both:
+- Initial database setup (first-time deployment)
+- Ongoing schema updates (migrations)
 
-1. In your Supabase dashboard, go to:
-   ```
-   Left-hand menu → SQL Editor
-   ```
+It integrates directly with the FastAPI application startup process and ensures:
+- Tortoise ORM initializes the database safely
+- Aerich applies all pending migrations
+- The system fails fast if any step fails, preventing partially initialized states
 
-2. Click **+ New Query** (top-right) if you were not automatically directed to the editor.
+### How to apply migrations locally (for development/testing):
 
-3. Paste the contents of each migration script located at:
-   ```
-   devdoxAI/migrations/
-   ```
+```bash
+python3 run_migrations.py
 
-    - First: `create_git_label.sql`
-    - Then: `update_git_label_table.sql`
-
-4. Click **Run** for each script.
-
-5. Wait for the confirmation message for successful execution.
+```
 
 ---
 
-## Step 4: Verify the Schema
-
-1. Go to:
-   ```
-   Left-hand menu → Table Editor
-   ```
-
-2. Confirm the following:
-    - A table named `git_label` exists
-    - The table has columns including `masked_token`
-    - RLS (Row Level Security) policies are applied (check the **Policies** tab of the table)
-
----
 
 ## Notes
 
@@ -264,10 +287,10 @@ Once the project is ready:
 
 Next step: Connecting FastAPI to Supabase.
 
-## Step 5: Connect FastAPI to Supabase
+## Step 4: Connect FastAPI to Supabase
 
 The `devdoxAI` backend communicates with Supabase via its REST API interface. To enable this, you must configure the
-following environment variables in your `.env` file:
+following environment variables in your `.env` file in `secrets` folder:
 
 ```env
 SUPABASE_URL=https://your-project-id.supabase.co
@@ -331,7 +354,7 @@ For context and developer discussions on this behavior, see:
 
 This behavior is part of Supabase's underlying infrastructure and not an issue within the `devdoxAI` codebase.
 
-# Setting Up Clerk Authentication
+## Step 5: Setting Up Clerk Authentication
 
 This guide explains how to configure Clerk authentication for the `devdoxAI` FastAPI backend using [https://clerk.dev](https://clerk.dev).
 
@@ -358,7 +381,7 @@ Navigate to your project in the Clerk dashboard:
 
 1. Click **"Configure"**
 2. Under **"Developers" > "API Keys"**, find the `Clerk Secret Key`
-3. Add to `.env`:
+3. Add to `secrets/.env`:
 
 ```env
 CLERK_API_KEY=sk_test_XXXXXXXXXXXXXXXX
@@ -367,7 +390,7 @@ CLERK_API_KEY=sk_test_XXXXXXXXXXXXXXXX
 ### 🔐 Public JWT Key
 
 1. Still under **"API Keys"**, locate the **"JWT Public Key"**
-2. Add to `.env`:
+2. Add to `secrets/.env`:
 
 ```env
 CLERK_JWT_PUBLIC_KEY=pk_test_XXXXXXXXXXXXXXXX
@@ -375,16 +398,13 @@ CLERK_JWT_PUBLIC_KEY=pk_test_XXXXXXXXXXXXXXXX
 
 ---
 
-## Step 3: Configure Environment Variables
+## Step 3: Required environment variables configured
 
-Ensure your `.env` includes:
-
-```env
-CLERK_API_KEY=sk_test_...
-CLERK_JWT_PUBLIC_KEY=pk_test_...
-CLERK_USER_ID=user_...
-CLERK_WEBHOOK_SECRET=whsec_...
+```markdown
+Make sure your `secrets/.env` file includes all the necessary keys.
+Refer to `secrets/.env.example`.
 ```
+
 
 ---
 ## Step 4 :  Generates secure JWT tokens

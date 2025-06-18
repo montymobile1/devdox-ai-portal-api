@@ -44,7 +44,7 @@ print(f"\nHTML coverage report generated in {cov_dir}/")
 print(f"XML coverage report generated in coverage.xml")
 
 # Show absolute path for debugging
-coverage_file = os.path.abspath("coverage.xml")
+coverage_file = os.path.abspath("../coverage.xml")
 print(f"Absolute path to coverage report: {coverage_file}")
 
 # Exit with pytest's exit code

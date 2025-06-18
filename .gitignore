@@ -37,7 +37,8 @@ ENV/
 *.swo
 
 # Environment variables
-.env
+app/secrets/.env
+devdox/app/secrets/.env
 
 # Unit test / coverage reports
 htmlcov/

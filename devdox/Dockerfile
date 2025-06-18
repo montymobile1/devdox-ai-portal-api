@@ -20,7 +20,7 @@ ENV PYTHONDONTWRITEBYTECODE=1 \
 
 # Copy pyproject.toml first for better Docker layer caching
 COPY pyproject.toml .
-COPY app/ ./app
+COPY app ./app
 
 # Install dependencies from pyproject.toml
 RUN pip install --no-cache-dir --upgrade pip \
@@ -33,6 +33,7 @@ COPY entrypoint.sh ./entrypoint.sh
 # Create migrations directory (will be mounted as volume)
 RUN mkdir -p /app/migrations
 COPY run_migrations.py ./run_migrations.py
+#COPY ../vault-fetcher/fetch_secrets.py ./fetch_secrets.py
 
 COPY aerich.ini ./aerich.ini
 COPY pyproject.toml ./pyproject.toml

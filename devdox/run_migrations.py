@@ -15,7 +15,7 @@ from app.config import TORTOISE_ORM
 
 
 AERICH_CONFIG = "aerich.ini"
-MIGRATIONS_DIR = "migrations"
+MIGRATIONS_DIR = "../migrations"
 
 logger = logging.getLogger(__name__)
 
@@ -41,10 +41,10 @@ def run_command(cmd):
         logger.info("Command executed successfully: %s", result.stdout)
     except subprocess.CalledProcessError as e:
         logger.error("Command failed with return code %s: %s", e.returncode, e.stderr)
-        raise
+        return False
     except Exception as e:
         logger.error("Unexpected error running command '%s': %s", cmd, str(e))
-        raise
+        return False
 
 
 def is_first_time():
@@ -103,18 +103,14 @@ async def needs_initialization():
 
 async def run():
     try:
-        if await needs_initialization():
-            logger.info("Initializing database: Running aerich init and init-db...")
+        if not os.path.exists(MIGRATIONS_DIR):
+            _ = run_command("aerich init -t app.config.TORTOISE_ORM")
 
-            # Only run aerich init if migrations directory doesn't exist
-            if not os.path.exists(MIGRATIONS_DIR):
-                run_command("aerich init -t app.config.TORTOISE_ORM")
+        _ = run_command("aerich init-db")
 
-            run_command("aerich init-db")
-        else:
-            logger.info("Running aerich migrate and upgrade...")
-            run_command("aerich migrate")
-            run_command("aerich upgrade")
+        logger.info("Running aerich migrate and upgrade...")
+        _ = run_command("aerich migrate")
+        _ = run_command("aerich upgrade")
 
         # Optional: ensure Tortoise connection is valid
         await ensure_tortoise_connected()

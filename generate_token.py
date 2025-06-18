@@ -1,5 +1,5 @@
 from clerk_backend_api import Clerk
-from app.config import settings
+from devdox.app.config import settings
 import logging
 
 
@@ -18,6 +18,7 @@ def generate_clerk_token(user_id: str, expires_in_seconds: int | None = None) ->
         Exception: If token generation fails.
     """
     try:
+        print("settings.CLERK_API_KEY ", settings.CLERK_API_KEY)
         with Clerk(bearer_auth=settings.CLERK_API_KEY) as clerk:
             session = clerk.sessions.create(request={"user_id": user_id})
             token = clerk.sessions.create_token(
@@ -44,6 +45,7 @@ def generate_clerk_token(user_id: str, expires_in_seconds: int | None = None) ->
 
 if __name__ == "__main__":
     try:
+        print("settings.CLERK_USER_ID ", settings.CLERK_USER_ID)
         jwt_token = generate_clerk_token(settings.CLERK_USER_ID)
         print("Generated Clerk JWT token:", jwt_token)
     except Exception:

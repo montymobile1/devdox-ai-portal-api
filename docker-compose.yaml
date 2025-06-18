@@ -1,12 +1,24 @@
-version: '3.8'
-
 services:
-  app:
-    build: .
+  vault-fetcher:
+    build: ./vault-fetcher
+    env_file:
+      - ./secrets/.env
     volumes:
-      # Mount migrations folder to persist changes
+      - ./secrets:/app/secrets:rw  # Changed to host mount
+    command: python fetch_secrets.py
+    restart: "no"
+
+  devdox:
+    build: ./devdox
+    env_file:
+      - ./secrets/.env
+    depends_on:
+      - vault-fetcher
+    volumes:
       - ./migrations:/app/migrations
-      # Optional: mount other directories you want to persist
+      - ./secrets:/app/secrets:ro
       - ./logs:/app/logs
     ports:
       - "8000:8000"
+    command: sh -c "while [ ! -f /app/secrets/.env ]; do sleep 1; done && ./entrypoint.sh"
+

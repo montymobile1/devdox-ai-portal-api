@@ -463,7 +463,8 @@ class TestFernetEncryptionHelper:
 
     @pytest.fixture
     def helper(self):
-        return FernetEncryptionHelper()
+        test_key = Fernet.generate_key().decode()
+        return FernetEncryptionHelper(secret_key=test_key)
 
     def test_encrypt_decrypt_round_trip(self, helper):
         plaintext = "super-secret"
