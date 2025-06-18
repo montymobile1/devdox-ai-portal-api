@@ -1,7 +1,9 @@
 import uuid
 
+from github.Repository import Repository
+from gitlab.v4.objects import Project
 from pydantic import BaseModel, Field, ConfigDict
-from typing import Optional, List
+from typing import Any, Optional, List
 from datetime import datetime
 from enum import Enum
 
@@ -71,7 +73,69 @@ class GitRepoResponse(BaseModel):
     default_branch: str = Field(..., description="Default branch name")
     forks_count: int = Field(..., description="Number of forks")
     stargazers_count: int = Field(..., description="Number of stars")
+    size: Optional[int] = Field(None, description="Repository size in KB")
+    repo_created_at: Optional[datetime] = Field(
+        None, description="Repository creation date from provider"
+    )
 
     # Platform-specific fields (one will be None depending on provider)
     private: Optional[bool] = Field(None, description="Private flag (GitHub)")
     visibility: Optional[str] = Field(None, description="Visibility setting (GitLab)")
+
+
+class GitRepoResponseTransformer:
+
+    @staticmethod
+    def from_gitlab(data: Project) -> GitRepoResponse:
+
+        derived_private = None
+        if hasattr(data, "visibility"):
+            if data.visibility.lower() in ("private", "internal"):
+                derived_private = True
+            else:
+                derived_private = False
+
+        storage_size = 0
+        if hasattr(data, "statistics") and data.statistics:
+            storage_size = data.statistics.get("storage_size", 0)
+
+        return GitRepoResponseTransformer._build_common_fields(
+            data,
+            size=storage_size,
+            stargazers_count=data.star_count or 0,
+            html_url=data.http_url_to_repo,
+            private=derived_private,
+        )
+
+    @staticmethod
+    def from_github(data: Repository) -> GitRepoResponse:
+        return GitRepoResponseTransformer._build_common_fields(
+            data,
+            size=data.size,
+            stargazers_count=data.stargazers_count or 0,
+            html_url=data.html_url,
+            private=data.private,
+        )
+
+    @staticmethod
+    def _build_common_fields(
+        data: Project | Repository,
+        stargazers_count: int,
+        html_url: str,
+        private: Any,
+        size: Optional[int] = None,
+    ) -> GitRepoResponse:
+
+        return GitRepoResponse(
+            id=str(data.id),
+            repo_name=data.name,
+            description=data.description,
+            default_branch=data.default_branch or "main",
+            forks_count=data.forks_count or 0,
+            stargazers_count=stargazers_count,
+            html_url=html_url,
+            private=private,
+            visibility=data.visibility if hasattr(data, "visibility") else None,
+            size=size or 0,
+            repo_created_at=data.created_at,
+        )
