@@ -38,6 +38,7 @@ ENV/
 
 # Environment variables
 app/secrets/.env
+devdox/app/secrets/.env
 
 # Unit test / coverage reports
 htmlcov/
