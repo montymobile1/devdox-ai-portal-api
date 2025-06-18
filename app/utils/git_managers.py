@@ -89,7 +89,6 @@ class AuthenticatedGitHubManager:
             repos_paginated.per_page = per_page
 
             repos_page = repos_paginated.get_page(page - 1)
-            repo_list = [GitHubManager.extract_repo_info(repo) for repo in repos_page]
 
             pagination_info = GitHubManager.get_pagination_info(
                 total_count=repos_paginated.totalCount,
@@ -98,7 +97,7 @@ class AuthenticatedGitHubManager:
             )
 
             return {
-                "repositories": repo_list,
+                "repositories": repos_page,
                 "pagination_info": pagination_info,
             }
 
@@ -217,7 +216,7 @@ class AuthenticatedGitLabManager:
         self._header = {"PRIVATE-TOKEN": access_token}
         self._git_client: Gitlab = git_client
         self._rq = session or requests.Session()
-    
+
     def get_project(self, project_id, timeout: int = DEFAULT_TIMEOUT) -> Project:
         try:
             return self._git_client.projects.get(project_id, statistics=True, timeout=timeout)
@@ -227,7 +226,7 @@ class AuthenticatedGitLabManager:
                 log_message="GitLab project fetch failed",
                 root_exception=e,
             ) from e
-    
+
     def get_project_languages(self, project_or_id: int | Project, timeout: int = DEFAULT_TIMEOUT):
         try:
             if isinstance(project_or_id, Project):
@@ -240,7 +239,7 @@ class AuthenticatedGitLabManager:
                 log_message="GitLab project languages fetch failed",
                 root_exception=e,
             ) from e
-    
+
     def get_user(self, timeout: int = DEFAULT_TIMEOUT):
         try:
             url = f"{self.base_url}/api/v4/user"
@@ -253,7 +252,7 @@ class AuthenticatedGitLabManager:
                 log_message="GitLab user fetch failed",
                 root_exception=e,
             ) from e
-    
+
     def get_user_repositories(
         self, page=1, per_page=20, timeout: int = DEFAULT_TIMEOUT
     ):
@@ -272,6 +271,7 @@ class AuthenticatedGitLabManager:
             pagination = {
                 "current_page": page,
                 "per_page": per_page,
+                "total_count": int(response.headers.get("X-Total", 0)),
                 "total_pages": int(response.headers.get("X-Total-Pages", 1)),
                 "next_page": int(response.headers.get("X-Next-Page") or 0) or None,
                 "prev_page": int(response.headers.get("X-Prev-Page") or 0) or None,

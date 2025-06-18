@@ -11,3 +11,6 @@ class TortoiseGitLabelStore:
         if not token_ids:
             return []
         return await GitLabel.filter(id__in=token_ids).values("id", "git_hosting")
+    
+    async def get_by_token_id_and_user(self, token_id: str, user_id: str):
+        return await GitLabel.filter(id=token_id, user_id=user_id).first()

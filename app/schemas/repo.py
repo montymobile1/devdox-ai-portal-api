@@ -86,56 +86,100 @@ class GitRepoResponse(BaseModel):
 class GitRepoResponseTransformer:
 
     @staticmethod
-    def from_gitlab(data: Project) -> GitRepoResponse:
+    def from_gitlab(data: Project | dict) -> GitRepoResponse:
 
-        derived_private = None
-        if hasattr(data, "visibility"):
-            if data.visibility.lower() in ("private", "internal"):
-                derived_private = True
-            else:
-                derived_private = False
+        if isinstance(data, Project):
+            derived_private = None
+            if hasattr(data, "visibility"):
+                if data.visibility.lower() in ("private", "internal"):
+                    derived_private = True
+                else:
+                    derived_private = False
 
-        storage_size = 0
-        if hasattr(data, "statistics") and data.statistics:
-            storage_size = data.statistics.get("storage_size", 0)
+            storage_size = 0
+            if hasattr(data, "statistics") and data.statistics:
+                storage_size = data.statistics.get("storage_size", 0)
+
+        elif isinstance(data, dict):
+            derived_private = None
+            visibility = data.get("visibility")
+            if visibility:
+                if visibility.lower() in ("private", "internal"):
+                    derived_private = True
+                else:
+                    derived_private = False
+            storage_size = data.get("statistics", {}).get("storage_size", 0)
+        else:
+            raise Exception("Unsupported from_gitlab `data` type")
 
         return GitRepoResponseTransformer._build_common_fields(
             data,
             size=storage_size,
-            stargazers_count=data.star_count or 0,
-            html_url=data.http_url_to_repo,
+            stargazers_count=data.get("star_count", 0),
+            html_url=data.get("http_url_to_repo"),
             private=derived_private,
         )
 
     @staticmethod
-    def from_github(data: Repository) -> GitRepoResponse:
-        return GitRepoResponseTransformer._build_common_fields(
-            data,
-            size=data.size,
-            stargazers_count=data.stargazers_count or 0,
-            html_url=data.html_url,
-            private=data.private,
-        )
+    def from_github(data: Repository | dict) -> GitRepoResponse:
+
+        if isinstance(data, dict):
+            return GitRepoResponseTransformer._build_common_fields(
+                data,
+                size=data.get("size"),
+                stargazers_count=data.get("stargazers_count", 0),
+                html_url=data.get("html_url"),
+                private=data.get("private"),
+            )
+        elif isinstance(data, Repository):
+            return GitRepoResponseTransformer._build_common_fields(
+                data,
+                size=data.size,
+                stargazers_count=data.stargazers_count or 0,
+                html_url=data.html_url,
+                private=data.private,
+            )
+        else:
+            raise Exception("Unsupported from_github `data` type")
 
     @staticmethod
     def _build_common_fields(
-        data: Project | Repository,
+        data: Project | Repository | dict,
         stargazers_count: int,
         html_url: str,
         private: Any,
         size: Optional[int] = None,
     ) -> GitRepoResponse:
 
-        return GitRepoResponse(
-            id=str(data.id),
-            repo_name=data.name,
-            description=data.description,
-            default_branch=data.default_branch or "main",
-            forks_count=data.forks_count or 0,
-            stargazers_count=stargazers_count,
-            html_url=html_url,
-            private=private,
-            visibility=data.visibility if hasattr(data, "visibility") else None,
-            size=size or 0,
-            repo_created_at=data.created_at,
-        )
+        if isinstance(data, Project) or isinstance(data, Repository):
+            return GitRepoResponse(
+                id=str(data.id),
+                repo_name=data.name,
+                description=data.description,
+                default_branch=data.default_branch or "main",
+                forks_count=data.forks_count or 0,
+                stargazers_count=stargazers_count,
+                html_url=html_url,
+                private=private,
+                visibility=data.visibility if hasattr(data, "visibility") else None,
+                size=size or 0,
+                repo_created_at=data.created_at,
+            )
+
+        elif isinstance(data, dict):
+            return GitRepoResponse(
+                id=str(data.get("id", "")),
+                repo_name=data.get("name"),
+                description=data.get("description"),
+                default_branch=data.get("default_branch", "main"),
+                forks_count=data.get("forks_count", 0),
+                stargazers_count=stargazers_count,
+                html_url=html_url,
+                private=private,
+                visibility=data.visibility if hasattr(data, "visibility") else None,
+                size=size or 0,
+                repo_created_at=data.get("created_at"),
+            )
+
+        else:
+            raise Exception("Unsupported _build_common_fields `data` type")

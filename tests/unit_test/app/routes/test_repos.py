@@ -1,5 +1,6 @@
 import datetime
 from http import HTTPStatus
+from typing import List, Tuple
 from uuid import uuid4
 
 import pytest
@@ -7,8 +8,8 @@ from fastapi.testclient import TestClient
 
 from app.config import GitHosting
 from app.main import app
-from app.schemas.repo import RepoResponse
-from app.services.repository_service import RepoQueryService
+from app.schemas.repo import GitRepoResponse, RepoResponse
+from app.services.repository_service import RepoProviderService, RepoQueryService
 from app.utils.auth import get_authenticated_user, UserClaims
 
 
@@ -113,3 +114,48 @@ class TestRepoRouter:
             data = response.json()["data"]
             assert data["total_count"] == 1
             assert len(data["repos"]) == 1
+
+
+class TestGetReposFromGit:
+
+    class FakeRepoService:
+        async def get_all_provider_repos(
+            self, token_id: str, user_claims: UserClaims, pagination
+        ) -> Tuple[int, List[GitRepoResponse]]:
+            return 1, [
+                GitRepoResponse(
+                    id="repo123",
+                    repo_name="demo",
+                    description="test repo",
+                    html_url="https://example.com/repo",
+                    default_branch="main",
+                    forks_count=0,
+                    stargazers_count=0,
+                    size=123,
+                    repo_created_at=datetime.datetime.utcnow(),
+                    private=True,
+                    visibility=None,
+                )
+            ]
+
+    def fake_get_authenticated_user(self):
+        return UserClaims(sub="user123")
+
+    @pytest.fixture
+    def client(self):
+        app.dependency_overrides[RepoProviderService] = lambda: self.FakeRepoService()
+        app.dependency_overrides[get_authenticated_user] = self.fake_get_authenticated_user
+        yield TestClient(app)
+        app.dependency_overrides.clear()
+
+    def test_get_repos_from_git_success(self, client):
+        response = client.get("/api/v1/repos/git_repos/users/token123?limit=10&offset=0", headers={"Authorization": "Bearer fake-token"})
+        assert response.status_code == 200
+        data = response.json()
+
+        assert data["success"] == True
+        assert "data" in data
+        assert "total_count" in data["data"]
+        assert "repos" in data["data"]
+        assert isinstance(data["data"]["repos"], list)
+        assert data["data"]["repos"][0]["repo_name"] == "demo"
