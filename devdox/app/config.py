@@ -24,9 +24,7 @@ class Settings(BaseSettings):
         "development"
     )
     API_DEBUG: bool = True
-    SECRET_KEY: str = (
-        "f2hCPmuCDiBpAmuZD00ZX4fEXFb-H0WoReklDhJD3bA="  # Only for local/testing
-    )
+    SECRET_KEY: str = "testtesttesttesttesttesttesttest"  # Only for local/testing
     # SUPABASE VAULT
     SUPABASE_VAULT_ENABLED: bool = True
     # SUPABASE settings

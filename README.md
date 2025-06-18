@@ -150,28 +150,45 @@ devdox-ai-portal-api/
    | `HOST`                    | ✅ Yes   | ❌ No      | The host address to bind the server to                                     |
    | `PORT`                    | ✅ Yes   | ❌ No      | The port for the FastAPI server                                            |
 
-4. [x] Build the Docker containers using Docker Compose:
-   ```bash
-   docker compose build
+### Option 1: Docker (Recommended for Production/Staging)
    
+   1. [x] Build the Docker containers using Docker Compose:
+      ```bash
+      docker compose build
+      
+   
+   2.[x]  Run the application
+   
+      ```bash
+      docker compose up -d
+      
+   3.[X] Notes:
 
-5.[x]  Run the application
+   This Docker Compose-based setup orchestrates the complete application initialization process in a fail-safe and containerized manner:
 
-   ```bash
-   docker compose up -d
+   1. The `vault-fetcher` service is responsible for securely retrieving encrypted secrets from the Supabase Vault. These secrets are written to `app/secrets/.env` inside the container filesystem.
+
+   2. Once `vault-fetcher` completes successfully, the `devdox` service is started. This service uses the previously fetched secrets from `app/secrets/.env` as its environment configuration file.
+
+   3. Inside `devdox`, the application performs automated database migrations using Tortoise ORM and Aerich. These migrations ensure the database is properly initialized and schema changes are applied before the application starts.
+
+   4. Finally, the FastAPI application is launched using Uvicorn, listening on host `0.0.0.0` and port `8000`.
+
+   This containerized workflow ensures strict dependency ordering and initialization integrity. The use of Docker Compose service dependencies (`depends_on`) and environment volume mounts provides a reliable and repeatable deployment pipeline suitable for development and production environments.
 
 
-This Docker Compose-based setup orchestrates the complete application initialization process in a fail-safe and containerized manner:
+###  Option 2: Local Development
+   
+*    Set up environment variables by coping from template:
+      cp secrets/.env.example devdox/app/secrets/.env
+   
+*    Edit devdox/app/secrets/.env with your local values
+   
+   
+*    Run the application locally:
+   bash./entrypoint.sh
 
-1. The `vault-fetcher` service is responsible for securely retrieving encrypted secrets from the Supabase Vault. These secrets are written to `app/secrets/.env` inside the container filesystem.
 
-2. Once `vault-fetcher` completes successfully, the `devdox` service is started. This service uses the previously fetched secrets from `app/secrets/.env` as its environment configuration file.
-
-3. Inside `devdox`, the application performs automated database migrations using Tortoise ORM and Aerich. These migrations ensure the database is properly initialized and schema changes are applied before the application starts.
-
-4. Finally, the FastAPI application is launched using Uvicorn, listening on host `0.0.0.0` and port `8000`.
-
-This containerized workflow ensures strict dependency ordering and initialization integrity. The use of Docker Compose service dependencies (`depends_on`) and environment volume mounts provides a reliable and repeatable deployment pipeline suitable for development and production environments.
 
 > ⚠️ **Note:**  
 > The `--reload` flag enables hot-reloading during development, but on some machines or larger projects it can
