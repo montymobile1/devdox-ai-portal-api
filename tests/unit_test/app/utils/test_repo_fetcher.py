@@ -70,70 +70,64 @@ def dummy_gitlab_project():
 
 
 class TestGitHubRepoFetcher:
-    @pytest.mark.asyncio
-    async def test_fetch_repo(self, monkeypatch, dummy_github_repo):
+    def test_fetch_repo(self, monkeypatch, dummy_github_repo):
         monkeypatch.setattr(
             f"{real_module_path}.GitHubManager.authenticate",
             lambda self, token: DummyAuthenticatedManager(repos=[dummy_github_repo]),
         )
         fetcher = GitHubRepoFetcher()
-        count, repos = await fetcher.fetch_user_repositories("token", 0, 10)
+        count, repos = fetcher.fetch_user_repositories("token", 0, 10)
         assert count == 1
         assert repos[0].repo_name == dummy_github_repo.name
 
-    @pytest.mark.asyncio
-    async def test_fetch_single_repo(self, monkeypatch, dummy_github_repo):
+    def test_fetch_single_repo(self, monkeypatch, dummy_github_repo):
         monkeypatch.setattr(
             f"{real_module_path}.GitHubManager.authenticate",
             lambda self, token: DummyAuthenticatedManager(repo=dummy_github_repo, languages={"Python": 100}),
         )
         fetcher = GitHubRepoFetcher()
-        repo, langs = await fetcher.fetch_single_repo("token", dummy_github_repo.full_name)
+        repo, langs = fetcher.fetch_single_repo("token", dummy_github_repo.full_name)
         assert repo == dummy_github_repo
         assert "Python" in langs
 
-    @pytest.mark.asyncio
-    async def test_fetch_single_repo_not_found(self, monkeypatch):
+    def test_fetch_single_repo_not_found(self, monkeypatch):
         monkeypatch.setattr(
             f"{real_module_path}.GitHubManager.authenticate",
             lambda self, token: DummyAuthenticatedManager(repo=None),
         )
         fetcher = GitHubRepoFetcher()
-        result = await fetcher.fetch_single_repo("token", "unknown")
+        result = fetcher.fetch_single_repo("token", "unknown")
         assert result is None
 
 
 class TestGitLabRepoFetcher:
-    @pytest.mark.asyncio
-    async def test_fetch_repo(self, monkeypatch, dummy_gitlab_project):
+    def test_fetch_repo(self, monkeypatch, dummy_gitlab_project):
         monkeypatch.setattr(
             f"{real_module_path}.GitLabManager.authenticate",
             lambda self, token: DummyAuthenticatedManager(repos=[dummy_gitlab_project]),
         )
         fetcher = GitLabRepoFetcher()
-        count, repos = await fetcher.fetch_user_repositories("token", 0, 10)
+        count, repos = fetcher.fetch_user_repositories("token", 0, 10)
         assert count == 1
         assert repos[0].repo_name == dummy_gitlab_project.name
 
-    @pytest.mark.asyncio
-    async def test_fetch_single_repo(self, monkeypatch, dummy_gitlab_project):
+    def test_fetch_single_repo(self, monkeypatch, dummy_gitlab_project):
         monkeypatch.setattr(
             f"{real_module_path}.GitLabManager.authenticate",
             lambda self, token: DummyAuthenticatedManager(repo=dummy_gitlab_project, languages=["Python"]),
         )
         fetcher = GitLabRepoFetcher()
-        repo, langs = await fetcher.fetch_single_repo("token", "namespace/project")
+        repo, langs = fetcher.fetch_single_repo("token", "namespace/project")
         assert repo == dummy_gitlab_project
         assert "Python" in langs
 
-    @pytest.mark.asyncio
-    async def test_fetch_single_repo_not_found(self, monkeypatch):
+    def test_fetch_single_repo_not_found(self, monkeypatch):
         monkeypatch.setattr(
             f"{real_module_path}.GitLabManager.authenticate",
             lambda self, token: DummyAuthenticatedManager(repo=None),
         )
         fetcher = GitLabRepoFetcher()
-        result = await fetcher.fetch_single_repo("token", "namespace/project")
+        result = fetcher.fetch_single_repo("token", "namespace/project")
         assert result is None
 
 

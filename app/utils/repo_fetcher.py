@@ -9,17 +9,17 @@ from app.utils.git_managers import GitHubManager, GitLabManager
 
 
 class IRepoFetcher(Protocol):
-    async def fetch_user_repositories(
+    def fetch_user_repositories(
         self, token: str, offset: int, limit: int
     ) -> Tuple[int, List[GitRepoResponse]]: ...
     
-    async def fetch_single_repo(self, token: str, full_name_or_id: str | int): ...
+    def fetch_single_repo(self, token: str, full_name_or_id: str | int): ...
     
 class GitHubRepoFetcher(IRepoFetcher):
     def __init__(self, base_url: str = GitHubManager.default_base_url):
         self.manager = GitHubManager(base_url)
 
-    async def fetch_user_repositories(
+    def fetch_user_repositories(
         self, token: str, offset: int, limit: int
     ) -> Tuple[int, List[GitRepoResponse]]:
         authenticated_github_manager = self.manager.authenticate(token)
@@ -32,7 +32,7 @@ class GitHubRepoFetcher(IRepoFetcher):
             [GitRepoResponseTransformer.from_github(r) for r in result["repositories"]],
         )
 
-    async def fetch_single_repo(
+    def fetch_single_repo(
         self, token: str, full_name_or_id: str | int
     ) -> tuple[Repository, list[str]] | None:
 
@@ -54,7 +54,7 @@ class GitLabRepoFetcher(IRepoFetcher):
     def __init__(self, base_url: str = GitLabManager.default_base_url):
         self.manager = GitLabManager(base_url)
 
-    async def fetch_user_repositories(
+    def fetch_user_repositories(
         self, token: str, offset: int, limit: int
     ) -> Tuple[int, List[GitRepoResponse]]:
         authenticated_gitlab_manager = self.manager.authenticate(token)
@@ -66,7 +66,7 @@ class GitLabRepoFetcher(IRepoFetcher):
             [GitRepoResponseTransformer.from_gitlab(r) for r in result["repositories"]],
         )
 
-    async def fetch_single_repo(
+    def fetch_single_repo(
         self, token: str, full_name: str
     ) -> tuple[Project, list[str]] | None:
         # full_name can be ID or 'namespace/project'
