@@ -42,7 +42,7 @@ def inject_secrets():
     print(f"Found {len(data)} secrets")
 
     # Write to the correct location that matches the volume mount
-    secrets_dir = "/app/secrets"
+    secrets_dir = "/app/instance"
     env_file_path = os.path.join(secrets_dir, ".env")
     existing_secret_names = set()
 
