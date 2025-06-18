@@ -2,8 +2,8 @@ FROM python:3.11-slim
 
 WORKDIR /app
 
-# Create the secrets directory with proper permissions
-RUN mkdir -p /app/secrets && chmod 755 /app/secrets
+# Create the instance directory with proper permissions
+RUN mkdir -p /app/instance && chmod 755 /app/instance
 
 COPY requirements.txt .
 RUN pip install -r requirements.txt

@@ -3,7 +3,7 @@ __pycache__/
 *.pyo
 *.pyd
 *.log
-app/secrets/.env
+app/instance/.env
 .git
 .vscode/
 devdox/tests/

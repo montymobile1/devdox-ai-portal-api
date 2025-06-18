@@ -82,7 +82,7 @@ devdox-ai-portal-api/
 │   ├── run_tests.py                 # Script to run tests
 │   └── sonar-project.properties     # SonarQube project config
 ├── migrations/                      # DB migration files
-├── secrets/  
+├── instance/  
 │   └── .env                         # Environment variables (Supabase URL, keys, secrets; not in version control)
 ├── vault-fetcher/                   # Secret fetching module
 │   ├── Dockerfile                   # Dockerfile for Vault fetcher
@@ -131,7 +131,7 @@ devdox-ai-portal-api/
    _Vault Keys_: Multiple encryption keys can be specified (comma-separated) for vault access.
    _Local .env_: The generated .env file will contain sensitive data. Ensure it's in your .gitignore.
 
-3. [x] Create a `.env` file in the secrets  directory with your credentials:
+3. [x] Create a `.env` file in the instance  directory with your credentials:
 
    | Variable Name             | Required | Deprecated | Description                                                                 |
    |---------------------------|----------|------------|-----------------------------------------------------------------------------|
@@ -166,9 +166,9 @@ devdox-ai-portal-api/
 
    This Docker Compose-based setup orchestrates the complete application initialization process in a fail-safe and containerized manner:
 
-   1. The `vault-fetcher` service is responsible for securely retrieving encrypted secrets from the Supabase Vault. These secrets are written to `app/secrets/.env` inside the container filesystem.
+   1. The `vault-fetcher` service is responsible for securely retrieving encrypted secrets from the Supabase Vault. These secrets are written to `app/instance/.env` inside the container filesystem.
 
-   2. Once `vault-fetcher` completes successfully, the `devdox` service is started. This service uses the previously fetched secrets from `app/secrets/.env` as its environment configuration file.
+   2. Once `vault-fetcher` completes successfully, the `devdox` service is started. This service uses the previously fetched secrets from `app/instance/.env` as its environment configuration file.
 
    3. Inside `devdox`, the application performs automated database migrations using Tortoise ORM and Aerich. These migrations ensure the database is properly initialized and schema changes are applied before the application starts.
 
@@ -180,9 +180,9 @@ devdox-ai-portal-api/
 ###  Option 2: Local Development
    
 *    Set up environment variables by coping from template:
-      cp secrets/.env.example devdox/app/secrets/.env
+      cp instance/.env.example devdox/app/instance/.env
    
-*    Edit devdox/app/secrets/.env with your local values
+*    Edit devdox/app/instance/.env with your local values
    
    
 *    Run the application locally:
@@ -290,7 +290,7 @@ Next step: Connecting FastAPI to Supabase.
 ## Step 4: Connect FastAPI to Supabase
 
 The `devdoxAI` backend communicates with Supabase via its REST API interface. To enable this, you must configure the
-following environment variables in your `.env` file in `secrets` folder:
+following environment variables in your `.env` file in `instance` folder:
 
 ```env
 SUPABASE_URL=https://your-project-id.supabase.co
@@ -401,8 +401,8 @@ CLERK_JWT_PUBLIC_KEY=pk_test_XXXXXXXXXXXXXXXX
 ## Step 3: Required environment variables configured
 
 ```markdown
-Make sure your `secrets/.env` file includes all the necessary keys.
-Refer to `secrets/.env.example`.
+Make sure your `instance/.env` file includes all the necessary keys.
+Refer to `instance/.env.example`.
 ```
 
 
