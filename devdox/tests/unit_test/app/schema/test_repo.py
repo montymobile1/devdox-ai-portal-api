@@ -67,7 +67,7 @@ class TestGitLabRepoResponseTransformer:
 
     @pytest.mark.parametrize("invalid_input", [123, 3.14, ["list"], object()])
     def test_from_gitlab_with_invalid_type_raises(self, invalid_input):
-        with pytest.raises(Exception, match="Unsupported from_gitlab"):
+        with pytest.raises(TypeError):
             GitLabRepoResponseTransformer.from_gitlab(invalid_input)
 
     def test_gitlab_statistics_not_dict(self):
@@ -125,5 +125,5 @@ class TestGitHubRepoResponseTransformer:
         assert response.private is False
 
     def test_from_github_with_invalid_type_raises(self):
-        with pytest.raises(Exception, match="Unsupported from_github"):
+        with pytest.raises(TypeError):
             GitHubRepoResponseTransformer.from_github(123)
