@@ -1,4 +1,5 @@
 import uuid
+from types import SimpleNamespace
 
 from github.Repository import Repository
 from gitlab.v4.objects import Project
@@ -83,59 +84,114 @@ class GitRepoResponse(BaseModel):
     visibility: Optional[str] = Field(None, description="Visibility setting (GitLab)")
 
 
-class GitRepoResponseTransformer:
+class GitLabRepoResponseTransformer:
 
-    @staticmethod
-    def from_gitlab(data: Project) -> GitRepoResponse:
+    @classmethod
+    def derive_storage_size(cls, statistics:dict):
+        if not statistics:
+            return None
 
-        derived_private = None
-        if hasattr(data, "visibility"):
-            if data.visibility.lower() in ("private", "internal"):
-                derived_private = True
-            else:
-                derived_private = False
+        return statistics.get("storage_size", 0)
 
-        storage_size = 0
-        if hasattr(data, "statistics") and data.statistics:
-            storage_size = data.statistics.get("storage_size", 0)
+    @classmethod
+    def derived_private_field(cls, visibility: str):
+        if not visibility:
+            return None
 
-        return GitRepoResponseTransformer._build_common_fields(
-            data,
-            size=storage_size,
-            stargazers_count=data.star_count or 0,
-            html_url=data.http_url_to_repo,
-            private=derived_private,
-        )
+        if visibility.lower() in ("private", "internal"):
+            derived_private = True
+        else:
+            derived_private = False
 
-    @staticmethod
-    def from_github(data: Repository) -> GitRepoResponse:
-        return GitRepoResponseTransformer._build_common_fields(
-            data,
-            size=data.size,
-            stargazers_count=data.stargazers_count or 0,
-            html_url=data.html_url,
-            private=data.private,
-        )
+        return derived_private
 
-    @staticmethod
-    def _build_common_fields(
-        data: Project | Repository,
-        stargazers_count: int,
-        html_url: str,
-        private: Any,
-        size: Optional[int] = None,
-    ) -> GitRepoResponse:
+    @classmethod
+    def transform_project_to_dict(cls, project: Project | SimpleNamespace) -> dict:
+        extracted_visibility = getattr(project, "visibility", None)
+        extracted_statistics = getattr(project, "statistics", None)
+
+        return {
+            "id": str(project.id),
+            "name": project.name,
+            "description": project.description,
+            "default_branch": project.default_branch,
+            "forks_count": project.forks_count,
+            "visibility": extracted_visibility,
+            "created_at": project.created_at,
+            "star_count": project.star_count,
+            "http_url_to_repo": project.http_url_to_repo,
+            "statistics": extracted_statistics,
+        }
+
+    @classmethod
+    def from_gitlab(cls, data: Project | SimpleNamespace | dict) -> GitRepoResponse | None:
+        if not data:
+            return None
+        elif isinstance(data, Project) or isinstance(data, SimpleNamespace):
+            dict_data = cls.transform_project_to_dict(data)
+        elif isinstance(data, dict):
+            dict_data = data
+        else:
+            raise TypeError(
+                f"Unsupported type for `data`: {type(data)}. Expected Project, SimpleNamespace, or dict."
+            )
 
         return GitRepoResponse(
-            id=str(data.id),
-            repo_name=data.name,
-            description=data.description,
-            default_branch=data.default_branch or "main",
-            forks_count=data.forks_count or 0,
-            stargazers_count=stargazers_count,
-            html_url=html_url,
-            private=private,
-            visibility=data.visibility if hasattr(data, "visibility") else None,
-            size=size or 0,
-            repo_created_at=data.created_at,
+            id=str(dict_data.get("id", "")),
+            repo_name=dict_data.get("name"),
+            description=dict_data.get("description"),
+            default_branch=dict_data.get("default_branch", "main"),
+            forks_count=dict_data.get("forks_count", 0),
+            stargazers_count=dict_data.get("star_count", 0),
+            html_url=dict_data.get("http_url_to_repo"),
+            visibility=dict_data.get("visibility"),
+            repo_created_at=dict_data.get("created_at"),
+            size=cls.derive_storage_size(dict_data.get("statistics")) or 0,
+            private=cls.derived_private_field(dict_data.get("visibility")),
+        )
+
+class GitHubRepoResponseTransformer:
+
+    @classmethod
+    def transform_repository_to_dict(cls, repository: Repository | SimpleNamespace) -> dict:
+        return {
+            "id": str(repository.id),
+            "name": repository.name,
+            "description": repository.description,
+            "default_branch": repository.default_branch or "main",
+            "forks_count": repository.forks_count or 0,
+            "size": repository.size or 0,
+            "stargazers_count": repository.stargazers_count or 0,
+            "html_url": repository.html_url,
+            "private": repository.private,
+            "visibility": getattr(repository, "visibility", None),
+            "repo_created_at": repository.created_at,
+        }
+
+    @classmethod
+    def from_github(cls, data: Repository | SimpleNamespace | dict) -> GitRepoResponse | None:
+
+        if not data:
+            return None
+        elif isinstance(data, Repository) or isinstance(data, SimpleNamespace):
+            dict_data = cls.transform_repository_to_dict(data)
+        elif isinstance(data, dict):
+            dict_data = data
+        else:
+            raise TypeError(
+                f"Unsupported type for `data`: {type(data)}. Expected Repository, SimpleNamespace, or dict."
+            )
+
+        return GitRepoResponse(
+            id=str(dict_data.get("id", "")),
+            repo_name=dict_data.get("name"),
+            description=dict_data.get("description"),
+            default_branch=dict_data.get("default_branch", "main"),
+            forks_count=dict_data.get("forks_count", 0),
+            stargazers_count=dict_data.get("stargazers_count", 0),
+            html_url=dict_data.get("html_url"),
+            private=dict_data.get("private"),
+            visibility=dict_data.get("visibility"),
+            size=dict_data.get("size", 0),
+            repo_created_at=dict_data.get("repo_created_at"),
         )
