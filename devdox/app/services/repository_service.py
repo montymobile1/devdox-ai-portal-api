@@ -1,6 +1,7 @@
 from typing import List, Tuple
 
 from fastapi import Depends
+from tortoise.exceptions import IntegrityError
 
 from app.exceptions.custom_exceptions import BadRequest, ResourceNotFound
 from app.repositories.git_label_repository import TortoiseGitLabelStore
@@ -99,3 +100,66 @@ class RepoProviderService:
         transformed_response = [response_mapper(r) for r in fetched_data.get("data", [])]
         
         return fetched_data["data_count"], transformed_response
+
+
+class RepoManipulationService:
+    def __init__(
+        self,
+        label_store: TortoiseGitLabelStore = Depends(),
+        repo_store: TortoiseRepoStore = Depends(),
+        user_store: TortoiseUserStore = Depends(),
+        encryption: FernetEncryptionHelper = Depends(get_encryption_helper),
+        git_fetcher: RepoFetcher = Depends(),
+    ):
+        self.label_store = label_store
+        self.user_store = user_store
+        self.encryption = encryption
+        self.git_fetcher = git_fetcher
+        self.repo_store = repo_store
+
+    async def add_repo_from_provider(
+        self, user_claims: UserClaims, token_id: str, relative_path: str
+    ) -> None:
+
+        retrieved_user_data = await self.user_store.get_by_user_id(user_claims.sub)
+        
+        if retrieved_user_data is None:
+            raise ResourceNotFound(reason="Unable to find user")
+
+        label = await self.label_store.get_by_token_id_and_user(
+            token_id, user_claims.sub
+        )
+        if label is None:
+            raise ResourceNotFound(reason="Git Label token does exist")
+
+        decrypted_label_token = self.encryption.decrypt_for_user(label.token_value, salt_b64=retrieved_user_data.encryption_salt)
+        fetcher, fetcher_data_mapper = self.git_fetcher.get(label.git_hosting)
+        if not fetcher:
+            raise BadRequest(reason=f"Unsupported Git hosting: {label.git_hosting}")
+
+        repo_data, languages = fetcher.fetch_single_repo(
+            decrypted_label_token, relative_path
+        )
+
+        transformed_data: GitRepoResponse = fetcher_data_mapper(repo_data)
+
+        try:
+            _ = await self.repo_store.create_new_repo(
+                user_id=user_claims.sub,
+                token_id=token_id,
+                repo_id=transformed_data.id,
+                repo_name=transformed_data.repo_name,
+                description=transformed_data.description,
+                html_url=transformed_data.html_url,
+                default_branch=transformed_data.default_branch,
+                forks_count=transformed_data.forks_count,
+                stargazers_count=transformed_data.stargazers_count,
+                is_private=transformed_data.private,
+                visibility=transformed_data.visibility,
+                size=transformed_data.size,
+                repo_created_at=transformed_data.repo_created_at,
+                language=languages,
+            )
+
+        except IntegrityError:
+            raise BadRequest(reason="Repository already exists")

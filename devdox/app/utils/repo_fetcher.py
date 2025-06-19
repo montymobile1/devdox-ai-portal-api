@@ -38,12 +38,12 @@ class GitHubRepoFetcher(IRepoFetcher):
         }
 
     def fetch_single_repo(
-        self, token: str, full_name_or_id: str | int
-    ) -> tuple[Repository, list[str]] | None:
+        self, token: str, relative_path_or_id: str | int
+    ) -> tuple[Any, list[Any]] | None:
 
         authenticated_github_manager = self.manager.authenticate(token)
 
-        repository = authenticated_github_manager.get_project(full_name_or_id)
+        repository = authenticated_github_manager.get_project(relative_path_or_id)
 
         if not repository:
             return None
@@ -73,11 +73,11 @@ class GitLabRepoFetcher(IRepoFetcher):
         }
 
     def fetch_single_repo(
-        self, token: str, full_name: str
+        self, token: str, relative_path: str
     ) -> tuple[Project, list[str]] | None:
         # full_name can be ID or 'namespace/project'
         authenticated_gitlab_manager = self.manager.authenticate(token)
-        repository = authenticated_gitlab_manager.get_project(full_name)
+        repository = authenticated_gitlab_manager.get_project(relative_path)
 
         if not repository:
             return None
