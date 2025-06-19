@@ -98,12 +98,10 @@ class GitLabRepoResponseTransformer:
         if not visibility:
             return None
 
-        derived_private = None
-        if visibility:
-            if visibility.lower() in ("private", "internal"):
-                derived_private = True
-            else:
-                derived_private = False
+        if visibility.lower() in ("private", "internal"):
+            derived_private = True
+        else:
+            derived_private = False
 
         return derived_private
 
@@ -134,7 +132,9 @@ class GitLabRepoResponseTransformer:
         elif isinstance(data, dict):
             dict_data = data
         else:
-            raise Exception("Unsupported from_gitlab `data` type")
+            raise TypeError(
+                f"Unsupported type for `data`: {type(data)}. Expected Project, SimpleNamespace, or dict."
+            )
 
         return GitRepoResponse(
             id=str(dict_data.get("id", "")),
@@ -178,7 +178,9 @@ class GitHubRepoResponseTransformer:
         elif isinstance(data, dict):
             dict_data = data
         else:
-            raise Exception("Unsupported from_github `data` type")
+            raise TypeError(
+                f"Unsupported type for `data`: {type(data)}. Expected Repository, SimpleNamespace, or dict."
+            )
 
         return GitRepoResponse(
             id=str(dict_data.get("id", "")),

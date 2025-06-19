@@ -1,4 +1,4 @@
-from typing import Any, Callable, List, Protocol, Tuple
+from typing import Any, Callable, Protocol
 
 from github.Repository import Repository
 from gitlab.v4.objects import Project
@@ -16,8 +16,9 @@ class IRepoFetcher(Protocol):
     def fetch_user_repositories(
         self, token: str, offset: int, limit: int
     ) -> dict[str, Any]: ...
-    
+
     def fetch_single_repo(self, token: str, full_name_or_id: str | int): ...
+
 
 class GitHubRepoFetcher(IRepoFetcher):
     def __init__(self, base_url: str = GitHubManager.default_base_url):
@@ -33,7 +34,7 @@ class GitHubRepoFetcher(IRepoFetcher):
 
         return {
             "data_count": result["pagination_info"]["total_count"],
-            "data": result["repositories"]
+            "data": result["repositories"],
         }
 
     def fetch_single_repo(
@@ -92,8 +93,11 @@ class RepoFetcher:
 
     def get(
         self, provider: GitHosting
-    ) -> tuple[GitHubRepoFetcher, Callable[[Repository], GitRepoResponse]] | tuple[
-	    GitLabRepoFetcher, Callable[[Project], GitRepoResponse]] | None:
+    ) -> (
+        tuple[GitHubRepoFetcher, Callable[[Repository], GitRepoResponse]]
+        | tuple[GitLabRepoFetcher, Callable[[Project], GitRepoResponse]]
+        | None
+    ):
         """bool represents whether it has a data transformer which can aid"""
         if provider == GitHosting.GITHUB:
             return GitHubRepoFetcher(), GitHubRepoResponseTransformer.from_github
