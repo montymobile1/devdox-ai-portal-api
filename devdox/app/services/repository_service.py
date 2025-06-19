@@ -2,11 +2,15 @@ from typing import List, Tuple
 
 from fastapi import Depends
 
+from app.exceptions.custom_exceptions import BadRequest, ResourceNotFound
 from app.repositories.git_label_repository import TortoiseGitLabelStore
 from app.repositories.repo_repository import TortoiseRepoStore
+from app.repositories.user_repository import TortoiseUserStore
 from app.schemas.basic import RequiredPaginationParams
-from app.schemas.repo import RepoResponse
+from app.schemas.repo import GitRepoResponse, RepoResponse
 from app.utils.auth import UserClaims
+from app.utils.encryption import FernetEncryptionHelper, get_encryption_helper
+from app.utils.repo_fetcher import RepoFetcher
 
 
 class RepoQueryService:
@@ -44,3 +48,54 @@ class RepoQueryService:
             repo_responses.append(RepoResponse.model_validate(rp, from_attributes=True))
 
         return total_count, repo_responses
+
+
+class RepoProviderService:
+    def __init__(
+        self,
+        label_store: TortoiseGitLabelStore = Depends(),
+        user_store: TortoiseUserStore = Depends(),
+        encryption: FernetEncryptionHelper = Depends(get_encryption_helper),
+        git_fetcher: RepoFetcher = Depends(),
+    ):
+        self.label_store = label_store
+        self.user_store = user_store
+        self.encryption = encryption
+        self.git_fetcher = git_fetcher
+
+    async def get_all_provider_repos(
+        self,
+        token_id: str,
+        user_claims: UserClaims,
+        pagination: RequiredPaginationParams,
+    ) -> Tuple[int, List[GitRepoResponse]]:
+
+        retrieved_user_data = await self.user_store.get_by_user_id(user_claims.sub)
+        
+        if retrieved_user_data is None:
+            raise ResourceNotFound(reason="User not found")
+
+        label = await self.label_store.get_by_token_id_and_user(
+            token_id, user_claims.sub
+        )
+        if label is None:
+            raise ResourceNotFound(reason="Token not found")
+
+        decrypted_label_token = self.encryption.decrypt_for_user(
+            label.token_value, salt_b64=retrieved_user_data.encryption_salt
+        )
+
+        fetcher, response_mapper = self.git_fetcher.get(label.git_hosting)
+        if not fetcher:
+            raise BadRequest(reason=f"Unsupported Git hosting:  {label.git_hosting}")
+        
+        fetched_data = fetcher.fetch_user_repositories(
+            decrypted_label_token, pagination.offset, pagination.limit
+        )
+        
+        if fetched_data.get("data_count", 0) == 0:
+            return 0, []
+        
+        transformed_response = [response_mapper(r) for r in fetched_data.get("data", [])]
+        
+        return fetched_data["data_count"], transformed_response
