@@ -190,6 +190,7 @@ class RepoManipulationService:
                     repo_name=transformed_data.repo_name,
                     description=transformed_data.description,
                     html_url=transformed_data.html_url,
+                    relative_path=transformed_data.relative_path,
                     default_branch=transformed_data.default_branch,
                     forks_count=transformed_data.forks_count,
                     stargazers_count=transformed_data.stargazers_count,

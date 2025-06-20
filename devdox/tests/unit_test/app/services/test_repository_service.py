@@ -35,7 +35,7 @@ class StubFetcher:
             return self, lambda repo: GitRepoResponse(
                 id="r1", repo_name="test", description=None, html_url="url",
                 default_branch="main", forks_count=1, stargazers_count=2,
-                size=100, repo_created_at=None, private=True, visibility="private"
+                size=100, repo_created_at=None, private=True, visibility="private", relative_path="relative_url"
             )
         return None, None
 

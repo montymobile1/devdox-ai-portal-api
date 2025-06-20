@@ -20,6 +20,7 @@ class Repo(Model):
     repo_name = fields.CharField(max_length=255, description="Repository name")
     description = fields.TextField(null=True, description="Repository description")
     html_url = fields.CharField(max_length=500, description="Repository URL")
+    relative_path = fields.CharField(max_length=500, description="The part of the repository's path excluding the domain")
 
     # Repository metadata
     default_branch = fields.CharField(
