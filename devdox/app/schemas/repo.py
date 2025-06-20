@@ -71,6 +71,8 @@ class GitRepoResponse(BaseModel):
     repo_name: str = Field(..., description="Repository name")
     description: Optional[str] = Field(None, description="Repository description")
     html_url: str = Field(..., description="Repository URL")
+    relative_path: str = Field(..., description="The part of the repository's url excluding the domain")
+    
     default_branch: str = Field(..., description="Default branch name")
     forks_count: int = Field(..., description="Number of forks")
     stargazers_count: int = Field(..., description="Number of stars")
@@ -120,6 +122,7 @@ class GitLabRepoResponseTransformer:
             "created_at": project.created_at,
             "star_count": project.star_count,
             "http_url_to_repo": project.http_url_to_repo,
+            "path_with_namespace": project.path_with_namespace,
             "statistics": extracted_statistics,
         }
 
@@ -144,6 +147,7 @@ class GitLabRepoResponseTransformer:
             forks_count=dict_data.get("forks_count", 0),
             stargazers_count=dict_data.get("star_count", 0),
             html_url=dict_data.get("http_url_to_repo"),
+            relative_path=dict_data.get("path_with_namespace"),
             visibility=dict_data.get("visibility"),
             repo_created_at=dict_data.get("created_at"),
             size=cls.derive_storage_size(dict_data.get("statistics")) or 0,
@@ -162,6 +166,7 @@ class GitHubRepoResponseTransformer:
             "forks_count": repository.forks_count or 0,
             "size": repository.size or 0,
             "stargazers_count": repository.stargazers_count or 0,
+            "full_name": repository.full_name,
             "html_url": repository.html_url,
             "private": repository.private,
             "visibility": getattr(repository, "visibility", None),
@@ -189,6 +194,7 @@ class GitHubRepoResponseTransformer:
             default_branch=dict_data.get("default_branch", "main"),
             forks_count=dict_data.get("forks_count", 0),
             stargazers_count=dict_data.get("stargazers_count", 0),
+            relative_path=dict_data.get("full_name"),
             html_url=dict_data.get("html_url"),
             private=dict_data.get("private"),
             visibility=dict_data.get("visibility"),

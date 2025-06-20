@@ -38,6 +38,7 @@ class TestGitLabRepoResponseTransformer:
             created_at=now,
             star_count=5,
             http_url_to_repo="http://example.com/repo",
+            path_with_namespace="repo",
             statistics={"storage_size": 2000},
         )
         result = GitLabRepoResponseTransformer.transform_project_to_dict(project)
@@ -56,6 +57,7 @@ class TestGitLabRepoResponseTransformer:
             "forks_count": 2,
             "star_count": 3,
             "http_url_to_repo": "http://example.com",
+            "path_with_namespace": "repo",
             "visibility": "internal",
             "created_at": datetime.utcnow(),
             "statistics": {"storage_size": 512},
@@ -92,6 +94,7 @@ class TestGitHubRepoResponseTransformer:
             forks_count=10,
             stargazers_count=100,
             html_url="http://github.com/repo",
+            full_name="repo",
             private=True,
             visibility="private",
             size=2048,
@@ -114,6 +117,7 @@ class TestGitHubRepoResponseTransformer:
             "forks_count": 5,
             "stargazers_count": 50,
             "html_url": "http://github.com/repo",
+            "full_name": "repo",
             "private": False,
             "visibility": "public",
             "size": 100,
