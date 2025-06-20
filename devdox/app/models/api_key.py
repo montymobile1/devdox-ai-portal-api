@@ -5,7 +5,7 @@ from tortoise import fields, Model
 
 class APIKEY(Model):
     """
-    Git Label model for storing user's git hosting service credentials and labels
+    API Key model for storing user's API keys for external services
     """
 
     id = fields.UUIDField(primary_key=True, default=uuid.uuid4)
@@ -14,13 +14,13 @@ class APIKEY(Model):
     )
     api_key = fields.CharField(
         required=True,
-        max_length=255,
+        max_length=512,
         description="API Key for the context service",
         null=False,
     )
     masked_api_key = fields.CharField(
         required=True,
-        max_length=255,
+        max_length=512,
         description="API Key masked",
         null=False,
     )
@@ -32,7 +32,9 @@ class APIKEY(Model):
     updated_at = fields.DatetimeField(
         auto_now=True, description="Record last update timestamp"
     )
-    last_used_at = fields.DatetimeField()
+    last_used_at = fields.DatetimeField(
+        null=True, description="Last time the API key was used"
+    )
 
     class Meta:
         table = "api_key"
