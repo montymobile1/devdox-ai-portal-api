@@ -6,7 +6,6 @@ Updated for Tortoise ORM implementation with current route structure.
 from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
-from fastapi import status
 
 from app.main import app
 from app.utils.auth import AuthenticatedUserDTO, get_current_user
