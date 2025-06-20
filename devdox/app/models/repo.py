@@ -10,7 +10,7 @@ class Repo(Model):
 
     id = fields.UUIDField(primary_key=True, default=uuid.uuid4)
     user_id = fields.CharField(
-        unique=True, max_length=255, description="User ID who owns this repository"
+        max_length=255, description="User ID who owns this repository"
     )
 
     # Repository basic information
@@ -30,10 +30,10 @@ class Repo(Model):
 
     # Visibility/Privacy settings
     is_private = fields.BooleanField(
-        default=False, description="Whether repository is private"
+        default=None, null=True, description="Whether repository is private (GitHub)"
     )
     visibility = fields.CharField(
-        max_length=50, null=True, description="Repository visibility (GitLab)"
+        max_length=50, null=True, description="Repository visibility"
     )
 
     # Git provider information
@@ -58,9 +58,7 @@ class Repo(Model):
     )
 
     # Additional metadata
-    language = fields.CharField(
-        max_length=100, null=True, description="Primary programming language"
-    )
+    language = fields.JSONField(null=True, description="Primary programming language")
     size = fields.IntField(null=True, description="Repository size in KB")
 
     class Meta:
@@ -69,6 +67,8 @@ class Repo(Model):
         indexes = [
             ("user_id", "created_at"),
         ]
+
+        unique_together = ("user_id", "repo_id")
 
     def __str__(self):
         return f"{self.repo_name} "

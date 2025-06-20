@@ -4,7 +4,7 @@ from types import SimpleNamespace
 from github.Repository import Repository
 from gitlab.v4.objects import Project
 from pydantic import BaseModel, Field, ConfigDict
-from typing import Any, Optional, List
+from typing import Optional, List
 from datetime import datetime
 from enum import Enum
 
@@ -195,3 +195,26 @@ class GitHubRepoResponseTransformer:
             size=dict_data.get("size", 0),
             repo_created_at=dict_data.get("repo_created_at"),
         )
+
+class AddRepositoryRequest(BaseModel):
+    relative_path: str = Field(
+        ...,
+        title="Repository Relative Path",
+        description=(
+            "The path to the repository **relative to its hosting platform domain**.\n\n"
+            "Use this field to specify the location of the repository **without** including the domain.\n"
+            "Examples:\n"
+            "- For GitHub: `owner/repo`\n"
+            "- For GitLab: `group/subgroup/project`\n\n"
+            "This value should match the exact path you see after the domain in the web URL."
+        )
+    )
+
+    model_config = {
+        "json_schema_extra": {
+            "examples": [
+                {"relative_path": "openai/gpt-4"},                 # GitHub-style
+                {"relative_path": "mygroup/dev/backend-api"}       # GitLab-style
+            ]
+        }
+    }

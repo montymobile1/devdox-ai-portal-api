@@ -91,4 +91,8 @@ class TestRepoFetcher:
         assert transformer.__name__ == GitLabRepoResponseTransformer.from_gitlab.__name__
 
     def test_get_invalid_provider_returns_none(self):
-        assert RepoFetcher().get("BITBUCKET") is None
+        
+        fetcher, transformer = RepoFetcher().get("BITBUCKET")
+
+        assert fetcher is None
+        assert transformer is None

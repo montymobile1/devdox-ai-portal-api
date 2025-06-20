@@ -10,9 +10,10 @@ from fastapi import APIRouter, Depends, Path, status
 from starlette.responses import JSONResponse
 
 from app.schemas.basic import RequiredPaginationParams
-from app.schemas.repo import RepoListResponse
+from app.schemas.repo import AddRepositoryRequest, RepoListResponse
 from app.services.repository_service import (
     RepoProviderService,
+    RepoManipulationService,
     RepoQueryService,
 )
 from app.utils.api_response import APIResponse
@@ -60,3 +61,18 @@ async def get_repos_from_git(
 ):
     total, repos = await service.get_all_provider_repos(token_id, user, pagination)
     return APIResponse.success("Repositories retrieved successfully", {"total_count": total, "repos": repos})
+
+@router.post(
+    "/git_repos/users/{token_id}",
+    status_code=status.HTTP_201_CREATED,
+    summary="Add a repository from Git provider",
+    description="Add a selected repository to the database using a Git token",
+)
+async def add_repo_from_git(
+    token_id: str,
+    payload: AddRepositoryRequest,
+    user: UserClaims = Depends(get_authenticated_user),
+    repo_service: RepoManipulationService = Depends(RepoManipulationService),
+):
+    await repo_service.add_repo_from_provider(user, token_id, payload.relative_path)
+    return APIResponse.success("Repository added successfully")

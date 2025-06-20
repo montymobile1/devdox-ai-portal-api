@@ -1,3 +1,4 @@
+from types import SimpleNamespace
 from typing import Any, Callable, Protocol
 
 from github.Repository import Repository
@@ -17,7 +18,7 @@ class IRepoFetcher(Protocol):
         self, token: str, offset: int, limit: int
     ) -> dict[str, Any]: ...
 
-    def fetch_single_repo(self, token: str, full_name_or_id: str | int): ...
+    def fetch_single_repo(self, token: str, relative_path: str | int): ...
 
 
 class GitHubRepoFetcher(IRepoFetcher):
@@ -38,12 +39,12 @@ class GitHubRepoFetcher(IRepoFetcher):
         }
 
     def fetch_single_repo(
-        self, token: str, full_name_or_id: str | int
+        self, token: str, relative_path: str | int
     ) -> tuple[Repository, list[str]] | None:
 
         authenticated_github_manager = self.manager.authenticate(token)
 
-        repository = authenticated_github_manager.get_project(full_name_or_id)
+        repository = authenticated_github_manager.get_project(relative_path)
 
         if not repository:
             return None
@@ -73,11 +74,11 @@ class GitLabRepoFetcher(IRepoFetcher):
         }
 
     def fetch_single_repo(
-        self, token: str, full_name: str
+        self, token: str, relative_path: str
     ) -> tuple[Project, list[str]] | None:
         # full_name can be ID or 'namespace/project'
         authenticated_gitlab_manager = self.manager.authenticate(token)
-        repository = authenticated_gitlab_manager.get_project(full_name)
+        repository = authenticated_gitlab_manager.get_project(relative_path)
 
         if not repository:
             return None
@@ -93,15 +94,12 @@ class RepoFetcher:
 
     def get(
         self, provider: GitHosting
-    ) -> (
-        tuple[GitHubRepoFetcher, Callable[[Repository], GitRepoResponse]]
-        | tuple[GitLabRepoFetcher, Callable[[Project], GitRepoResponse]]
-        | None
-    ):
+    ) -> tuple[GitHubRepoFetcher, Callable[[Repository | SimpleNamespace | dict], GitRepoResponse | None]] | tuple[
+	    GitLabRepoFetcher, Callable[[Project | SimpleNamespace | dict], GitRepoResponse | None]] | tuple[None, None]:
         """bool represents whether it has a data transformer which can aid"""
         if provider == GitHosting.GITHUB:
             return GitHubRepoFetcher(), GitHubRepoResponseTransformer.from_github
         elif provider == GitHosting.GITLAB:
             return GitLabRepoFetcher(), GitLabRepoResponseTransformer.from_gitlab
-        else:
-            return None
+        
+        return None, None
