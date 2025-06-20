@@ -1,7 +1,7 @@
 from typing import Any, Collection, Coroutine, Dict, List, Union
 from uuid import UUID
 
-from app.models import GitLabel
+from models import GitLabel
 
 
 class TortoiseGitLabelStore:

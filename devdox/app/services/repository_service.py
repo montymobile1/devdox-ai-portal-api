@@ -15,7 +15,7 @@ from app.exceptions.exception_constants import (
     SERVICE_UNAVAILABLE,
     USER_RESOURCE_NOT_FOUND,
 )
-from app.models import Repo
+from models import Repo
 from app.repositories.git_label_repository import TortoiseGitLabelStore
 from app.repositories.repo_repository import TortoiseRepoStore
 from app.repositories.user_repository import TortoiseUserStore
@@ -29,8 +29,8 @@ from app.utils.repo_fetcher import RepoFetcher
 class RepoQueryService:
     def __init__(
         self,
-        repo_store = Depends(TortoiseRepoStore),
-        gl_store = Depends(TortoiseGitLabelStore),
+        repo_store=Depends(TortoiseRepoStore),
+        gl_store=Depends(TortoiseGitLabelStore),
     ):
         self.repo_store = repo_store
         self.gl_store = gl_store
@@ -84,7 +84,7 @@ class RepoProviderService:
     ) -> Tuple[int, List[GitRepoResponse]]:
 
         retrieved_user_data = await self.user_store.get_by_user_id(user_claims.sub)
-        
+
         if retrieved_user_data is None:
             raise ResourceNotFound(reason="User not found")
 
@@ -101,49 +101,54 @@ class RepoProviderService:
         fetcher, response_mapper = self.git_fetcher.get(label.git_hosting)
         if not fetcher:
             raise BadRequest(reason=f"Unsupported Git hosting:  {label.git_hosting}")
-        
+
         fetched_data = fetcher.fetch_user_repositories(
             decrypted_label_token, pagination.offset, pagination.limit
         )
-        
+
         if fetched_data.get("data_count", 0) == 0:
             return 0, []
-        
-        transformed_response = [response_mapper(r) for r in fetched_data.get("data", [])]
-        
+
+        transformed_response = [
+            response_mapper(r) for r in fetched_data.get("data", [])
+        ]
+
         return fetched_data["data_count"], transformed_response
+
 
 async def retrieve_user_by_id_or_die(store: TortoiseUserStore, user_id):
     retrieved_user_data = await store.get_by_user_id(user_id)
-    
+
     if retrieved_user_data is None:
         raise ResourceNotFound(reason=USER_RESOURCE_NOT_FOUND)
-    
+
     return retrieved_user_data
+
 
 async def retrieve_git_label_by_id_and_user_or_die(store, id, user_id):
     retrieved_git_label = await store.get_by_token_id_and_user(id, user_id)
     if retrieved_git_label is None:
         raise ResourceNotFound(reason=GIT_LABEL_TOKEN_RESOURCE_NOT_FOUND)
-    
+
     return retrieved_git_label
 
-def retrieve_git_fetcher_or_die(store, provider: GitHosting, strict:bool = True):
+
+def retrieve_git_fetcher_or_die(store, provider: GitHosting, strict: bool = True):
     fetcher, fetcher_data_mapper = store.get(provider)
     if not fetcher:
         raise DevDoxAPIException(
             user_message=SERVICE_UNAVAILABLE,
             log_message=f"Unsupported Git hosting: {provider}",
-            log_level="exception"
+            log_level="exception",
         )
-    
+
     if not strict and not fetcher_data_mapper:
-            raise DevDoxAPIException(
-                user_message=SERVICE_UNAVAILABLE,
-                log_message=f"Unable to find mapper for Git hosting: {provider}",
-                log_level="exception",
-            )
-    
+        raise DevDoxAPIException(
+            user_message=SERVICE_UNAVAILABLE,
+            log_message=f"Unable to find mapper for Git hosting: {provider}",
+            log_level="exception",
+        )
+
     return fetcher, fetcher_data_mapper
 
 
@@ -166,10 +171,16 @@ class RepoManipulationService:
         self, user_claims: UserClaims, token_id: str, relative_path: str
     ) -> None:
 
-        retrieved_user_data = await retrieve_user_by_id_or_die(self.user_store, user_claims.sub)
-        retrieved_git_label = await retrieve_git_label_by_id_and_user_or_die(self.label_store, token_id, user_claims.sub)
-        fetcher, fetcher_data_mapper = retrieve_git_fetcher_or_die(self.git_fetcher, retrieved_git_label.git_hosting)
-        
+        retrieved_user_data = await retrieve_user_by_id_or_die(
+            self.user_store, user_claims.sub
+        )
+        retrieved_git_label = await retrieve_git_label_by_id_and_user_or_die(
+            self.label_store, token_id, user_claims.sub
+        )
+        fetcher, fetcher_data_mapper = retrieve_git_fetcher_or_die(
+            self.git_fetcher, retrieved_git_label.git_hosting
+        )
+
         decrypted_label_token = self.encryption.decrypt_for_user(
             retrieved_git_label.token_value,
             salt_b64=retrieved_user_data.encryption_salt,
