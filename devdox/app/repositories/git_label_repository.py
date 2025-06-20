@@ -1,7 +1,7 @@
-from typing import Collection, Dict, List, Union
+from typing import Any, Collection, Coroutine, Dict, List, Union
 from uuid import UUID
 
-from app.models import GitLabel
+from models import GitLabel
 
 
 class TortoiseGitLabelStore:
@@ -11,3 +11,9 @@ class TortoiseGitLabelStore:
         if not token_ids:
             return []
         return await GitLabel.filter(id__in=token_ids).values("id", "git_hosting")
+    
+    async def get_by_token_id_and_user(self, token_id: str, user_id: str) -> GitLabel | None:
+        if not token_id or not token_id.strip() or not user_id or not user_id.strip():
+            return None
+        
+        return await GitLabel.filter(id=token_id, user_id=user_id).first()

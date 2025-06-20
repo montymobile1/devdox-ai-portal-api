@@ -1,149 +1,98 @@
-import pytest
 from types import SimpleNamespace
-from app.utils.repo_fetcher import GitHubRepoFetcher, GitLabRepoFetcher, RepoFetcher
+
 from app.config import GitHosting
-from app.schemas.repo import GitRepoResponseTransformer
+from app.schemas.repo import (
+    GitHubRepoResponseTransformer,
+    GitLabRepoResponseTransformer,
+)
+from app.utils.repo_fetcher import GitHubRepoFetcher, GitLabRepoFetcher, RepoFetcher
 
-real_module_path = "app.utils.repo_fetcher"
-
-class DummyAuthenticatedManager:
-    def __init__(self, repos=None, repo=None, languages=None):
-        self._repos = repos or []
-        self._repo = repo
-        self._languages = languages or []
-
-    def get_user_repositories(self, *args, **kwargs):
-        return {
-            "repositories": self._repos,
-            "pagination_info": {"total_count": len(self._repos)},
-        }
-
-    def get_project(self, identifier):
-        return self._repo
-
-    def get_project_languages(self, repo):
-        return self._languages
-
-
-@pytest.fixture
-def dummy_github_repo():
-    return SimpleNamespace(
-        id=1,
-        name="gh-repo",
-        full_name="user/gh-repo",
-        description="GitHub test repo",
-        private=False,
-        html_url="https://github.com/user/gh-repo",
-        clone_url="git@github.com:user/gh-repo.git",
-        ssh_url="ssh://git@github.com:user/gh-repo.git",
-        default_branch="main",
-        language="Python",
-        size=1234,
-        stargazers_count=42,
-        watchers_count=100,
-        forks_count=5,
-        open_issues_count=2,
-        created_at=None,
-        updated_at=None,
-        pushed_at=None,
-        owner=SimpleNamespace(login="user", id=1, type="User"),
-        permissions=SimpleNamespace(admin=True, push=True, pull=True),
-        visibility="public",
-    )
-
-
-@pytest.fixture
-def dummy_gitlab_project():
-    return SimpleNamespace(
-        id=2,
-        name="gl-repo",
-        description="GitLab test repo",
-        default_branch="main",
-        forks_count=1,
-        star_count=10,
-        http_url_to_repo="https://gitlab.com/user/gl-repo",
-        private=False,
-        visibility="private",
-        statistics={"storage_size": 999},
-        created_at="2023-01-01T00:00:00",
-    )
-
+path_to_actual_module = "app.utils.repo_fetcher"
 
 class TestGitHubRepoFetcher:
-    def test_fetch_repo(self, monkeypatch, dummy_github_repo):
-        monkeypatch.setattr(
-            f"{real_module_path}.GitHubManager.authenticate",
-            lambda self, token: DummyAuthenticatedManager(repos=[dummy_github_repo]),
+    def test_fetch_user_repositories_returns_expected_dict(self, monkeypatch):
+        mock_auth = SimpleNamespace(
+            get_user_repositories=lambda page, per_page: {
+                "pagination_info": {"total_count": 2},
+                "repositories": ["repo1", "repo2"]
+            }
         )
-        fetcher = GitHubRepoFetcher()
-        count, repos = fetcher.fetch_user_repositories("token", 0, 10)
-        assert count == 1
-        assert repos[0].repo_name == dummy_github_repo.name
+        monkeypatch.setattr(f"{path_to_actual_module}.GitHubManager.authenticate", lambda self, token: mock_auth)
 
-    def test_fetch_single_repo(self, monkeypatch, dummy_github_repo):
-        monkeypatch.setattr(
-            f"{real_module_path}.GitHubManager.authenticate",
-            lambda self, token: DummyAuthenticatedManager(repo=dummy_github_repo, languages={"Python": 100}),
+        fetcher = GitHubRepoFetcher("https://fake.api")
+        result = fetcher.fetch_user_repositories("token123", 0, 2)
+        assert result == {"data_count": 2, "data": ["repo1", "repo2"]}
+
+    def test_fetch_single_repo_success(self, monkeypatch):
+        repo = SimpleNamespace(id=1)
+        mock_auth = SimpleNamespace(
+            get_project=lambda full_name: repo,
+            get_project_languages=lambda r: {"Python": 50, "Go": 50}
         )
+        monkeypatch.setattr(f"{path_to_actual_module}.GitHubManager.authenticate", lambda self, token: mock_auth)
+
         fetcher = GitHubRepoFetcher()
-        repo, langs = fetcher.fetch_single_repo("token", dummy_github_repo.full_name)
-        assert repo == dummy_github_repo
-        assert "Python" in langs
+        result = fetcher.fetch_single_repo("token123", "some/repo")
+        assert result[0] is repo
+        assert set(result[1]) == {"Python", "Go"}
 
     def test_fetch_single_repo_not_found(self, monkeypatch):
-        monkeypatch.setattr(
-            f"{real_module_path}.GitHubManager.authenticate",
-            lambda self, token: DummyAuthenticatedManager(repo=None),
-        )
+        mock_auth = SimpleNamespace(get_project=lambda full_name: None)
+        monkeypatch.setattr(f"{path_to_actual_module}.GitHubManager.authenticate", lambda self, token: mock_auth)
+
         fetcher = GitHubRepoFetcher()
-        result = fetcher.fetch_single_repo("token", "unknown")
-        assert result is None
+        assert fetcher.fetch_single_repo("token123", "missing") is None
 
 
 class TestGitLabRepoFetcher:
-    def test_fetch_repo(self, monkeypatch, dummy_gitlab_project):
-        monkeypatch.setattr(
-            f"{real_module_path}.GitLabManager.authenticate",
-            lambda self, token: DummyAuthenticatedManager(repos=[dummy_gitlab_project]),
+    def test_fetch_user_repositories_returns_expected_dict(self, monkeypatch):
+        mock_auth = SimpleNamespace(
+            get_user_repositories=lambda page, per_page: {
+                "pagination_info": {"total_count": 3},
+                "repositories": ["lab1", "lab2", "lab3"]
+            }
         )
-        fetcher = GitLabRepoFetcher()
-        count, repos = fetcher.fetch_user_repositories("token", 0, 10)
-        assert count == 1
-        assert repos[0].repo_name == dummy_gitlab_project.name
+        monkeypatch.setattr(f"{path_to_actual_module}.GitLabManager.authenticate", lambda self, token: mock_auth)
 
-    def test_fetch_single_repo(self, monkeypatch, dummy_gitlab_project):
-        monkeypatch.setattr(
-            f"{real_module_path}.GitLabManager.authenticate",
-            lambda self, token: DummyAuthenticatedManager(repo=dummy_gitlab_project, languages=["Python"]),
+        fetcher = GitLabRepoFetcher("https://fake.gitlab")
+        result = fetcher.fetch_user_repositories("token123", 1, 3)
+        assert result == {"data_count": 3, "data": ["lab1", "lab2", "lab3"]}
+
+    def test_fetch_single_repo_success(self, monkeypatch):
+        repo = SimpleNamespace(id=2)
+        mock_auth = SimpleNamespace(
+            get_project=lambda name: repo,
+            get_project_languages=lambda r: {"Java": 100}
         )
+        monkeypatch.setattr(f"{path_to_actual_module}.GitLabManager.authenticate", lambda self, token: mock_auth)
+
         fetcher = GitLabRepoFetcher()
-        repo, langs = fetcher.fetch_single_repo("token", "namespace/project")
-        assert repo == dummy_gitlab_project
-        assert "Python" in langs
+        result = fetcher.fetch_single_repo("token123", "some/project")
+        assert result[0] is repo
+        assert result[1] == ["Java"]
 
     def test_fetch_single_repo_not_found(self, monkeypatch):
-        monkeypatch.setattr(
-            f"{real_module_path}.GitLabManager.authenticate",
-            lambda self, token: DummyAuthenticatedManager(repo=None),
-        )
+        mock_auth = SimpleNamespace(get_project=lambda full_name: None)
+        monkeypatch.setattr(f"{path_to_actual_module}.GitLabManager.authenticate", lambda self, token: mock_auth)
+
         fetcher = GitLabRepoFetcher()
-        result = fetcher.fetch_single_repo("token", "namespace/project")
-        assert result is None
+        assert fetcher.fetch_single_repo("token123", "invalid") is None
 
 
 class TestRepoFetcher:
-    def test_get_github(self):
-        fetcher = RepoFetcher()
-        impl, transformer = fetcher.get(GitHosting.GITHUB)
-        assert isinstance(impl, GitHubRepoFetcher)
-        assert transformer.__name__ == GitRepoResponseTransformer.from_github.__name__
+    def test_get_github_returns_expected_types(self):
+        fetcher, transformer = RepoFetcher().get(GitHosting.GITHUB)
+        assert isinstance(fetcher, GitHubRepoFetcher)
+        assert transformer.__name__ == GitHubRepoResponseTransformer.from_github.__name__
 
-    def test_get_gitlab(self):
-        fetcher = RepoFetcher()
-        impl, transformer = fetcher.get(GitHosting.GITLAB)
-        assert isinstance(impl, GitLabRepoFetcher)
-        assert transformer.__name__ == GitRepoResponseTransformer.from_gitlab.__name__
+    def test_get_gitlab_returns_expected_types(self):
+        fetcher, transformer = RepoFetcher().get(GitHosting.GITLAB)
+        assert isinstance(fetcher, GitLabRepoFetcher)
+        assert transformer.__name__ == GitLabRepoResponseTransformer.from_gitlab.__name__
 
-    def test_get_invalid(self):
-        fetcher = RepoFetcher()
-        assert fetcher.get("bitbucket") is None
+    def test_get_invalid_provider_returns_none(self):
+        
+        fetcher, transformer = RepoFetcher().get("BITBUCKET")
+
+        assert fetcher is None
+        assert transformer is None

@@ -31,9 +31,9 @@ def serialize_api_response_data(data: Optional[Serializable]) -> Any:
     """
 
     if isinstance(data, BaseModel):
-        data = data.model_dump()
+        data = data.model_dump(mode="json")
     elif isinstance(data, list) and all(isinstance(item, BaseModel) for item in data):
-        data = [item.model_dump() for item in data]
+        data = [item.model_dump(mode="json") for item in data]
     elif isinstance(data, dict):
         return {key: serialize_api_response_data(value) for key, value in data.items()}
 
