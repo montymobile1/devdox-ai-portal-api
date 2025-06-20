@@ -137,8 +137,7 @@ def retrieve_git_fetcher_or_die(store, provider: GitHosting, strict:bool = True)
             log_level="exception"
         )
     
-    if not strict:
-        if not fetcher_data_mapper:
+    if not strict and not fetcher_data_mapper:
             raise DevDoxAPIException(
                 user_message=SERVICE_UNAVAILABLE,
                 log_message=f"Unable to find mapper for Git hosting: {provider}",
