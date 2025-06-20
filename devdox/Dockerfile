@@ -3,9 +3,11 @@ FROM python:3.12-alpine
 # Install bash and required packages
 RUN apk add --no-cache \
     bash \
+    git \
     gcc \
     musl-dev \
-    linux-headers
+    linux-headers \
+    build-base
 
 # Create a non-root user and group
 RUN addgroup -S appgroup && adduser -S appuser -G appgroup

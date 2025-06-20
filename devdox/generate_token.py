@@ -1,5 +1,5 @@
 from clerk_backend_api import Clerk
-from devdox.app.config import settings
+from app.config import settings
 import logging
 
 

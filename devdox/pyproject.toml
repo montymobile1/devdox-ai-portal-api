@@ -2,7 +2,7 @@
 packages = ["app"]
 
 [project]
-name = "context-creators"
+name = "devdox-ai-portal-api"
 version = "0.1.1"
 description = "Context Creators Application"
 requires-python = ">=3.12"
@@ -42,6 +42,9 @@ dependencies = [
     "pydantic-settings==2.9.1",
     "pydantic_core==2.33.2",
     "email_validator==2.2.0",
+
+    #models
+    "models @ git+https://github.com/montymobile1/devdox-ai-models.git@74e4941",
     
     # Utilities
     "click==8.2.0",

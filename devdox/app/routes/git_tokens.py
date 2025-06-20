@@ -15,8 +15,8 @@ from starlette.responses import JSONResponse
 import app.exceptions.exception_constants
 from app.config import GitHosting
 from app.exceptions.exception_constants import SERVICE_UNAVAILABLE
-from app.models.git_label import GitLabel
-from app.models.user import User
+from models.git_label import GitLabel
+from models.user import User
 from app.schemas.basic import PaginationParams
 from app.schemas.git_label import GitLabelBase, GitLabelCreate
 from app.utils import constants, CurrentUser

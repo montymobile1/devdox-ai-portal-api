@@ -141,7 +141,7 @@ def get_tortoise_config():
         "apps": {
             "models": {
                 "models": [
-                    "app.models",
+                    "models",
                     "aerich.models",  # Required for aerich migrations
                 ],
                 "default_connection": "default",

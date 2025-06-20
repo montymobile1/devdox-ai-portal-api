@@ -7,7 +7,7 @@ from svix.webhooks import Webhook, WebhookVerificationError
 
 import app.exceptions.exception_constants
 from app.config import settings
-from app.models.user import User
+from models.user import User
 from app.schemas.user import WebhookUserData
 from app.utils import constants
 from app.utils.api_response import APIResponse

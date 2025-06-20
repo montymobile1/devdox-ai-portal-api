@@ -3,7 +3,7 @@ from typing import Any, Coroutine, List
 from tortoise.exceptions import IntegrityError
 
 from app.exceptions.custom_exceptions import BadRequest
-from app.models import Repo
+from models import Repo
 
 
 class TortoiseRepoStore:
