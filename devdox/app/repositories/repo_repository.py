@@ -1,5 +1,8 @@
-from typing import List
+from typing import Any, Coroutine, List
 
+from tortoise.exceptions import IntegrityError
+
+from app.exceptions.custom_exceptions import BadRequest
 from app.models import Repo
 
 
@@ -19,21 +22,7 @@ class TortoiseRepoStore:
     async def count_by_user(self, user_id: str) -> int:
         return await Repo.filter(user_id=user_id).count()
 
-    async def create_new_repo(self, user_id, token_id, repo_id, repo_name, description, html_url, default_branch,
-                          forks_count, stargazers_count, is_private, visibility, size, repo_created_at, language):
-        return await Repo.create(
-            user_id=user_id,
-            token_id=token_id,
-            repo_id=repo_id,
-            repo_name=repo_name,
-            description=description,
-            html_url=html_url,
-            default_branch=default_branch,
-            forks_count=forks_count,
-            stargazers_count=stargazers_count,
-            is_private=is_private,
-            visibility=visibility,
-            size=size,
-            repo_created_at=repo_created_at,
-            language=language,
-        )
+    async def create_new_repo(self, repo_model: Repo):
+        await repo_model.save(force_create=True)
+        await repo_model.refresh_from_db()
+        return repo_model
