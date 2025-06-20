@@ -85,7 +85,10 @@ dependencies = [
     # Real-time and webhooks
     "realtime==2.4.3",
     "svix==1.66.0",
-    
+
+    #queue
+    "tembo-pgmq-python==0.10.0",
+
     # Utilities
     "pycparser==2.22",
     "tomli-w==1.2.0",
