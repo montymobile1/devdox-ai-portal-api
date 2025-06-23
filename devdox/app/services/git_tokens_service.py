@@ -64,7 +64,7 @@ class GetGitLabelService:
             user_id=user_claims.sub,
             git_hosting=git_hosting
         )
-        
+
         # Format response data with masked tokens
         formatted_data = format_git_label_data(git_labels)
 
