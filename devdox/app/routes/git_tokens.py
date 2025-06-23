@@ -17,7 +17,7 @@ from app.config import GitHosting
 from app.exceptions.exception_constants import SERVICE_UNAVAILABLE
 from models.git_label import GitLabel
 from models.user import User
-from app.schemas.basic import PaginationParams, RequiredPaginationParams
+from app.schemas.basic import PaginationParams
 from app.schemas.git_label import GetGitLabelsRequest, GitLabelBase, GitLabelCreate
 from app.services.git_tokens_service import GetGitLabelService
 from app.utils import constants, CurrentUser
