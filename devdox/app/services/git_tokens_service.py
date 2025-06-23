@@ -25,6 +25,7 @@ def format_git_label_data(raw_git_labels):
                 token_value=git_label.token_value,
             ).model_dump(exclude={"token_value", "user_id"})
         )
+    
     return formatted_data
 
 
