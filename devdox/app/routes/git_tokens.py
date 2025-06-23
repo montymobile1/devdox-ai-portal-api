@@ -17,8 +17,12 @@ from app.config import GitHosting
 from app.exceptions.exception_constants import SERVICE_UNAVAILABLE
 from models.git_label import GitLabel
 from models.user import User
-from app.schemas.basic import PaginationParams
-from app.schemas.git_label import GetGitLabelsRequest, GitLabelBase, GitLabelCreate
+from app.schemas.git_label import (
+    GetGitLabelByLabelRequest,
+    GetGitLabelsRequest,
+    GitLabelBase,
+    GitLabelCreate,
+)
 from app.services.git_tokens_service import GetGitLabelService
 from app.utils import constants, CurrentUser
 from app.utils.api_response import APIResponse
@@ -164,54 +168,27 @@ async def get_git_labels(
     description="Retrieve git labels matching the specified label with masked token values",
 )
 async def get_git_label_by_label(
-    label: str,
+    request: Annotated[GetGitLabelByLabelRequest, Depends()],
+    service: Annotated[GetGitLabelService, Depends(GetGitLabelService.with_dependency)],
     authenticated_user: AuthenticatedUserDTO = CurrentUser,
-    pagination: PaginationParams = Depends(),
 ) -> JSONResponse:
     """
     Retrieves git labels matching the specified label with masked token values.
 
-    Args:
-            label: The label identifying the git labels to retrieve.
-
     Returns:
             APIResponse with list of matching git labels with masked token values.
     """
-    try:
-        git_labels = (
-            await GitLabel.filter(user_id=authenticated_user.id, label=label)
-            .order_by("-created_at")
-            .offset(pagination.offset)
-            .limit(pagination.limit)
-            .all()
-        )
 
-        # Format response data with masked tokens
-        formatted_data = []
-        for gl in git_labels:
-            formatted_data.append(
-                {
-                    "id": str(gl.id),
-                    "label": gl.label,
-                    "git_hosting": gl.git_hosting,
-                    "masked_token": gl.masked_token,
-                    "username": gl.username,
-                    "created_at": gl.created_at.isoformat(),
-                    "updated_at": gl.updated_at.isoformat(),
-                }
-            )
+    results = await service.get_git_labels_by_label(
+        pagination=request.pagination,
+        user_claims=authenticated_user,
+        label=request.label,
+    )
 
-        return APIResponse.success(
-            message="Git labels retrieved successfully", data={"items": formatted_data}
-        )
-    except Exception:
-        logger.exception(
-            "Unexpected Failure while attempting to retrieve git labels on Path = '[GET] /api/v1/git_tokens/{label}'"
-        )
-        return APIResponse.error(
-            message=SERVICE_UNAVAILABLE,
-            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
-        )
+    return APIResponse.success(
+        message="Git labels retrieved successfully", data={"items": results}
+    )
+
 
 
 @router.post(

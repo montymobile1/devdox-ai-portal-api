@@ -28,6 +28,11 @@ class TortoiseGitLabelStore:
             "error_type": MISSING_USER_ID_TITLE,
             "log_message": MISSING_USER_ID_LOG_MESSAGE
         }
+        
+        MISSING_LABEL = {
+            "error_type": "MISSING_LABEL",
+            "log_message": "TortoiseGitLabelStore: label was None when trying to fetch Git labels."
+        }
 
     async def get_git_hosting_map_by_token_id(
         self, token_ids: Collection[Union[str, UUID]]
@@ -73,3 +78,22 @@ class TortoiseGitLabelStore:
         query = self.__get_by_user_id_query(user_id, git_hosting)
 
         return await query.count()
+
+    async def get_by_user_id_and_label(self, offset, limit, user_id, label: str) -> list[GitLabel]:
+
+        if not user_id:
+            raise internal_error(**self.InternalExceptions.MISSING_USER_ID.value)
+        
+        if not label:
+            raise internal_error(**self.InternalExceptions.MISSING_USER_ID.value)
+        
+        query = GitLabel.filter(user_id=user_id, label=label)
+        
+        git_labels = (
+            await query
+            .order_by("-created_at")
+            .offset(offset).limit(limit)
+            .all()
+        )
+        
+        return git_labels

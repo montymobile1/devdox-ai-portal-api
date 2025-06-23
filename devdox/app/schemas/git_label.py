@@ -1,10 +1,10 @@
-from fastapi import Depends, Query
+from fastapi import Depends, Query, Path
 from pydantic import BaseModel, Field, ConfigDict
 from typing import Annotated, Optional
 from datetime import datetime
 import uuid
 
-from app.schemas.basic import RequiredPaginationParams
+from app.schemas.basic import PaginationParams, RequiredPaginationParams
 
 
 class GitLabelBase(BaseModel):
@@ -76,3 +76,12 @@ class GetGitLabelsRequest:
     ):
         self.pagination = pagination
         self.git_hosting = git_hosting
+
+class GetGitLabelByLabelRequest:
+    def __init__(
+        self,
+        pagination: Annotated[PaginationParams, Depends()],
+        label: str = Path(description="The label identifying the git labels to retrieve.")
+    ):
+        self.pagination = pagination
+        self.label = label
