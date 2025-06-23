@@ -1,5 +1,5 @@
 TOKEN_DELETED_SUCCESSFULLY = "Token deleted successfully"
-TOKEN_MISSED = "Token is missing"
+
 
 GITLAB_AUTH_FAILED = "Failed to authenticate with GitLab"
 GITLAB_USER_RETRIEVE_FAILED = "Could not retrieve GitLab user"

@@ -9,7 +9,7 @@ import logging
 import uuid
 from typing import Annotated, Any, Dict
 
-from fastapi import APIRouter, Body, Depends, Request, status
+from fastapi import APIRouter, Body, Depends, status
 from starlette.responses import JSONResponse
 
 import app.exceptions.exception_constants
@@ -23,107 +23,15 @@ from app.schemas.git_label import (
     GitLabelBase,
     GitLabelCreate,
 )
-from app.services.git_tokens_service import GetGitLabelService
+from app.services.git_tokens_service import GetGitLabelService, handle_github, handle_gitlab, PostGitLabelService
 from app.utils import constants, CurrentUser
 from app.utils.api_response import APIResponse
 from app.utils.auth import AuthenticatedUserDTO, get_authenticated_user, UserClaims
 from app.utils.encryption import EncryptionHelper
-from app.utils.github_manager import GitHubManager
-from app.utils.gitlab_manager import GitLabManager
 
 logger = logging.getLogger(__name__)
 
 router = APIRouter()
-
-
-def mask_token(token: str) -> str:
-    """
-    Masks a token string by revealing only the first and last four characters.
-
-    If the token is 8 characters or fewer, the entire token is replaced with asterisks.
-    Returns an empty string if the input is empty.
-    """
-    if not token or token.replace(" ", "") == "":
-        return ""
-
-    token_len = len(token)
-
-    if token_len <= 8:
-        return "*" * token_len
-
-    prefix = token[:4]
-    suffix = token[-4:]
-    middle_mask = "*" * (token_len - 8)
-
-    return f"{prefix}{middle_mask}{suffix}"
-
-
-async def handle_gitlab(payload: GitLabelCreate, encrypted_token: str) -> JSONResponse:
-    """Handle GitLab token validation and storage"""
-    gitlab = GitLabManager(
-        base_url="https://gitlab.com", access_token=payload.token_value
-    )
-
-    if not gitlab.auth_status:
-        return APIResponse.error(message=constants.GITLAB_AUTH_FAILED)
-
-    user = gitlab.get_user()
-    if not user:
-        return APIResponse.error(message=constants.GITLAB_USER_RETRIEVE_FAILED)
-
-    try:
-        git_label = await GitLabel.create(
-            label=payload.label,
-            user_id=payload.user_id,
-            git_hosting=payload.git_hosting,
-            token_value=encrypted_token,
-            masked_token=mask_token(payload.token_value),
-            username=user.get("username", ""),
-        )
-
-        return APIResponse.success(
-            message=constants.TOKEN_SAVED_SUCCESSFULLY, data={"id": str(git_label.id)}
-        )
-    except Exception:
-        logger.exception(
-            "Unexpected Failure while attempting to save GitLab token on Path = '[POST] /api/v1/git_tokens' -> handle_gitlab"
-        )
-
-        return APIResponse.error(
-            message=SERVICE_UNAVAILABLE,
-            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-        )
-
-
-async def handle_github(payload: GitLabelCreate, encrypted_token: str) -> JSONResponse:
-    """Handle GitHub token validation and storage"""
-    github = GitHubManager(access_token=payload.token_value)
-    user = github.get_user()
-
-    if not user:
-        return APIResponse.error(
-            message=constants.GITHUB_AUTH_FAILED,
-            status_code=status.HTTP_400_BAD_REQUEST,
-        )
-
-    try:
-        git_label = await GitLabel.create(
-            label=payload.label,
-            user_id=payload.user_id,
-            git_hosting=payload.git_hosting,
-            token_value=encrypted_token,
-            masked_token=mask_token(payload.token_value),
-            username=user.get("login", ""),
-        )
-
-        return APIResponse.success(
-            message=constants.TOKEN_SAVED_SUCCESSFULLY, data={"id": str(git_label.id)}
-        )
-    except Exception:
-        logger.exception(
-            "Unexpected Failure while attempting to save GitHub token on Path = '[POST] /api/v1/git_tokens' -> handle_github"
-        )
-        return APIResponse.error(message=constants.GITHUB_TOKEN_SAVE_FAILED)
 
 
 @router.get(
@@ -196,7 +104,6 @@ async def get_git_label_by_label(
     )
 
 
-
 @router.post(
     "/",
     response_model=Dict[str, Any],
@@ -205,59 +112,21 @@ async def get_git_label_by_label(
     description="Create a new git hosting service token configuration",
 )
 async def add_git_token(
-    request: Request,
+    service: Annotated[PostGitLabelService, Depends(PostGitLabelService.with_dependency)],
     payload: GitLabelBase = Body(...),
     authenticated_user: AuthenticatedUserDTO = CurrentUser,
-) -> JSONResponse | dict[str, Any]:
+) -> JSONResponse:
     """
     Add a new git token configuration with validation based on hosting service.
     """
-    try:
-        # Override user_id with authenticated user ID for security
-        # payload.user_id = authenticated_user.id
+    results = await service.add_git_token(
+        user_claims=authenticated_user,
+        json_payload=payload
+    )
 
-        token = payload.token_value.replace(" ", "")
-        if not token:
-            return APIResponse.error(
-                message=constants.TOKEN_MISSED,
-                status_code=status.HTTP_400_BAD_REQUEST,
-            )
-        user = await User.filter(user_id=authenticated_user.id).first()
-        if not user:
-            return APIResponse.error(
-                message="User not found",
-                status_code=status.HTTP_404_NOT_FOUND,
-            )
-        encrypted_token = (
-            EncryptionHelper().encrypt_for_user(token, user.encryption_salt)
-            if token
-            else ""
-        )
-        new_payload: GitLabelCreate = GitLabelCreate(
-            label=payload.label,
-            user_id=authenticated_user.id,
-            git_hosting=payload.git_hosting,
-            token_value=payload.token_value,
-        )
-        if new_payload.git_hosting == GitHosting.GITLAB.value:
-            return await handle_gitlab(new_payload, encrypted_token)
-        elif new_payload.git_hosting == GitHosting.GITHUB.value:
-            return await handle_github(new_payload, encrypted_token)
-        else:
-            return APIResponse.error(
-                message=constants.UNSUPPORTED_GIT_PROVIDER,
-                status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
-            )
-    except Exception:
-
-        logger.exception(
-            "Unexpected Failure while attempting to add git token on Path = '[POST] /api/v1/git_tokens'"
-        )
-
-        return APIResponse.error(
-            message=SERVICE_UNAVAILABLE,
-            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-        )
+    return APIResponse.success(
+        message=constants.TOKEN_SAVED_SUCCESSFULLY, data={"id": str(results.id)}
+    )
 
 
 @router.delete(

@@ -4,13 +4,11 @@ Updated for Tortoise ORM implementation with current route structure.
 """
 
 from unittest.mock import AsyncMock, MagicMock, patch
-from urllib.parse import quote
 
 import pytest
 from fastapi import status
 
 from app.main import app
-from app.routes.git_tokens import mask_token
 from app.utils.auth import AuthenticatedUserDTO, get_current_user
 
 SAMPLE_USER_ID = "user-123"
