@@ -1,20 +1,44 @@
-from typing import Optional
+from typing import Annotated, Optional
 
 from fastapi import Depends
 
 from app.repositories.git_label_repository import TortoiseGitLabelStore
 from app.schemas.basic import RequiredPaginationParams
+from app.utils.auth import AuthenticatedUserDTO
+
+
+def format_git_label_data(raw_git_labels):
+    formatted_data = []
+    for git_label in raw_git_labels:
+        formatted_data.append(
+            {
+                "id": str(git_label.id),
+                "label": git_label.label,
+                "git_hosting": git_label.git_hosting,
+                "masked_token": git_label.masked_token,
+                "username": git_label.username,
+                "created_at": git_label.created_at.isoformat(),
+                "updated_at": git_label.updated_at.isoformat(),
+            }
+        )
+    
+    return formatted_data
 
 
 class GetGitLabelService:
 
     def __init__(
             self,
-            label_store: TortoiseGitLabelStore = Depends()
+            label_store: TortoiseGitLabelStore
     ):
         self.label_store = label_store
-
-    async def get_git_labels_by_user(self, pagination:RequiredPaginationParams, user_claims, git_hosting:Optional[str]):
+    
+    @classmethod
+    def with_dependency(cls, label_store: Annotated[TortoiseGitLabelStore, Depends()],
+    ) -> "GetGitLabelService":
+        return cls(label_store)
+    
+    async def get_git_labels_by_user(self, pagination:RequiredPaginationParams, user_claims:AuthenticatedUserDTO, git_hosting:Optional[str]):
 
         # Get total count
         total = await self.label_store.count_by_user_id(
@@ -38,19 +62,7 @@ class GetGitLabelService:
         )
         
         # Format response data with masked tokens
-        formatted_data = []
-        for gl in git_labels:
-            formatted_data.append(
-                {
-                    "id": str(gl.id),
-                    "label": gl.label,
-                    "git_hosting": gl.git_hosting,
-                    "masked_token": gl.masked_token,
-                    "username": gl.username,
-                    "created_at": gl.created_at.isoformat(),
-                    "updated_at": gl.updated_at.isoformat(),
-                }
-            )
+        formatted_data = format_git_label_data(git_labels)
 
         return {
             "items": formatted_data,
