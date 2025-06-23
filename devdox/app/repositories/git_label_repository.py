@@ -3,7 +3,6 @@ from typing import Collection, Dict, List, Optional, Union
 from uuid import UUID
 
 from models import GitLabel
-from tortoise.queryset import QuerySet
 
 from app.exceptions.custom_exceptions import DevDoxAPIException
 from app.exceptions.exception_constants import (
@@ -49,7 +48,7 @@ class TortoiseGitLabelStore:
 
         return await GitLabel.filter(id=token_id, user_id=user_id).first()
 
-    def __get_by_user_id_query(self, user_id, git_hosting: Optional[str] = None) -> QuerySet[GitLabel]:
+    def __get_by_user_id_query(self, user_id, git_hosting: Optional[str] = None):
         if not user_id:
             raise internal_error(
                 **self.InternalExceptions.MISSING_USER_ID.value
