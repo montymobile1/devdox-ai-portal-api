@@ -168,9 +168,9 @@ async def get_git_labels(
     description="Retrieve git labels matching the specified label with masked token values",
 )
 async def get_git_label_by_label(
+    user_claims: Annotated[UserClaims, Depends(get_authenticated_user)],
     request: Annotated[GetGitLabelByLabelRequest, Depends()],
     service: Annotated[GetGitLabelService, Depends(GetGitLabelService.with_dependency)],
-    authenticated_user: AuthenticatedUserDTO = CurrentUser,
 ) -> JSONResponse:
     """
     Retrieves git labels matching the specified label with masked token values.
@@ -187,7 +187,7 @@ async def get_git_label_by_label(
 
     results = await service.get_git_labels_by_label(
         pagination=request.pagination,
-        user_claims=authenticated_user,
+        user_claims=user_claims,
         label=request.label,
     )
 

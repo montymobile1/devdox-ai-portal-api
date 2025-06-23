@@ -75,12 +75,12 @@ class GetGitLabelService:
             "size": pagination.limit,
         }
 
-    async def get_git_labels_by_label(self, pagination: PaginationParams, user_claims: AuthenticatedUserDTO, label: str):
+    async def get_git_labels_by_label(self, pagination: PaginationParams, user_claims: UserClaims, label: str):
 
         git_labels = await self.label_store.get_by_user_id_and_label(
             offset=pagination.offset,
             limit=pagination.limit,
-            user_id=user_claims.id,
+            user_id=user_claims.sub,
             label=label
         )
 
