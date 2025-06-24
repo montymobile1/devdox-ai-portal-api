@@ -8,7 +8,7 @@ from tests.unit_test.test_doubles.app.repository.get_label_repository_doubles im
 
 
 @pytest.mark.asyncio
-class TestGetGitLabelService:
+class TestGetGitLabelService__GetGitLabelsByUser:
     def setup_method(self):
         self.fake_store = FakeGitLabelStore()
         self.service = GetGitLabelService(label_store=self.fake_store)
@@ -63,7 +63,7 @@ class TestGetGitLabelService:
         assert str(exc.value) == "Boom"
 
 @pytest.mark.asyncio
-class TestGetGitLabelService:
+class TestGetGitLabelService__GetGitLabelsByLabel:
     
     def setup_method(self):
         self.store = FakeGitLabelStore()
