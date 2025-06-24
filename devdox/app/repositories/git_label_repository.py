@@ -98,3 +98,8 @@ class TortoiseGitLabelStore:
         )
         
         return git_labels
+    
+    async def create_new(self, label_model: GitLabel):
+        await label_model.save(force_create=True)
+        await label_model.refresh_from_db()
+        return label_model

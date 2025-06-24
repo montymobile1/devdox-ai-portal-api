@@ -122,8 +122,8 @@ class TestAuthenticatedGitHubManager:
         manager = AuthenticatedGitHubManager("https://api.github.com", dummy_client)
 
         user_info = manager.get_user()
-        assert user_info["login"] == "dev"
-        assert "html_url" in user_info
+        assert user_info.login == "dev"
+        assert hasattr(user_info, "html_url")
 
     def test_authenticated_manager_repositories(self, monkeypatch):
         dummy_client = type("Client", (), {"get_user": lambda self: DummyGitHubUser()})()
@@ -157,6 +157,7 @@ class DummyGitLab:
         self._authenticated = True
 
     def projects(self):
+        """Dummy Project, meant to just mimic the actual operation"""
         pass
 
 

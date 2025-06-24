@@ -55,6 +55,24 @@ class GitHubRepoFetcher(IRepoFetcher):
 
         return repository, [*repository_languages]
 
+    def fetch_repo_user(self, token):
+        authenticated_github_manager = self.manager.authenticate(token)
+
+        user = authenticated_github_manager.get_user()
+
+        if not user:
+            return None
+
+        return {
+            "username": user.login,
+            "id": user.id,
+            "name": user.name,
+            "email": user.email,
+            "avatar_url": user.avatar_url,
+            "html_url": user.html_url,
+        }
+
+
 
 class GitLabRepoFetcher(IRepoFetcher):
     def __init__(self, base_url: str = GitLabManager.default_base_url):
@@ -89,11 +107,21 @@ class GitLabRepoFetcher(IRepoFetcher):
 
         return repository, [*repository_languages]
 
+    def fetch_repo_user(self, token):
+        authenticated_gitlab_manager = self.manager.authenticate(token)
+
+        user = authenticated_gitlab_manager.get_user()
+
+        if not user:
+            return None
+
+        return user
+
 
 class RepoFetcher:
 
     def get(
-        self, provider: GitHosting
+        self, provider: GitHosting | str
     ) -> tuple[GitHubRepoFetcher, Callable[[Repository | SimpleNamespace | dict], GitRepoResponse | None]] | tuple[
 	    GitLabRepoFetcher, Callable[[Project | SimpleNamespace | dict], GitRepoResponse | None]] | tuple[None, None]:
         """bool represents whether it has a data transformer which can aid"""

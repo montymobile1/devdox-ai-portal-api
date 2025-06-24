@@ -3,16 +3,13 @@ from typing import List, Tuple
 from fastapi import Depends
 from tortoise.exceptions import IntegrityError
 
-from app.config import GitHosting
 from app.exceptions.custom_exceptions import (
     BadRequest,
-    DevDoxAPIException,
     ResourceNotFound,
 )
 from app.exceptions.exception_constants import (
     GIT_LABEL_TOKEN_RESOURCE_NOT_FOUND,
     REPOSITORY_ALREADY_EXISTS,
-    SERVICE_UNAVAILABLE,
     USER_RESOURCE_NOT_FOUND,
 )
 from models import Repo
@@ -23,6 +20,7 @@ from app.schemas.basic import RequiredPaginationParams
 from app.schemas.repo import GitRepoResponse, RepoResponse
 from app.utils.auth import UserClaims
 from app.utils.encryption import FernetEncryptionHelper, get_encryption_helper
+from app.utils.git_managers import retrieve_git_fetcher_or_die
 from app.utils.repo_fetcher import RepoFetcher
 
 
@@ -131,25 +129,6 @@ async def retrieve_git_label_by_id_and_user_or_die(store, id, user_id):
         raise ResourceNotFound(reason=GIT_LABEL_TOKEN_RESOURCE_NOT_FOUND)
 
     return retrieved_git_label
-
-
-def retrieve_git_fetcher_or_die(store, provider: GitHosting, strict: bool = True):
-    fetcher, fetcher_data_mapper = store.get(provider)
-    if not fetcher:
-        raise DevDoxAPIException(
-            user_message=SERVICE_UNAVAILABLE,
-            log_message=f"Unsupported Git hosting: {provider}",
-            log_level="exception",
-        )
-
-    if not strict and not fetcher_data_mapper:
-        raise DevDoxAPIException(
-            user_message=SERVICE_UNAVAILABLE,
-            log_message=f"Unable to find mapper for Git hosting: {provider}",
-            log_level="exception",
-        )
-
-    return fetcher, fetcher_data_mapper
 
 
 class RepoManipulationService:
