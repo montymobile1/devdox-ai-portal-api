@@ -17,7 +17,7 @@ from app.config import GitHosting
 from app.exceptions.exception_constants import SERVICE_UNAVAILABLE
 from models.git_label import GitLabel
 from models.user import User
-from app.schemas.basic import PaginationParams, RequiredPaginationParams
+from app.schemas.basic import PaginationParams
 from app.schemas.git_label import GetGitLabelsRequest, GitLabelBase, GitLabelCreate
 from app.services.git_tokens_service import GetGitLabelService
 from app.utils import constants, CurrentUser
@@ -130,9 +130,9 @@ async def handle_github(payload: GitLabelCreate, encrypted_token: str) -> JSONRe
     description="Retrieve a list of all git labels with masked token values",
 )
 async def get_git_labels(
+    user_claims: Annotated[UserClaims, Depends(get_authenticated_user)],
     request: Annotated[GetGitLabelsRequest, Depends()],
 	service: Annotated[GetGitLabelService, Depends(GetGitLabelService.with_dependency)],
-    current_user_id: AuthenticatedUserDTO = CurrentUser,
 ) -> JSONResponse:
     """
     Retrieves all stored git labels with masked token values for API response.
@@ -147,7 +147,7 @@ async def get_git_labels(
     """
     results = await service.get_git_labels_by_user(
         pagination=request.pagination,
-        user_claims=current_user_id,
+        user_claims=user_claims,
         git_hosting=request.git_hosting,
     )
 
