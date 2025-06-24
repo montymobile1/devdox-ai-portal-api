@@ -247,5 +247,3 @@ class PostGitLabelService:
                 message=constants.UNSUPPORTED_GIT_PROVIDER,
                 status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
             )
-
-
