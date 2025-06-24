@@ -10,3 +10,6 @@ TOKEN_NOT_FOUND = "Token not found"
 
 MISSING_USER_ID_TITLE = "MISSING_USER_ID"
 MISSING_USER_ID_LOG_MESSAGE = "user_id was None when trying to fetch Git labels."
+
+MISSING_LABEL_ID_TITLE = "MISSING_LABEL"
+MISSING_LABEL_LOG_MESSAGE = "label was None when trying to fetch Git labels."
