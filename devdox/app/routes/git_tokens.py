@@ -13,21 +13,17 @@ from fastapi import APIRouter, Body, Depends, status
 from starlette.responses import JSONResponse
 
 import app.exceptions.exception_constants
-from app.config import GitHosting
 from app.exceptions.exception_constants import SERVICE_UNAVAILABLE
 from models.git_label import GitLabel
-from models.user import User
 from app.schemas.git_label import (
     GetGitLabelByLabelRequest,
     GetGitLabelsRequest,
     GitLabelBase,
-    GitLabelCreate,
 )
-from app.services.git_tokens_service import GetGitLabelService, handle_github, handle_gitlab, PostGitLabelService
+from app.services.git_tokens_service import GetGitLabelService, PostGitLabelService
 from app.utils import constants, CurrentUser
 from app.utils.api_response import APIResponse
 from app.utils.auth import AuthenticatedUserDTO, get_authenticated_user, UserClaims
-from app.utils.encryption import EncryptionHelper
 
 logger = logging.getLogger(__name__)
 
