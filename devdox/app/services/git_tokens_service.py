@@ -5,7 +5,7 @@ from fastapi import Depends
 from app.repositories.git_label_repository import TortoiseGitLabelStore
 from app.schemas.basic import RequiredPaginationParams
 from app.schemas.git_label import GitLabelResponse
-from app.utils.auth import AuthenticatedUserDTO
+from app.utils.auth import AuthenticatedUserDTO, UserClaims
 
 
 def format_git_label_data(raw_git_labels):
@@ -41,11 +41,11 @@ class GetGitLabelService:
     ) -> "GetGitLabelService":
         return cls(label_store)
     
-    async def get_git_labels_by_user(self, pagination:RequiredPaginationParams, user_claims:AuthenticatedUserDTO, git_hosting:Optional[str]):
+    async def get_git_labels_by_user(self, pagination:RequiredPaginationParams, user_claims:UserClaims, git_hosting:Optional[str]):
 
         # Get total count
         total = await self.label_store.count_by_user_id(
-            user_id=user_claims.id,
+            user_id=user_claims.sub,
             git_hosting=git_hosting
         )
 
@@ -60,7 +60,7 @@ class GetGitLabelService:
         git_labels = await self.label_store.get_by_user_id(
             offset=pagination.offset,
             limit=pagination.limit,
-            user_id=user_claims.id,
+            user_id=user_claims.sub,
             git_hosting=git_hosting
         )
         
