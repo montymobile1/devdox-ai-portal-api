@@ -4,24 +4,27 @@ from fastapi import Depends
 
 from app.repositories.git_label_repository import TortoiseGitLabelStore
 from app.schemas.basic import RequiredPaginationParams
+from app.schemas.git_label import GitLabelResponse
 from app.utils.auth import AuthenticatedUserDTO
 
 
 def format_git_label_data(raw_git_labels):
     formatted_data = []
     for git_label in raw_git_labels:
+        
         formatted_data.append(
-            {
-                "id": str(git_label.id),
-                "label": git_label.label,
-                "git_hosting": git_label.git_hosting,
-                "masked_token": git_label.masked_token,
-                "username": git_label.username,
-                "created_at": git_label.created_at.isoformat(),
-                "updated_at": git_label.updated_at.isoformat(),
-            }
+            GitLabelResponse(
+                id= git_label.id,
+                user_id=git_label.user_id,
+                label= git_label.label,
+                git_hosting= git_label.git_hosting,
+                masked_token= git_label.masked_token,
+                username= git_label.username,
+                created_at= git_label.created_at.isoformat(),
+                updated_at= git_label.updated_at.isoformat(),
+                token_value=git_label.token_value,
+            ).model_dump(exclude={"token_value", "user_id"})
         )
-    
     return formatted_data
 
 
@@ -50,7 +53,7 @@ class GetGitLabelService:
             return {
                 "items": [],
                 "total": total,
-                "page": (pagination.offset // pagination.limit) + 1,
+                "page": pagination.offset  + 1,
                 "size": pagination.limit,
             }
 
@@ -67,6 +70,6 @@ class GetGitLabelService:
         return {
             "items": formatted_data,
             "total": total,
-            "page": (pagination.offset // pagination.limit) + 1,
+            "page": pagination.offset  + 1,
             "size": pagination.limit,
         }

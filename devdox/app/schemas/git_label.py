@@ -46,12 +46,14 @@ class GitLabelUpdate(BaseModel):
 
 
 class GitLabelResponse(GitLabelBase):
+    model_config = ConfigDict(from_attributes=True)
+
     id: uuid.UUID = Field(..., description="Unique identifier")
     user_id: str = Field(..., description="User identifier")
     created_at: datetime = Field(..., description="Record creation timestamp")
     updated_at: datetime = Field(..., description="Record last update timestamp")
-    model_config = ConfigDict(from_attributes=True)
-
+    masked_token: str = Field(..., description="The masked repo token")
+    username: str = Field(..., description="The repo username")
 
 class GitLabelListResponse(BaseModel):
     items: list[GitLabelResponse]
@@ -74,4 +76,3 @@ class GetGitLabelsRequest:
     ):
         self.pagination = pagination
         self.git_hosting = git_hosting
-    

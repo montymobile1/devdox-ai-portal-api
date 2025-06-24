@@ -136,7 +136,12 @@ async def get_git_labels(
 ) -> JSONResponse:
     """
     Retrieves all stored git labels with masked token values for API response.
-
+    The Usage of Annotated[callable, Depends(callable)] is the recommended way to perform dependency injection.
+    
+    Args:
+        request: contains all the `Json Body`, `Path Variable`, `Query Parameters` ... , required by the API
+        service: represents the service layer that is responsible for performing all the calculations and return a raw result
+        user_claims: represents the injected dependency for authentication of the user
     Returns:
             APIResponse with list of git labels containing metadata and masked token values.
     """
