@@ -5,7 +5,7 @@ from fastapi import Depends
 from app.repositories.git_label_repository import TortoiseGitLabelStore
 from app.schemas.basic import RequiredPaginationParams
 from app.schemas.git_label import GitLabelResponse
-from app.utils.auth import AuthenticatedUserDTO, UserClaims
+from app.utils.auth import UserClaims
 
 
 def format_git_label_data(raw_git_labels):
