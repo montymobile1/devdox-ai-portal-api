@@ -25,6 +25,7 @@ def format_git_label_data(raw_git_labels):
                 token_value=git_label.token_value,
             ).model_dump(exclude={"token_value", "user_id"})
         )
+    
     return formatted_data
 
 
@@ -63,7 +64,7 @@ class GetGitLabelService:
             user_id=user_claims.sub,
             git_hosting=git_hosting
         )
-        
+
         # Format response data with masked tokens
         formatted_data = format_git_label_data(git_labels)
 
@@ -74,12 +75,12 @@ class GetGitLabelService:
             "size": pagination.limit,
         }
 
-    async def get_git_labels_by_label(self, pagination: PaginationParams, user_claims: AuthenticatedUserDTO, label: str):
+    async def get_git_labels_by_label(self, pagination: PaginationParams, user_claims: UserClaims, label: str):
 
         git_labels = await self.label_store.get_by_user_id_and_label(
             offset=pagination.offset,
             limit=pagination.limit,
-            user_id=user_claims.id,
+            user_id=user_claims.sub,
             label=label
         )
 
