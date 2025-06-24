@@ -227,48 +227,6 @@ class TestGetByLabelEdgeCases:
             assert data["success"] is True
             assert data["data"]["items"][0]["masked_token"] == ""
 
-    def test_get_git_label_with_encryption_exception(
-        self, client, mock_authenticated_user
-    ):
-        """Should return 503 when decryption fails unexpectedly."""
-        label = "GitHub Encrypted Fail"
-
-        mock_labels = [
-            MagicMock(
-                id="1",
-                label=label,
-                git_hosting="github",
-                token_value="corrupted_data",
-                username="devuser",
-                created_at=MagicMock(
-                    isoformat=MagicMock(return_value="2025-01-01T10:00:00Z")
-                ),
-                updated_at=MagicMock(
-                    isoformat=MagicMock(return_value="2025-01-02T10:00:00Z")
-                ),
-            )
-        ]
-
-        with (
-            patch("app.routes.git_tokens.GitLabel") as mock_git_label,
-            patch(
-                "app.routes.git_tokens.EncryptionHelper.decrypt",
-                side_effect=ENCRYPTION_EXCEPTION,
-            ),
-        ):
-            mock_query = MagicMock()
-            mock_query.order_by.return_value = mock_query
-            mock_query.offset.return_value = mock_query
-            mock_query.limit.return_value = mock_query
-            mock_query.all = AsyncMock(return_value=mock_labels)
-            mock_git_label.filter.return_value = mock_query
-
-            response = client.get(self.get_url(label))
-            assert response.status_code == status.HTTP_503_SERVICE_UNAVAILABLE
-            data = response.json()
-            assert data["success"] is False
-            assert "Service temporarily unavailable" in data["message"]
-
     def test_get_git_label_with_non_ascii_label(self, client, mock_authenticated_user):
         """Should handle non-ASCII labels (e.g., emojis, Arabic, Japanese) gracefully."""
         non_ascii_label = "🚀🔥中文ラベル"

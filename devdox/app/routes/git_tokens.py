@@ -7,9 +7,9 @@ It supports creating, reading, updating, and deleting git hosting service config
 
 import logging
 import uuid
-from typing import Any, Dict, Optional
+from typing import Annotated, Any, Dict
 
-from fastapi import APIRouter, Body, Depends, Query, Request, status
+from fastapi import APIRouter, Body, Depends, Request, status
 from starlette.responses import JSONResponse
 
 import app.exceptions.exception_constants
@@ -17,11 +17,12 @@ from app.config import GitHosting
 from app.exceptions.exception_constants import SERVICE_UNAVAILABLE
 from models.git_label import GitLabel
 from models.user import User
-from app.schemas.basic import PaginationParams
-from app.schemas.git_label import GitLabelBase, GitLabelCreate
+from app.schemas.basic import PaginationParams, RequiredPaginationParams
+from app.schemas.git_label import GetGitLabelsRequest, GitLabelBase, GitLabelCreate
+from app.services.git_tokens_service import GetGitLabelService
 from app.utils import constants, CurrentUser
 from app.utils.api_response import APIResponse
-from app.utils.auth import AuthenticatedUserDTO
+from app.utils.auth import AuthenticatedUserDTO, get_authenticated_user, UserClaims
 from app.utils.encryption import EncryptionHelper
 from app.utils.github_manager import GitHubManager
 from app.utils.gitlab_manager import GitLabManager
@@ -129,67 +130,30 @@ async def handle_github(payload: GitLabelCreate, encrypted_token: str) -> JSONRe
     description="Retrieve a list of all git labels with masked token values",
 )
 async def get_git_labels(
+    request: Annotated[GetGitLabelsRequest, Depends()],
+	service: Annotated[GetGitLabelService, Depends(GetGitLabelService.with_dependency)],
     current_user_id: AuthenticatedUserDTO = CurrentUser,
-    pagination: PaginationParams = Depends(),
-    git_hosting: Optional[str] = Query(
-        None, description="Filter by git hosting service"
-    ),
 ) -> JSONResponse:
     """
     Retrieves all stored git labels with masked token values for API response.
-
+    The Usage of Annotated[callable, Depends(callable)] is the recommended way to perform dependency injection.
+    
+    Args:
+        request: contains all the `Json Body`, `Path Variable`, `Query Parameters` ... , required by the API
+        service: represents the service layer that is responsible for performing all the calculations and return a raw result
+        user_claims: represents the injected dependency for authentication of the user
     Returns:
             APIResponse with list of git labels containing metadata and masked token values.
     """
-    try:
-        # Build query for user's git labels
-        query = GitLabel.filter(user_id=current_user_id.id)
-        # Apply git_hosting filter if provided
-        if git_hosting:
-            query = query.filter(git_hosting=git_hosting)
+    results = await service.get_git_labels_by_user(
+        pagination=request.pagination,
+        user_claims=current_user_id,
+        git_hosting=request.git_hosting,
+    )
 
-        # Get total count
-        total = await query.count()
-
-        # Apply pagination and ordering
-        git_labels = (
-            await query.order_by("-created_at")
-            .offset(pagination.offset)
-            .limit(pagination.limit)
-            .all()
-        )
-
-        # Format response data with masked tokens
-        formatted_data = []
-        for gl in git_labels:
-            formatted_data.append(
-                {
-                    "id": str(gl.id),
-                    "label": gl.label,
-                    "git_hosting": gl.git_hosting,
-                    "masked_token": gl.masked_token,
-                    "username": gl.username,
-                    "created_at": gl.created_at.isoformat(),
-                    "updated_at": gl.updated_at.isoformat(),
-                }
-            )
-
-        return APIResponse.success(
-            message="Git labels retrieved successfully",
-            data={
-                "items": formatted_data,
-                "total": total,
-                "page": (pagination.offset // pagination.limit) + 1,
-                "size": pagination.limit,
-            },
-        )
-    except Exception:
-        logger.exception("Failed to retrieve git labels")
-
-        return APIResponse.error(
-            message=SERVICE_UNAVAILABLE,
-            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
-        )
+    return APIResponse.success(
+        message="Git labels retrieved successfully", data=results
+    )
 
 
 @router.get(

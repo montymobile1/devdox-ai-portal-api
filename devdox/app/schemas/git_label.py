@@ -1,7 +1,10 @@
+from fastapi import Depends, Query
 from pydantic import BaseModel, Field, ConfigDict
-from typing import Optional
+from typing import Annotated, Optional
 from datetime import datetime
 import uuid
+
+from app.schemas.basic import RequiredPaginationParams
 
 
 class GitLabelBase(BaseModel):
@@ -43,12 +46,14 @@ class GitLabelUpdate(BaseModel):
 
 
 class GitLabelResponse(GitLabelBase):
+    model_config = ConfigDict(from_attributes=True)
+
     id: uuid.UUID = Field(..., description="Unique identifier")
     user_id: str = Field(..., description="User identifier")
     created_at: datetime = Field(..., description="Record creation timestamp")
     updated_at: datetime = Field(..., description="Record last update timestamp")
-    model_config = ConfigDict(from_attributes=True)
-
+    masked_token: str = Field(..., description="The masked repo token")
+    username: str = Field(..., description="The repo username")
 
 class GitLabelListResponse(BaseModel):
     items: list[GitLabelResponse]
@@ -62,3 +67,12 @@ class ErrorResponse(BaseModel):
 
     detail: str = Field(..., description="Error message")
     error_code: Optional[str] = Field(None, description="Error code")
+
+class GetGitLabelsRequest:
+    def __init__(
+        self,
+        pagination: Annotated[RequiredPaginationParams, Depends()],
+        git_hosting: Optional[str] = Query(None, description="Filter by git hosting service")
+    ):
+        self.pagination = pagination
+        self.git_hosting = git_hosting

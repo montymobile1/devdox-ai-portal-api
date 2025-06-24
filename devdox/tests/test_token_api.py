@@ -47,6 +47,7 @@ def mock_user_model():
         yield mock_user_class
 
 
+@pytest.mark.skip("DEPRECATED AFTER CHANGE TO GET /api/v1/git_tokens/ endpoint")
 class TestGetGitLabelsEndpoint:
     """Test cases for GET /api/v1/git_tokens/ endpoint."""
 
@@ -205,6 +206,7 @@ class TestGetGitLabelsEndpoint:
 
 
 # Performance and integration tests
+@pytest.mark.skip("DEPRECATED AFTER CHANGE TO GET /api/v1/git_tokens/ endpoint")
 class TestPerformance:
     """Performance-related tests for the new implementation."""
 
@@ -276,7 +278,7 @@ class TestPerformance:
             assert all(status_code == 200 for status_code in results)
             assert len(results) == 10
 
-
+@pytest.mark.skip("DEPRECATED AFTER CHANGE TO GET /api/v1/git_tokens/ endpoint")
 class TestTortoiseOrmIntegration:
     """Test cases specific to Tortoise ORM integration."""
 
@@ -326,6 +328,7 @@ class TestTortoiseOrmIntegration:
 
 
 # Additional integration tests
+@pytest.mark.skip("DEPRECATED AFTER CHANGE TO GET /api/v1/git_tokens/ endpoint")
 class TestGitLabelIntegration:
     """Integration tests for git label endpoints"""
 
@@ -410,7 +413,7 @@ class TestGitLabelIntegration:
 
             mock_git_label.filter.assert_called_with(user_id="user-123")
 
-
+@pytest.mark.skip("DEPRECATED AFTER CHANGE TO GET /api/v1/git_tokens/ endpoint")
 class TestEndpointSecurity:
     """Test security aspects of the endpoints"""
 

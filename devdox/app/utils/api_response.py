@@ -1,5 +1,6 @@
 from typing import Any, Dict, List, Optional, Union
 
+from fastapi.encoders import jsonable_encoder
 from pydantic import BaseModel
 from starlette.responses import JSONResponse
 
@@ -51,7 +52,7 @@ class APIResponse:
         if data is not None:
             response["data"] = serialize_api_response_data(data)
 
-        return JSONResponse(content=response, status_code=200)
+        return JSONResponse(content=jsonable_encoder(response), status_code=200)
 
     @staticmethod
     def error(
@@ -75,7 +76,7 @@ class APIResponse:
         if details is not None:
             response["details"] = details
 
-        return JSONResponse(content=response, status_code=status_code)
+        return JSONResponse(content=jsonable_encoder(response), status_code=status_code)
 
     @staticmethod
     def validation_error(message: str, details: Optional[list] = None) -> JSONResponse:
@@ -83,4 +84,4 @@ class APIResponse:
         response = {"success": False, "message": message, "status_code": 422}
         if details is not None:
             response["validation_errors"] = details
-        return JSONResponse(content=response, status_code=422)
+        return JSONResponse(content=jsonable_encoder(response), status_code=422)
