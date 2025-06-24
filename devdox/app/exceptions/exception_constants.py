@@ -7,3 +7,6 @@ USER_RESOURCE_NOT_FOUND = "User Not Found"
 GIT_LABEL_TOKEN_RESOURCE_NOT_FOUND = "Git Label Token Not Found"
 REPOSITORY_ALREADY_EXISTS = "Repository Already Exists"
 TOKEN_NOT_FOUND = "Token not found"
+
+MISSING_USER_ID_TITLE = "MISSING_USER_ID"
+MISSING_USER_ID_LOG_MESSAGE = "user_id was None when trying to fetch Git labels."

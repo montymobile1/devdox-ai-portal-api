@@ -6,7 +6,11 @@ from models import GitLabel
 from tortoise.queryset import QuerySet
 
 from app.exceptions.custom_exceptions import DevDoxAPIException
-from app.exceptions.exception_constants import SERVICE_UNAVAILABLE
+from app.exceptions.exception_constants import (
+    MISSING_USER_ID_LOG_MESSAGE,
+    MISSING_USER_ID_TITLE,
+    SERVICE_UNAVAILABLE,
+)
 
 def internal_error(log_message:str, error_type:str, **kwargs):
     return DevDoxAPIException(
@@ -21,8 +25,8 @@ class TortoiseGitLabelStore:
 
     class InternalExceptions(Enum):
         MISSING_USER_ID = {
-            "error_type": "MISSING_USER_ID",
-            "log_message": "TortoiseGitLabelStore: user_id was None when trying to fetch Git labels."
+            "error_type": MISSING_USER_ID_TITLE,
+            "log_message": MISSING_USER_ID_LOG_MESSAGE
         }
 
     async def get_git_hosting_map_by_token_id(
