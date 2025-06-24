@@ -1,6 +1,6 @@
 import pytest
 
-from app.schemas.basic import RequiredPaginationParams
+from app.schemas.basic import PaginationParams, RequiredPaginationParams
 from app.services.git_tokens_service import GetGitLabelService
 from app.utils.auth import UserClaims
 from tests.unit_test.test_doubles.app.repository.get_label_repository_doubles import FakeGitLabelStore, \
@@ -8,7 +8,7 @@ from tests.unit_test.test_doubles.app.repository.get_label_repository_doubles im
 
 
 @pytest.mark.asyncio
-class TestGetGitLabelService:
+class TestGetGitLabelService__GetGitLabelsByUser:
     def setup_method(self):
         self.fake_store = FakeGitLabelStore()
         self.service = GetGitLabelService(label_store=self.fake_store)
@@ -61,3 +61,75 @@ class TestGetGitLabelService:
             )
 
         assert str(exc.value) == "Boom"
+
+@pytest.mark.asyncio
+class TestGetGitLabelService__GetGitLabelsByLabel:
+    
+    def setup_method(self):
+        self.store = FakeGitLabelStore()
+        self.service = GetGitLabelService(label_store=self.store)
+        self.user_claims = UserClaims(sub="user123")
+        self.pagination = PaginationParams(limit=10, offset=0)
+    
+    async def test_get_git_labels_by_label_returns_formatted(self):
+        label = make_fake_git_label(user_id="user123", label="bug")
+        self.store.set_fake_data([label])
+        
+        result = await self.service.get_git_labels_by_label(
+            pagination=self.pagination,
+            user_claims=self.user_claims,
+            label="bug",
+        )
+        
+        assert result[0]["label"] == "bug"
+        assert result[0]["masked_token"] == "****1234"
+    
+    async def test_get_git_labels_by_label_handles_store_exception(self):
+        self.store.set_exception(
+            "get_by_user_id_and_label", ValueError("Simulated error")
+        )
+        
+        with pytest.raises(ValueError, match="Simulated error"):
+            await self.service.get_git_labels_by_label(
+                pagination=self.pagination,
+                user_claims=self.user_claims,
+                label="bug",
+            )
+    
+    async def test_get_git_labels_by_label_returns_empty_list(self):
+        self.store.set_fake_data([])
+        
+        result = await self.service.get_git_labels_by_label(
+            pagination=self.pagination,
+            user_claims=self.user_claims,
+            label="anything"
+        )
+        
+        assert result == []
+    
+    async def test_get_git_labels_by_label_applies_formatting(self):
+        label = make_fake_git_label(user_id="user123", label="bug", masked_token="****abcd")
+        self.store.set_fake_data([label])
+        
+        result = await self.service.get_git_labels_by_label(
+            pagination=self.pagination,
+            user_claims=self.user_claims,
+            label="bug"
+        )
+        
+        item = result[0]
+        assert item["label"] == "bug"
+        assert item["masked_token"] == "****abcd"
+        assert "id" in item and "created_at" in item
+    
+    async def test_get_git_labels_by_label_passes_correct_arguments(self):
+        label = make_fake_git_label(user_id="user123", label="feature")
+        self.store.set_fake_data([label])
+        
+        await self.service.get_git_labels_by_label(
+            pagination=self.pagination,
+            user_claims=self.user_claims,
+            label="feature"
+        )
+        
+        assert ("get_by_user_id_and_label", 0, 10, "user123", "feature") in self.store.received_calls

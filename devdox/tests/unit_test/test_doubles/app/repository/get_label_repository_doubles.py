@@ -42,6 +42,12 @@ class FakeGitLabelStore:
             raise self.exceptions["get_git_hosting_map_by_token_id"]
         self.received_calls.append(("get_git_hosting_map_by_token_id", token_ids))
         return [{"id": str(lbl.id), "git_hosting": lbl.git_hosting} for lbl in self.git_labels if str(lbl.id) in token_ids]
+    
+    async def get_by_user_id_and_label(self, offset, limit, user_id, label):
+        if "get_by_user_id_and_label" in self.exceptions:
+            raise self.exceptions["get_by_user_id_and_label"]
+        self.received_calls.append(("get_by_user_id_and_label", offset, limit, user_id, label))
+        return [lbl for lbl in self.git_labels if lbl.user_id == user_id and lbl.label == label]
 
 
 def make_fake_git_label(**overrides) -> GitLabel:
