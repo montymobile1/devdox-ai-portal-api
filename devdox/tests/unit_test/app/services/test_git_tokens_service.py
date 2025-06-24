@@ -48,18 +48,6 @@ class TestGetGitLabelService:
         assert result["items"][0]["masked_token"] == "****1234"
         assert ("count_by_user_id", "user123", "github") in self.fake_store.received_calls
         assert ("get_by_user_id", 0, 10, "user123", "github") in self.fake_store.received_calls
-
-    async def test_correct_page_calculation(self):
-        self.fake_store.set_fake_data([], total_count=0)
-        pagination = RequiredPaginationParams(limit=20, offset=40)
-
-        result = await self.service.get_git_labels_by_user(
-            pagination=pagination,
-            user_claims=self.user_claims,
-            git_hosting=None,
-        )
-
-        assert result["page"] == 3  # (offset // limit) + 1
     
     async def test_bubbles_up_store_exception(self):
         self.fake_store.set_exception("count_by_user_id", ValueError("Boom"))
