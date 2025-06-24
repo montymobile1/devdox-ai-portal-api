@@ -16,6 +16,7 @@ import app.exceptions.exception_constants
 from app.exceptions.exception_constants import SERVICE_UNAVAILABLE
 from models.git_label import GitLabel
 from app.schemas.git_label import (
+    AddGitTokenRequest,
     GetGitLabelByLabelRequest,
     GetGitLabelsRequest,
     GitLabelBase,
@@ -109,7 +110,7 @@ async def get_git_label_by_label(
 )
 async def add_git_token(
     service: Annotated[PostGitLabelService, Depends(PostGitLabelService.with_dependency)],
-    payload: GitLabelBase = Body(...),
+    request: Annotated[AddGitTokenRequest, Depends()],
     authenticated_user: AuthenticatedUserDTO = CurrentUser,
 ) -> JSONResponse:
     """
@@ -117,7 +118,7 @@ async def add_git_token(
     """
     results = await service.add_git_token(
         user_claims=authenticated_user,
-        json_payload=payload
+        json_payload=request.payload
     )
 
     return APIResponse.success(

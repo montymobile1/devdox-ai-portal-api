@@ -226,8 +226,6 @@ class PostGitLabelService:
         
         encrypted_token = (
             EncryptionHelper().encrypt_for_user(token, user.encryption_salt)
-            if token
-            else ""
         )
         
         new_payload: GitLabelCreate = GitLabelCreate(
