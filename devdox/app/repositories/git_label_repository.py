@@ -7,6 +7,8 @@ from tortoise.queryset import QuerySet
 
 from app.exceptions.custom_exceptions import DevDoxAPIException
 from app.exceptions.exception_constants import (
+    MISSING_LABEL_ID_TITLE,
+    MISSING_LABEL_LOG_MESSAGE,
     MISSING_USER_ID_LOG_MESSAGE,
     MISSING_USER_ID_TITLE,
     SERVICE_UNAVAILABLE,
@@ -30,8 +32,8 @@ class TortoiseGitLabelStore:
         }
         
         MISSING_LABEL = {
-            "error_type": "MISSING_LABEL",
-            "log_message": "TortoiseGitLabelStore: label was None when trying to fetch Git labels."
+            "error_type": MISSING_LABEL_ID_TITLE,
+            "log_message": MISSING_LABEL_LOG_MESSAGE
         }
 
     async def get_git_hosting_map_by_token_id(
@@ -84,8 +86,8 @@ class TortoiseGitLabelStore:
         if not user_id:
             raise internal_error(**self.InternalExceptions.MISSING_USER_ID.value)
         
-        if not label:
-            raise internal_error(**self.InternalExceptions.MISSING_USER_ID.value)
+        if not label or not label.strip():
+            raise internal_error(**self.InternalExceptions.MISSING_LABEL.value)
         
         query = GitLabel.filter(user_id=user_id, label=label)
         
