@@ -35,27 +35,34 @@ class StubEncryption:
         return "decrypted_token"
 
 
+class StubTransformer:
+    def from_git(self, data):
+        return GitRepoResponse(
+            id="r1",
+            repo_name="test",
+            description=None,
+            html_url="url",
+            default_branch="main",
+            forks_count=1,
+            stargazers_count=2,
+            size=100,
+            repo_created_at=None,
+            private=True,
+            visibility="private",
+            relative_path="relative_url",
+        )
+
+
 class StubFetcher:
-    def get(self, provider):
+    def get_components(self, provider):
         if provider == "github":
-            return self, lambda repo: GitRepoResponse(
-                id="r1",
-                repo_name="test",
-                description=None,
-                html_url="url",
-                default_branch="main",
-                forks_count=1,
-                stargazers_count=2,
-                size=100,
-                repo_created_at=None,
-                private=True,
-                visibility="private",
-                relative_path="relative_url",
-            )
+            return self, StubTransformer()
+        elif provider == "gitlab":
+            return self, StubTransformer()
         return None, None
 
     def fetch_single_repo(self, token, relative_path):
-        return (object(), ["Python"])
+        return object(), ["Python"]
 
 
 class FakeRepoStore:
@@ -116,7 +123,7 @@ class TestRepoManipulationService:
     @pytest.mark.asyncio
     async def test_add_repo_unsupported_provider(self):
         class BadFetcher(StubFetcher):
-            def get(self, provider):
+            def get_components(self, provider):
                 return None, None
 
         service = RepoManipulationService(

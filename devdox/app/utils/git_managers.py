@@ -3,6 +3,7 @@ from typing import Any, Optional
 import gitlab
 import requests
 from github import Github, GithubException
+from github.AuthenticatedUser import AuthenticatedUser
 from github.Repository import Repository
 from gitlab import Gitlab, GitlabError
 from gitlab.v4.objects import Project
@@ -45,7 +46,7 @@ class AuthenticatedGitHubManager:
                 root_exception=e,
             ) from e
 
-    def get_user(self):
+    def get_user(self) -> AuthenticatedUser:
         """Get the authenticated user information using PyGithub."""
         try:
             user = self._git_client.get_user()
@@ -304,7 +305,7 @@ class GitLabManager:
 
 
 def retrieve_git_fetcher_or_die(store, provider: GitHosting | str, include_data_mapper: bool = True) -> tuple[Any, Any]:
-    fetcher, fetcher_data_mapper = store.get(provider)
+    fetcher, fetcher_data_mapper = store.get_components(provider)
     if not fetcher:
         raise DevDoxAPIException(
             user_message=SERVICE_UNAVAILABLE,

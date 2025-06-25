@@ -81,18 +81,18 @@ class TestGitLabRepoFetcher:
 
 class TestRepoFetcher:
     def test_get_github_returns_expected_types(self):
-        fetcher, transformer = RepoFetcher().get(GitHosting.GITHUB)
+        fetcher, transformer = RepoFetcher().get_components(GitHosting.GITHUB)
         assert isinstance(fetcher, GitHubRepoFetcher)
-        assert transformer.__name__ == GitHubRepoResponseTransformer.from_github.__name__
+        assert isinstance(transformer, GitHubRepoResponseTransformer)
 
     def test_get_gitlab_returns_expected_types(self):
-        fetcher, transformer = RepoFetcher().get(GitHosting.GITLAB)
+        fetcher, transformer = RepoFetcher().get_components(GitHosting.GITLAB)
         assert isinstance(fetcher, GitLabRepoFetcher)
-        assert transformer.__name__ == GitLabRepoResponseTransformer.from_gitlab.__name__
+        assert isinstance(transformer, GitLabRepoResponseTransformer)
 
     def test_get_invalid_provider_returns_none(self):
         
-        fetcher, transformer = RepoFetcher().get("BITBUCKET")
+        fetcher, transformer = RepoFetcher().get_components("BITBUCKET")
 
         assert fetcher is None
         assert transformer is None

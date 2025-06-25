@@ -6,7 +6,6 @@ from models import GitLabel
 from tortoise.exceptions import IntegrityError
 
 from app.exceptions.custom_exceptions import BadRequest, ResourceNotFound
-
 from app.exceptions.exception_constants import (
     GENERIC_ALREADY_EXIST,
     TOKEN_MISSING,
@@ -15,8 +14,8 @@ from app.exceptions.exception_constants import (
 from app.repositories.git_label_repository import TortoiseGitLabelStore
 from app.repositories.user_repository import TortoiseUserStore
 from app.schemas.basic import PaginationParams, RequiredPaginationParams
-from app.schemas.git_label import GitLabelResponse
-from app.schemas.git_label import GitLabelBase
+from app.schemas.git_label import GitLabelBase, GitLabelResponse
+from app.schemas.repo import GitUserResponse
 from app.utils.auth import UserClaims
 from app.utils.encryption import (
     FernetEncryptionHelper,
@@ -170,8 +169,8 @@ class PostGitLabelService:
 
         encrypted_token = self.crypto_store.encrypt_for_user(token, user.encryption_salt)
 
-        fetcher, _ = retrieve_git_fetcher_or_die(
-	        store=self.git_manager, provider=json_payload.git_hosting, include_data_mapper=False
+        fetcher, response_transformer = retrieve_git_fetcher_or_die(
+	        store=self.git_manager, provider=json_payload.git_hosting
         )
 
         retrieved_git_user = fetcher.fetch_repo_user(
@@ -183,6 +182,8 @@ class PostGitLabelService:
                 reason=TOKEN_MISSING
             )
         
+        transformed_data: GitUserResponse = response_transformer.from_git_user(retrieved_git_user)
+
         try:
             created_label = await self.label_store.create_new(
                 GitLabel(
@@ -191,10 +192,10 @@ class PostGitLabelService:
                     git_hosting=json_payload.git_hosting,
                     token_value=encrypted_token,
                     masked_token=mask_token(json_payload.token_value),
-                    username=retrieved_git_user.get("username", ""),
+                    username=transformed_data.username,
                 )
             )
-        except IntegrityError:
-            raise BadRequest(reason=GENERIC_ALREADY_EXIST)
-        
+        except IntegrityError as e:
+            raise BadRequest(reason=GENERIC_ALREADY_EXIST) from e
+
         return created_label

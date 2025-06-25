@@ -96,9 +96,7 @@ class RepoProviderService:
             label.token_value, salt_b64=retrieved_user_data.encryption_salt
         )
 
-        fetcher, response_mapper = self.git_fetcher.get(label.git_hosting)
-        if not fetcher:
-            raise BadRequest(reason=f"Unsupported Git hosting:  {label.git_hosting}")
+        fetcher, response_mapper = retrieve_git_fetcher_or_die(store=self.git_fetcher, provider=label.git_hosting)
 
         fetched_data = fetcher.fetch_user_repositories(
             decrypted_label_token, pagination.offset, pagination.limit
@@ -108,7 +106,7 @@ class RepoProviderService:
             return 0, []
 
         transformed_response = [
-            response_mapper(r) for r in fetched_data.get("data", [])
+            response_mapper.from_git(r) for r in fetched_data.get("data", [])
         ]
 
         return fetched_data["data_count"], transformed_response
@@ -169,7 +167,7 @@ class RepoManipulationService:
             decrypted_label_token, relative_path
         )
 
-        transformed_data: GitRepoResponse = fetcher_data_mapper(repo_data)
+        transformed_data: GitRepoResponse = fetcher_data_mapper.from_git(repo_data)
 
         try:
             _ = await self.repo_store.create_new_repo(
