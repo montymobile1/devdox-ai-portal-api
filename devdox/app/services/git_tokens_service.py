@@ -14,7 +14,7 @@ from app.exceptions.exception_constants import (
 from app.repositories.git_label_repository import TortoiseGitLabelStore
 from app.repositories.user_repository import TortoiseUserStore
 from app.schemas.basic import PaginationParams, RequiredPaginationParams
-from app.schemas.git_label import GitLabelBase, GitLabelResponse
+from app.schemas.git_label import GitLabelBase, GitLabelDBCreateDTO, GitLabelResponse
 from app.schemas.repo import GitUserResponse
 from app.utils.auth import UserClaims
 from app.utils.encryption import (
@@ -186,7 +186,7 @@ class PostGitLabelService:
 
         try:
             created_label = await self.label_store.create_new(
-                GitLabel(
+                GitLabelDBCreateDTO(
                     label=json_payload.label,
                     user_id=user_claims.sub,
                     git_hosting=json_payload.git_hosting,
