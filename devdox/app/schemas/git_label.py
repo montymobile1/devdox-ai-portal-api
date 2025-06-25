@@ -1,4 +1,4 @@
-from fastapi import Depends, Query, Path
+from fastapi import Body, Depends, Query, Path
 from pydantic import BaseModel, Field, ConfigDict
 from typing import Annotated, Optional
 from datetime import datetime
@@ -85,3 +85,10 @@ class GetGitLabelByLabelRequest:
     ):
         self.pagination = pagination
         self.label = label
+
+class AddGitTokenRequest:
+    def __init__(
+        self,
+        payload: GitLabelBase = Body(...),
+    ):
+        self.payload = payload
