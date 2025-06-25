@@ -19,8 +19,11 @@ from app.schemas.basic import PaginationParams, RequiredPaginationParams
 from app.schemas.git_label import GitLabelBase, GitLabelCreate, GitLabelResponse
 from app.utils import constants
 from app.utils.api_response import APIResponse
-from app.utils.auth import AuthenticatedUserDTO, UserClaims
-from app.utils.encryption import EncryptionHelper
+from app.utils.auth import UserClaims
+from app.utils.encryption import (
+    FernetEncryptionHelper,
+    get_encryption_helper,
+)
 from app.utils.github_manager import GitHubManager
 from app.utils.gitlab_manager import GitLabManager
 
@@ -199,15 +202,17 @@ async def handle_github(payload: GitLabelCreate, encrypted_token: str) -> JSONRe
 class PostGitLabelService:
 
     def __init__(
-            self, user_store: TortoiseUserStore
+            self, user_store: TortoiseUserStore, crypto_store: FernetEncryptionHelper
     ):
         self.user_store = user_store
+        self.crypto_store = crypto_store
 
     @classmethod
     def with_dependency(
         cls, user_store: Annotated[TortoiseUserStore, Depends()],
+        crypto_store: Annotated[FernetEncryptionHelper, Depends(get_encryption_helper)],
     ) -> "PostGitLabelService":
-        return cls(user_store)
+        return cls(user_store, crypto_store)
 
     async def add_git_token(self, user_claims:UserClaims, json_payload: GitLabelBase):
         
@@ -224,9 +229,7 @@ class PostGitLabelService:
                 reason=USER_RESOURCE_NOT_FOUND
             )
         
-        encrypted_token = (
-            EncryptionHelper().encrypt_for_user(token, user.encryption_salt)
-        )
+        encrypted_token = self.crypto_store.encrypt_for_user(token, user.encryption_salt)
         
         new_payload: GitLabelCreate = GitLabelCreate(
             label=json_payload.label,
@@ -244,3 +247,5 @@ class PostGitLabelService:
                 message=constants.UNSUPPORTED_GIT_PROVIDER,
                 status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
             )
+
+
