@@ -209,7 +209,7 @@ class PostGitLabelService:
     ) -> "PostGitLabelService":
         return cls(user_store)
 
-    async def add_git_token(self, user_claims:AuthenticatedUserDTO, json_payload: GitLabelBase):
+    async def add_git_token(self, user_claims:UserClaims, json_payload: GitLabelBase):
         
         token = json_payload.token_value.replace(" ", "")
         if not token:
@@ -217,7 +217,7 @@ class PostGitLabelService:
                 reason=TOKEN_MISSING
             )
         
-        user = await self.user_store.get_by_user_id(user_id=user_claims.id)
+        user = await self.user_store.get_by_user_id(user_id=user_claims.sub)
         
         if not user:
             raise ResourceNotFound(
@@ -230,7 +230,7 @@ class PostGitLabelService:
         
         new_payload: GitLabelCreate = GitLabelCreate(
             label=json_payload.label,
-            user_id=user_claims.id,
+            user_id=user_claims.sub,
             git_hosting=json_payload.git_hosting,
             token_value=json_payload.token_value,
         )

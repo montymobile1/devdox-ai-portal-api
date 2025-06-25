@@ -9,7 +9,7 @@ import logging
 import uuid
 from typing import Annotated, Any, Dict
 
-from fastapi import APIRouter, Body, Depends, status
+from fastapi import APIRouter, Depends, status
 from starlette.responses import JSONResponse
 
 import app.exceptions.exception_constants
@@ -18,8 +18,7 @@ from models.git_label import GitLabel
 from app.schemas.git_label import (
     AddGitTokenRequest,
     GetGitLabelByLabelRequest,
-    GetGitLabelsRequest,
-    GitLabelBase,
+    GetGitLabelsRequest
 )
 from app.services.git_tokens_service import GetGitLabelService, PostGitLabelService
 from app.utils import constants, CurrentUser
@@ -109,15 +108,15 @@ async def get_git_label_by_label(
     description="Create a new git hosting service token configuration",
 )
 async def add_git_token(
-    service: Annotated[PostGitLabelService, Depends(PostGitLabelService.with_dependency)],
+    user_claims: Annotated[UserClaims, Depends(get_authenticated_user)],
     request: Annotated[AddGitTokenRequest, Depends()],
-    authenticated_user: AuthenticatedUserDTO = CurrentUser,
+    service: Annotated[PostGitLabelService, Depends(PostGitLabelService.with_dependency)],
 ) -> JSONResponse:
     """
     Add a new git token configuration with validation based on hosting service.
     """
     results = await service.add_git_token(
-        user_claims=authenticated_user,
+        user_claims=user_claims,
         json_payload=request.payload
     )
 
