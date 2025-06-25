@@ -1,13 +1,16 @@
-from typing import Optional
+from typing import Any, Optional
 
 import gitlab
 import requests
 from github import Github, GithubException
+from github.AuthenticatedUser import AuthenticatedUser
 from github.Repository import Repository
 from gitlab import Gitlab, GitlabError
 from gitlab.v4.objects import Project
 
+from app.config import GitHosting
 from app.exceptions.custom_exceptions import DevDoxAPIException
+from app.exceptions.exception_constants import SERVICE_UNAVAILABLE
 
 
 class AuthenticatedGitHubManager:
@@ -43,18 +46,11 @@ class AuthenticatedGitHubManager:
                 root_exception=e,
             ) from e
 
-    def get_user(self):
+    def get_user(self) -> AuthenticatedUser:
         """Get the authenticated user information using PyGithub."""
         try:
             user = self._git_client.get_user()
-            return {
-                "login": user.login,
-                "id": user.id,
-                "name": user.name,
-                "email": user.email,
-                "avatar_url": user.avatar_url,
-                "html_url": user.html_url,
-            }
+            return user
         except GithubException as e:
             raise DevDoxAPIException(
                 user_message="Unable to fetch GitHub user.",
@@ -306,3 +302,22 @@ class GitLabManager:
                 log_message="Failed to authenticate GitLabManager",
                 root_exception=e,
             ) from e
+
+
+def retrieve_git_fetcher_or_die(store, provider: GitHosting | str, include_data_mapper: bool = True) -> tuple[Any, Any]:
+    fetcher, fetcher_data_mapper = store.get_components(provider)
+    if not fetcher:
+        raise DevDoxAPIException(
+            user_message=SERVICE_UNAVAILABLE,
+            log_message=f"Unsupported Git hosting: {provider}",
+            log_level="exception",
+        )
+
+    if include_data_mapper and not fetcher_data_mapper:
+        raise DevDoxAPIException(
+            user_message=SERVICE_UNAVAILABLE,
+            log_message=f"Unable to find mapper for Git hosting: {provider}",
+            log_level="exception",
+        )
+
+    return fetcher, fetcher_data_mapper

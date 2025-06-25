@@ -3,29 +3,26 @@ from typing import Annotated, Optional
 
 from fastapi import Depends
 from models import GitLabel
-from starlette import status
-from starlette.responses import JSONResponse
+from tortoise.exceptions import IntegrityError
 
-from app.config import GitHosting
 from app.exceptions.custom_exceptions import BadRequest, ResourceNotFound
 from app.exceptions.exception_constants import (
-    SERVICE_UNAVAILABLE,
+    GENERIC_ALREADY_EXIST,
     TOKEN_MISSING,
     USER_RESOURCE_NOT_FOUND,
 )
 from app.repositories.git_label_repository import TortoiseGitLabelStore
 from app.repositories.user_repository import TortoiseUserStore
 from app.schemas.basic import PaginationParams, RequiredPaginationParams
-from app.schemas.git_label import GitLabelBase, GitLabelCreate, GitLabelResponse
-from app.utils import constants
-from app.utils.api_response import APIResponse
+from app.schemas.git_label import GitLabelBase, GitLabelDBCreateDTO, GitLabelResponse
+from app.schemas.repo import GitUserResponse
 from app.utils.auth import UserClaims
 from app.utils.encryption import (
     FernetEncryptionHelper,
     get_encryption_helper,
 )
-from app.utils.github_manager import GitHubManager
-from app.utils.gitlab_manager import GitLabManager
+from app.utils.git_managers import retrieve_git_fetcher_or_die
+from app.utils.repo_fetcher import RepoFetcher
 
 logger = logging.getLogger(__name__)
 
@@ -130,122 +127,75 @@ def mask_token(token: str) -> str:
 
     return f"{prefix}{middle_mask}{suffix}"
 
-
-async def handle_gitlab(payload: GitLabelCreate, encrypted_token: str) -> JSONResponse:
-    """Handle GitLab token validation and storage"""
-    gitlab = GitLabManager(
-        base_url="https://gitlab.com", access_token=payload.token_value
-    )
-
-    if not gitlab.auth_status:
-        return APIResponse.error(message=constants.GITLAB_AUTH_FAILED)
-
-    user = gitlab.get_user()
-    if not user:
-        return APIResponse.error(message=constants.GITLAB_USER_RETRIEVE_FAILED)
-
-    try:
-        git_label = await GitLabel.create(
-            label=payload.label,
-            user_id=payload.user_id,
-            git_hosting=payload.git_hosting,
-            token_value=encrypted_token,
-            masked_token=mask_token(payload.token_value),
-            username=user.get("username", ""),
-        )
-
-        return APIResponse.success(
-            message=constants.TOKEN_SAVED_SUCCESSFULLY, data={"id": str(git_label.id)}
-        )
-    except Exception:
-        logger.exception(
-            "Unexpected Failure while attempting to save GitLab token on Path = '[POST] /api/v1/git_tokens' -> handle_gitlab"
-        )
-
-        return APIResponse.error(
-            message=SERVICE_UNAVAILABLE,
-            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-        )
-
-
-async def handle_github(payload: GitLabelCreate, encrypted_token: str) -> JSONResponse:
-    """Handle GitHub token validation and storage"""
-    github = GitHubManager(access_token=payload.token_value)
-    user = github.get_user()
-
-    if not user:
-        return APIResponse.error(
-            message=constants.GITHUB_AUTH_FAILED,
-            status_code=status.HTTP_400_BAD_REQUEST,
-        )
-
-    try:
-        git_label = await GitLabel.create(
-            label=payload.label,
-            user_id=payload.user_id,
-            git_hosting=payload.git_hosting,
-            token_value=encrypted_token,
-            masked_token=mask_token(payload.token_value),
-            username=user.get("login", ""),
-        )
-
-        return APIResponse.success(
-            message=constants.TOKEN_SAVED_SUCCESSFULLY, data={"id": str(git_label.id)}
-        )
-    except Exception:
-        logger.exception(
-            "Unexpected Failure while attempting to save GitHub token on Path = '[POST] /api/v1/git_tokens' -> handle_github"
-        )
-        return APIResponse.error(message=constants.GITHUB_TOKEN_SAVE_FAILED)
-
-
 class PostGitLabelService:
 
     def __init__(
-            self, user_store: TortoiseUserStore, crypto_store: FernetEncryptionHelper
+            self, user_store: TortoiseUserStore, label_store: TortoiseGitLabelStore, crypto_store: FernetEncryptionHelper, git_manager: RepoFetcher
     ):
         self.user_store = user_store
+        self.label_store = label_store
         self.crypto_store = crypto_store
+        self.git_manager = git_manager
 
     @classmethod
     def with_dependency(
-        cls, user_store: Annotated[TortoiseUserStore, Depends()],
-        crypto_store: Annotated[FernetEncryptionHelper, Depends(get_encryption_helper)],
+            cls,
+            user_store: Annotated[TortoiseUserStore, Depends()],
+            label_store: Annotated[TortoiseGitLabelStore, Depends()],
+            crypto_store: Annotated[FernetEncryptionHelper, Depends(get_encryption_helper)],
+		    git_manager: Annotated[RepoFetcher, Depends()]
     ) -> "PostGitLabelService":
-        return cls(user_store, crypto_store)
+        return cls(
+            user_store=user_store,
+            label_store=label_store,
+            crypto_store=crypto_store,
+            git_manager=git_manager
+        )
 
     async def add_git_token(self, user_claims:UserClaims, json_payload: GitLabelBase):
-        
+
         token = json_payload.token_value.replace(" ", "")
         if not token:
             raise BadRequest(
                 reason=TOKEN_MISSING
             )
-        
+
         user = await self.user_store.get_by_user_id(user_id=user_claims.sub)
-        
+
         if not user:
             raise ResourceNotFound(
                 reason=USER_RESOURCE_NOT_FOUND
             )
-        
+
         encrypted_token = self.crypto_store.encrypt_for_user(token, user.encryption_salt)
-        
-        new_payload: GitLabelCreate = GitLabelCreate(
-            label=json_payload.label,
-            user_id=user_claims.sub,
-            git_hosting=json_payload.git_hosting,
-            token_value=json_payload.token_value,
+
+        fetcher, response_transformer = retrieve_git_fetcher_or_die(
+	        store=self.git_manager, provider=json_payload.git_hosting
+        )
+
+        retrieved_git_user = fetcher.fetch_repo_user(
+            token=json_payload.token_value
         )
         
-        if new_payload.git_hosting == GitHosting.GITLAB.value:
-            return await handle_gitlab(new_payload, encrypted_token)
-        elif new_payload.git_hosting == GitHosting.GITHUB.value:
-            return await handle_github(new_payload, encrypted_token)
-        else:
-            return APIResponse.error(
-                message=constants.UNSUPPORTED_GIT_PROVIDER,
-                status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+        if not retrieved_git_user:
+            raise ResourceNotFound(
+                reason=TOKEN_MISSING
             )
+        
+        transformed_data: GitUserResponse = response_transformer.from_git_user(retrieved_git_user)
 
+        try:
+            created_label = await self.label_store.create_new(
+                GitLabelDBCreateDTO(
+                    label=json_payload.label,
+                    user_id=user_claims.sub,
+                    git_hosting=json_payload.git_hosting,
+                    token_value=encrypted_token,
+                    masked_token=mask_token(json_payload.token_value),
+                    username=transformed_data.username,
+                )
+            )
+        except IntegrityError as e:
+            raise BadRequest(reason=GENERIC_ALREADY_EXIST) from e
 
+        return created_label

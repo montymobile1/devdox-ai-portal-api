@@ -23,13 +23,6 @@ class GitLabelBase(BaseModel):
         ..., description="Access token for the git hosting service"
     )
 
-
-class GitLabelCreate(GitLabelBase):
-    user_id: str = Field(
-        None, description="User identifier (will be overridden by auth)"
-    )
-
-
 class GitLabelUpdate(BaseModel):
     label: Optional[str] = Field(
         None, description="Label/name for this git configuration"
@@ -92,3 +85,12 @@ class AddGitTokenRequest:
         payload: GitLabelBase = Body(...),
     ):
         self.payload = payload
+
+
+class GitLabelDBCreateDTO(BaseModel):
+    label:str = Field(..., description="Unique identifier for the Git label")
+    user_id: str = Field(..., max_length=255 , description="Authenticated user id")
+    git_hosting: str = Field(..., max_length=50, description="Git hosting service (e.g., 'github', 'gitlab')")
+    token_value: str = Field(..., description="Access token for the git hosting service")
+    masked_token: str = Field(..., description="Masked Access token for the git hosting service")
+    username: str = Field(..., description="Username for the git hosting service")

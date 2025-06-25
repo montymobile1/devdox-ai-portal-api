@@ -46,7 +46,7 @@ class TestGitLabRepoResponseTransformer:
         assert result["statistics"]["storage_size"] == 2000
 
     def test_from_gitlab_none_returns_none(self):
-        assert GitLabRepoResponseTransformer.from_gitlab(None) is None
+        assert GitLabRepoResponseTransformer.from_git(None) is None
 
     def test_from_gitlab_dict_returns_expected_schema(self):
         data = {
@@ -62,7 +62,7 @@ class TestGitLabRepoResponseTransformer:
             "created_at": datetime.utcnow(),
             "statistics": {"storage_size": 512},
         }
-        response = GitLabRepoResponseTransformer.from_gitlab(data)
+        response = GitLabRepoResponseTransformer.from_git(data)
         assert isinstance(response, GitRepoResponse)
         assert response.private is True
         assert response.size == 512
@@ -70,7 +70,7 @@ class TestGitLabRepoResponseTransformer:
     @pytest.mark.parametrize("invalid_input", [123, 3.14, ["list"], object()])
     def test_from_gitlab_with_invalid_type_raises(self, invalid_input):
         with pytest.raises(TypeError):
-            GitLabRepoResponseTransformer.from_gitlab(invalid_input)
+            GitLabRepoResponseTransformer.from_git(invalid_input)
 
     def test_gitlab_statistics_not_dict(self):
         project = SimpleNamespace(
@@ -79,7 +79,7 @@ class TestGitLabRepoResponseTransformer:
             http_url_to_repo="http://url", statistics="not-a-dict"
         )
         with pytest.raises(AttributeError):
-            GitLabRepoResponseTransformer.from_gitlab(project)
+            GitLabRepoResponseTransformer.from_git(project)
 
 
 
@@ -105,7 +105,7 @@ class TestGitHubRepoResponseTransformer:
         assert result["private"] is True
 
     def test_from_github_none_returns_none(self):
-        assert GitHubRepoResponseTransformer.from_github(None) is None
+        assert GitHubRepoResponseTransformer.from_git(None) is None
 
     def test_from_github_dict_returns_expected_schema(self):
         now = datetime.utcnow()
@@ -123,11 +123,11 @@ class TestGitHubRepoResponseTransformer:
             "size": 100,
             "repo_created_at": now,
         }
-        response = GitHubRepoResponseTransformer.from_github(data)
+        response = GitHubRepoResponseTransformer.from_git(data)
         assert isinstance(response, GitRepoResponse)
         assert response.repo_name == "gh-repo"
         assert response.private is False
 
     def test_from_github_with_invalid_type_raises(self):
         with pytest.raises(TypeError):
-            GitHubRepoResponseTransformer.from_github(123)
+            GitHubRepoResponseTransformer.from_git(123)

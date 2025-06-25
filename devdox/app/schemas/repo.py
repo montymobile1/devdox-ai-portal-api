@@ -1,6 +1,7 @@
 import uuid
 from types import SimpleNamespace
 
+from github.AuthenticatedUser import AuthenticatedUser
 from github.Repository import Repository
 from gitlab.v4.objects import Project
 from pydantic import BaseModel, Field, ConfigDict
@@ -85,6 +86,13 @@ class GitRepoResponse(BaseModel):
     private: Optional[bool] = Field(None, description="Private flag (GitHub)")
     visibility: Optional[str] = Field(None, description="Visibility setting (GitLab)")
 
+class GitUserResponse(BaseModel):
+    username: Optional[str] = Field(None, description="Git Username")
+    id: Optional[int] = Field(None, description="Git user Id")
+    name: Optional[str] = Field(None, description="Git user display name")
+    email: Optional[str] = Field(None, description="Git user email")
+    avatar_url: Optional[str] = Field(None, description="Git user avatar url")
+    html_url: Optional[str] = Field(None, description="Git user html url")
 
 class GitLabRepoResponseTransformer:
 
@@ -127,7 +135,7 @@ class GitLabRepoResponseTransformer:
         }
 
     @classmethod
-    def from_gitlab(cls, data: Project | SimpleNamespace | dict) -> GitRepoResponse | None:
+    def from_git(cls, data: Project | SimpleNamespace | dict) -> GitRepoResponse | None:
         if not data:
             return None
         elif isinstance(data, Project) or isinstance(data, SimpleNamespace):
@@ -154,6 +162,27 @@ class GitLabRepoResponseTransformer:
             private=cls.derived_private_field(dict_data.get("visibility")),
         )
 
+    @classmethod
+    def from_git_user(cls, data: dict) -> GitUserResponse | None:
+        if not data:
+            return None
+        elif isinstance(data, dict):
+            dict_data = data
+        else:
+            raise TypeError(
+                f"Unsupported type for `data`: {type(data)}. Expected dict."
+            )
+
+        return GitUserResponse(
+            username=dict_data.get("username"),
+            id=dict_data.get("id"),
+            name=dict_data.get("name"),
+            email=dict_data.get("email"),
+            avatar_url=dict_data.get("avatar_url"),
+            html_url=dict_data.get("html_url"),
+        )
+
+
 class GitHubRepoResponseTransformer:
 
     @classmethod
@@ -172,9 +201,20 @@ class GitHubRepoResponseTransformer:
             "visibility": getattr(repository, "visibility", None),
             "repo_created_at": repository.created_at,
         }
-
+    
     @classmethod
-    def from_github(cls, data: Repository | SimpleNamespace | dict) -> GitRepoResponse | None:
+    def transform_authenticated_user_to_dict(cls, authenticated_user: AuthenticatedUser | SimpleNamespace) -> dict:
+        return {
+            "login": authenticated_user.login,
+            "id": authenticated_user.id,
+            "name": authenticated_user.name,
+            "email": authenticated_user.email,
+            "avatar_url": authenticated_user.avatar_url,
+            "html_url": authenticated_user.html_url,
+        }
+    
+    @classmethod
+    def from_git(cls, data: Repository | SimpleNamespace | dict) -> GitRepoResponse | None:
 
         if not data:
             return None
@@ -201,6 +241,29 @@ class GitHubRepoResponseTransformer:
             size=dict_data.get("size", 0),
             repo_created_at=dict_data.get("repo_created_at"),
         )
+    
+    @classmethod
+    def from_git_user(cls, data: AuthenticatedUser | SimpleNamespace | dict) -> GitUserResponse | None:
+        if not data:
+            return None
+        elif isinstance(data, AuthenticatedUser) or isinstance(data, SimpleNamespace):
+            dict_data = cls.transform_authenticated_user_to_dict(data)
+        elif isinstance(data, dict):
+            dict_data = data
+        else:
+            raise TypeError(
+                f"Unsupported type for `data`: {type(data)}. Expected AuthenticatedUser or SimpleNamespace or dict."
+            )
+        
+        return GitUserResponse(
+            username= dict_data.get("login") ,
+            id= dict_data.get("id") ,
+            name= dict_data.get("name") ,
+            email= dict_data.get("email") ,
+            avatar_url= dict_data.get("avatar_url") ,
+            html_url= dict_data.get("html_url")
+        )
+
 
 class AddRepositoryRequest(BaseModel):
     relative_path: str = Field(

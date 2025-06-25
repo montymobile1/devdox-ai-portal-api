@@ -1,5 +1,6 @@
-from types import SimpleNamespace
-from typing import Any, Callable, Protocol
+from typing import Any, Protocol
+
+from github.AuthenticatedUser import AuthenticatedUser
 
 from github.Repository import Repository
 from gitlab.v4.objects import Project
@@ -8,7 +9,6 @@ from app.config import GitHosting
 from app.schemas.repo import (
     GitHubRepoResponseTransformer,
     GitLabRepoResponseTransformer,
-    GitRepoResponse,
 )
 from app.utils.git_managers import GitHubManager, GitLabManager
 
@@ -55,6 +55,17 @@ class GitHubRepoFetcher(IRepoFetcher):
 
         return repository, [*repository_languages]
 
+    def fetch_repo_user(self, token) -> AuthenticatedUser | None:
+        authenticated_github_manager = self.manager.authenticate(token)
+
+        user = authenticated_github_manager.get_user()
+
+        if not user:
+            return None
+        
+        return user
+
+
 
 class GitLabRepoFetcher(IRepoFetcher):
     def __init__(self, base_url: str = GitLabManager.default_base_url):
@@ -89,17 +100,26 @@ class GitLabRepoFetcher(IRepoFetcher):
 
         return repository, [*repository_languages]
 
+    def fetch_repo_user(self, token) -> dict | None:
+        authenticated_gitlab_manager = self.manager.authenticate(token)
+
+        user = authenticated_gitlab_manager.get_user()
+
+        if not user:
+            return None
+
+        return user
+
 
 class RepoFetcher:
 
-    def get(
-        self, provider: GitHosting
-    ) -> tuple[GitHubRepoFetcher, Callable[[Repository | SimpleNamespace | dict], GitRepoResponse | None]] | tuple[
-	    GitLabRepoFetcher, Callable[[Project | SimpleNamespace | dict], GitRepoResponse | None]] | tuple[None, None]:
+    def get_components(
+        self, provider: GitHosting | str
+    ) -> tuple[GitHubRepoFetcher, GitHubRepoResponseTransformer] | tuple[GitLabRepoFetcher, GitLabRepoResponseTransformer] | tuple[None, None]:
         """bool represents whether it has a data transformer which can aid"""
         if provider == GitHosting.GITHUB:
-            return GitHubRepoFetcher(), GitHubRepoResponseTransformer.from_github
+            return GitHubRepoFetcher(), GitHubRepoResponseTransformer()
         elif provider == GitHosting.GITLAB:
-            return GitLabRepoFetcher(), GitLabRepoResponseTransformer.from_gitlab
+            return GitLabRepoFetcher(), GitLabRepoResponseTransformer()
         
         return None, None

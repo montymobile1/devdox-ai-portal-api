@@ -3,7 +3,6 @@ from typing import Collection, Dict, List, Optional, Union
 from uuid import UUID
 
 from models import GitLabel
-from tortoise.queryset import QuerySet
 
 from app.exceptions.custom_exceptions import DevDoxAPIException
 from app.exceptions.exception_constants import (
@@ -13,6 +12,8 @@ from app.exceptions.exception_constants import (
     MISSING_USER_ID_TITLE,
     SERVICE_UNAVAILABLE,
 )
+from app.schemas.git_label import GitLabelDBCreateDTO
+
 
 def internal_error(log_message:str, error_type:str, **kwargs):
     return DevDoxAPIException(
@@ -30,7 +31,7 @@ class TortoiseGitLabelStore:
             "error_type": MISSING_USER_ID_TITLE,
             "log_message": MISSING_USER_ID_LOG_MESSAGE
         }
-        
+
         MISSING_LABEL = {
             "error_type": MISSING_LABEL_ID_TITLE,
             "log_message": MISSING_LABEL_LOG_MESSAGE
@@ -49,7 +50,7 @@ class TortoiseGitLabelStore:
 
         return await GitLabel.filter(id=token_id, user_id=user_id).first()
 
-    def __get_by_user_id_query(self, user_id, git_hosting: Optional[str] = None) -> QuerySet[GitLabel]:
+    def __get_by_user_id_query(self, user_id, git_hosting: Optional[str] = None):
         if not user_id:
             raise internal_error(
                 **self.InternalExceptions.MISSING_USER_ID.value
@@ -85,17 +86,20 @@ class TortoiseGitLabelStore:
 
         if not user_id:
             raise internal_error(**self.InternalExceptions.MISSING_USER_ID.value)
-        
+
         if not label or not label.strip():
             raise internal_error(**self.InternalExceptions.MISSING_LABEL.value)
-        
+
         query = GitLabel.filter(user_id=user_id, label=label)
-        
+
         git_labels = (
             await query
             .order_by("-created_at")
             .offset(offset).limit(limit)
             .all()
         )
-        
+
         return git_labels
+
+    async def create_new(self, label_model: GitLabelDBCreateDTO) -> GitLabel:
+        return await GitLabel.create(**label_model.model_dump())

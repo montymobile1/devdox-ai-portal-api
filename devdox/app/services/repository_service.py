@@ -3,16 +3,13 @@ from typing import List, Tuple
 from fastapi import Depends
 from tortoise.exceptions import IntegrityError
 
-from app.config import GitHosting
 from app.exceptions.custom_exceptions import (
     BadRequest,
-    DevDoxAPIException,
     ResourceNotFound,
 )
 from app.exceptions.exception_constants import (
     GIT_LABEL_TOKEN_RESOURCE_NOT_FOUND,
     REPOSITORY_ALREADY_EXISTS,
-    SERVICE_UNAVAILABLE,
     USER_RESOURCE_NOT_FOUND,
 )
 from models import Repo
@@ -23,6 +20,7 @@ from app.schemas.basic import RequiredPaginationParams
 from app.schemas.repo import GitRepoResponse, RepoResponse
 from app.utils.auth import UserClaims
 from app.utils.encryption import FernetEncryptionHelper, get_encryption_helper
+from app.utils.git_managers import retrieve_git_fetcher_or_die
 from app.utils.repo_fetcher import RepoFetcher
 
 
@@ -98,9 +96,7 @@ class RepoProviderService:
             label.token_value, salt_b64=retrieved_user_data.encryption_salt
         )
 
-        fetcher, response_mapper = self.git_fetcher.get(label.git_hosting)
-        if not fetcher:
-            raise BadRequest(reason=f"Unsupported Git hosting:  {label.git_hosting}")
+        fetcher, response_mapper = retrieve_git_fetcher_or_die(store=self.git_fetcher, provider=label.git_hosting)
 
         fetched_data = fetcher.fetch_user_repositories(
             decrypted_label_token, pagination.offset, pagination.limit
@@ -110,7 +106,7 @@ class RepoProviderService:
             return 0, []
 
         transformed_response = [
-            response_mapper(r) for r in fetched_data.get("data", [])
+            response_mapper.from_git(r) for r in fetched_data.get("data", [])
         ]
 
         return fetched_data["data_count"], transformed_response
@@ -131,25 +127,6 @@ async def retrieve_git_label_by_id_and_user_or_die(store, id, user_id):
         raise ResourceNotFound(reason=GIT_LABEL_TOKEN_RESOURCE_NOT_FOUND)
 
     return retrieved_git_label
-
-
-def retrieve_git_fetcher_or_die(store, provider: GitHosting, strict: bool = True):
-    fetcher, fetcher_data_mapper = store.get(provider)
-    if not fetcher:
-        raise DevDoxAPIException(
-            user_message=SERVICE_UNAVAILABLE,
-            log_message=f"Unsupported Git hosting: {provider}",
-            log_level="exception",
-        )
-
-    if not strict and not fetcher_data_mapper:
-        raise DevDoxAPIException(
-            user_message=SERVICE_UNAVAILABLE,
-            log_message=f"Unable to find mapper for Git hosting: {provider}",
-            log_level="exception",
-        )
-
-    return fetcher, fetcher_data_mapper
 
 
 class RepoManipulationService:
@@ -190,7 +167,7 @@ class RepoManipulationService:
             decrypted_label_token, relative_path
         )
 
-        transformed_data: GitRepoResponse = fetcher_data_mapper(repo_data)
+        transformed_data: GitRepoResponse = fetcher_data_mapper.from_git(repo_data)
 
         try:
             _ = await self.repo_store.create_new_repo(
