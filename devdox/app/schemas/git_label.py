@@ -1,12 +1,10 @@
 from fastapi import Body, Depends, Query, Path
-from models import GitLabel
 from pydantic import BaseModel, Field, ConfigDict
 from typing import Annotated, Optional
 from datetime import datetime
 import uuid
 
 from app.schemas.basic import PaginationParams, RequiredPaginationParams
-from build.lib.app.config import GitHosting
 
 
 class GitLabelBase(BaseModel):
@@ -24,13 +22,6 @@ class GitLabelBase(BaseModel):
     token_value: str = Field(
         ..., description="Access token for the git hosting service"
     )
-
-
-class GitLabelCreate(GitLabelBase):
-    user_id: str = Field(
-        None, description="User identifier (will be overridden by auth)"
-    )
-
 
 class GitLabelUpdate(BaseModel):
     label: Optional[str] = Field(
