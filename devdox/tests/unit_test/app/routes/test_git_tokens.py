@@ -1,3 +1,5 @@
+import uuid
+
 import pytest
 from fastapi import status
 from fastapi.testclient import TestClient
@@ -5,10 +7,14 @@ from fastapi.testclient import TestClient
 from app.exceptions.exception_constants import GENERIC_ALREADY_EXIST
 from app.main import app
 from app.utils.auth import UserClaims
-from app.services.git_tokens_service import GetGitLabelService, PostGitLabelService
+from app.services.git_tokens_service import (
+    DeleteGitLabelService,
+    GetGitLabelService,
+    PostGitLabelService,
+)
 from app.utils.auth import get_authenticated_user
 from app.exceptions.custom_exceptions import BadRequest, UnauthorizedAccess
-from app.utils.constants import TOKEN_SAVED_SUCCESSFULLY
+from app.utils.constants import TOKEN_DELETED_SUCCESSFULLY, TOKEN_SAVED_SUCCESSFULLY
 from tests.unit_test.test_doubles.app.repository.get_label_repository_doubles import (
     FakeGitLabelStore,
     make_fake_git_label,
@@ -21,7 +27,6 @@ from tests.unit_test.test_doubles.app.utils.encryption_doubles import (
     FakeEncryptionHelper,
 )
 from tests.unit_test.test_doubles.app.utils.repo_fetcher_doubles import (
-    FakeGitHubRepoFetcher,
     FakeRepoFetcher,
 )
 
@@ -363,3 +368,69 @@ class TestPostGitLabelRouter__AddGitToken:
         response = per_t_client.post(self.route_url, json=payload)
 
         assert response.status_code == status.HTTP_422_UNPROCESSABLE_ENTITY
+
+
+class TestDeleteGitLabel:
+
+    route_url = "/api/v1/git_tokens/fb3e5e80-88ae-4b59-9e6f-088fb6e7c8e0"
+
+    @pytest.fixture
+    def override_delete_service_success(self):
+        def _override():
+            store = FakeGitLabelStore()
+            store.set_fake_data([])  # only the behavior matters here
+            store.git_labels.append(
+                type(
+                    "GitLabel",
+                    (),
+                    {
+                        "id": uuid.UUID("fb3e5e80-88ae-4b59-9e6f-088fb6e7c8e0"),
+                        "user_id": "user123",
+                    },
+                )()
+            )
+            return DeleteGitLabelService(label_store=store)
+
+        app.dependency_overrides[DeleteGitLabelService.with_dependency] = _override
+        try:
+            yield
+        finally:
+            app.dependency_overrides.clear()
+
+    @pytest.fixture
+    def override_delete_service_not_found(self):
+        def _override():
+            store = FakeGitLabelStore()
+            store.set_fake_data([])
+            return DeleteGitLabelService(label_store=store)
+
+        app.dependency_overrides[DeleteGitLabelService.with_dependency] = _override
+        try:
+            yield
+        finally:
+            app.dependency_overrides.clear()
+
+    def test_delete_git_label_success(
+        self, t_client: TestClient, override_auth_user, override_delete_service_success
+    ):
+        response = t_client.delete(self.route_url)
+
+        assert response.status_code == status.HTTP_200_OK
+        body = response.json()
+        assert body["success"] is True
+        assert body["message"] == TOKEN_DELETED_SUCCESSFULLY
+
+    def test_delete_git_label_not_found(
+        self,
+        per_t_client: TestClient,
+        override_auth_user,
+        override_delete_service_not_found,
+    ):
+        response = per_t_client.delete(self.route_url)
+        assert response.status_code == status.HTTP_404_NOT_FOUND
+
+    def test_delete_git_label_unauthorized(
+        self, per_t_client: TestClient, override_auth_user_unauthorized
+    ):
+        response = per_t_client.delete(self.route_url)
+        assert response.status_code == status.HTTP_401_UNAUTHORIZED

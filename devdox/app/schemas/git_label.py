@@ -88,10 +88,10 @@ class AddGitTokenRequest:
     ):
         self.payload = payload
 
+
 class DeleteGitTokenRequest:
     def __init__(
-        self,
-        git_label_id: uuid.UUID = Path(..., description="The git label id")
+        self, git_label_id: uuid.UUID = Path(..., description="The git label id")
     ):
         self.git_label_id = git_label_id
 
