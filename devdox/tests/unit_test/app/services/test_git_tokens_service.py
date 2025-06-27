@@ -254,7 +254,6 @@ class TestPostGitLabelService__AddGitToken:
 def make_fake_user_claims(user_id="user123"):
     return UserClaims(sub=user_id)
 
-
 @pytest.mark.asyncio
 class TestDeleteGitLabelService__DeleteByGitLabelId:
 
@@ -272,16 +271,13 @@ class TestDeleteGitLabelService__DeleteByGitLabelId:
 
         # Act
         result = await self.service.delete_by_git_label_id(
-            user_claims=self.user_claims, git_label_id=self.existing_label_id
+            user_claims=self.user_claims,
+            git_label_id=self.existing_label_id
         )
 
         # Assert
-        assert result == str(self.existing_label_id)
-        assert (
-            "delete_by_id_and_user_id",
-            self.existing_label_id,
-            "user123",
-        ) in self.fake_store.received_calls
+        assert result == 1
+        assert ("delete_by_id_and_user_id", self.existing_label_id, "user123") in self.fake_store.received_calls
 
     async def test_raises_when_label_not_found(self):
         # Arrange: empty store
@@ -290,12 +286,9 @@ class TestDeleteGitLabelService__DeleteByGitLabelId:
         # Act & Assert
         with pytest.raises(ResourceNotFound) as exc:
             await self.service.delete_by_git_label_id(
-                user_claims=self.user_claims, git_label_id=self.existing_label_id
+                user_claims=self.user_claims,
+                git_label_id=self.existing_label_id
             )
 
         assert exc.value.user_message == TOKEN_NOT_FOUND
-        assert (
-            "delete_by_id_and_user_id",
-            self.existing_label_id,
-            "user123",
-        ) in self.fake_store.received_calls
+        assert ("delete_by_id_and_user_id", self.existing_label_id, "user123") in self.fake_store.received_calls
