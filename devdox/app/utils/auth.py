@@ -24,6 +24,7 @@ http_bearer_security_schema = HTTPBearer(auto_error=False)
 
 logger = logging.getLogger(__name__)
 
+
 class UserClaims(BaseModel):
     sub: str
     email: Optional[str] = None

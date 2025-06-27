@@ -6,6 +6,7 @@ import base64
 from app.utils import constants
 from app.utils.encryption import FernetEncryptionHelper
 
+
 class TestFernetEncryptionHelper:
 
     @pytest.fixture

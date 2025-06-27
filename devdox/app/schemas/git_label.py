@@ -95,6 +95,7 @@ class DeleteGitTokenRequest:
     ):
         self.git_label_id = git_label_id
 
+
 class GitLabelDBCreateDTO(BaseModel):
     label: str = Field(..., description=LABEL_FIELD_DESCRIPTION)
     user_id: str = Field(..., max_length=255, description="Authenticated user id")

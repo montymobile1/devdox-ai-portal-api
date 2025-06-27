@@ -7,6 +7,7 @@ from cryptography.hazmat.primitives.kdf.pbkdf2 import PBKDF2HMAC
 from app.config import settings
 from app.utils import constants
 
+
 class IEncryptionHelper(Protocol):
     def encrypt(self, plaintext: str) -> str: ...
     def decrypt(self, encrypted_text: str) -> str: ...

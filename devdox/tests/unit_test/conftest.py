@@ -3,6 +3,7 @@ from starlette.testclient import TestClient
 
 from app.main import app
 
+
 @pytest.fixture
 def client_permissive():
     with TestClient(app, raise_server_exceptions=False) as c:
