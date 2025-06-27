@@ -1,22 +1,22 @@
 import logging
+import uuid
 from typing import Annotated, Optional
 
 from fastapi import Depends
-from models import GitLabel
 from tortoise.exceptions import IntegrityError
 
 from app.exceptions.custom_exceptions import BadRequest, ResourceNotFound
 from app.exceptions.exception_constants import (
     GENERIC_ALREADY_EXIST,
     TOKEN_MISSING,
-    USER_RESOURCE_NOT_FOUND,
+    TOKEN_NOT_FOUND, USER_RESOURCE_NOT_FOUND,
 )
 from app.repositories.git_label_repository import TortoiseGitLabelStore
 from app.repositories.user_repository import TortoiseUserStore
 from app.schemas.basic import PaginationParams, RequiredPaginationParams
 from app.schemas.git_label import GitLabelBase, GitLabelDBCreateDTO, GitLabelResponse
 from app.schemas.repo import GitUserResponse
-from app.utils.auth import UserClaims
+from app.utils.auth import AuthenticatedUserDTO, UserClaims
 from app.utils.encryption import (
     FernetEncryptionHelper,
     get_encryption_helper,
@@ -176,12 +176,12 @@ class PostGitLabelService:
         retrieved_git_user = fetcher.fetch_repo_user(
             token=json_payload.token_value
         )
-        
+
         if not retrieved_git_user:
             raise ResourceNotFound(
                 reason=TOKEN_MISSING
             )
-        
+
         transformed_data: GitUserResponse = response_transformer.from_git_user(retrieved_git_user)
 
         try:
@@ -199,3 +199,32 @@ class PostGitLabelService:
             raise BadRequest(reason=GENERIC_ALREADY_EXIST) from e
 
         return created_label
+
+
+class DeleteGitLabelService:
+
+    def __init__(
+        self,
+        label_store: TortoiseGitLabelStore,
+    ):
+        self.label_store = label_store
+
+    @classmethod
+    def with_dependency(
+        cls,
+        label_store: Annotated[TortoiseGitLabelStore, Depends()],
+    ) -> "DeleteGitLabelService":
+        return cls(
+            label_store=label_store,
+        )
+
+    async def delete_by_git_label_id(self, user_claims: AuthenticatedUserDTO, git_label_id:uuid.UUID) -> str:
+
+        deleted_label = await self.label_store.delete_by_id_and_user_id(label_id=git_label_id, user_id=user_claims.id)
+        
+        if not deleted_label:
+            raise ResourceNotFound(
+                reason=TOKEN_NOT_FOUND
+            )
+        
+        return str(deleted_label.id)

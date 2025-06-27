@@ -1,4 +1,5 @@
 import datetime
+import uuid
 from typing import List, Optional
 from uuid import uuid4
 
@@ -65,6 +66,18 @@ class FakeGitLabelStore(ILabelStore):
         result = GitLabel(**label_model.model_dump())
         self.git_labels.append(result)
         return result
+
+    async def delete_by_id_and_user_id(self, label_id: uuid.UUID, user_id: str) -> GitLabel | None:
+        if "delete_by_id_and_user_id" in self.exceptions:
+            raise self.exceptions["delete_by_id_and_user_id"]
+
+        self.received_calls.append(("delete_by_id_and_user_id", label_id, user_id))
+
+        for idx, label in enumerate(self.git_labels):
+            if label.id == label_id and label.user_id == user_id:
+                return self.git_labels.pop(idx)
+
+        return None
 
 
 def make_fake_git_label(**overrides) -> GitLabel:
