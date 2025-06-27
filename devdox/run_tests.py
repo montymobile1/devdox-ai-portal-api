@@ -41,7 +41,7 @@ cov.html_report(directory=cov_dir)
 cov.xml_report(outfile="coverage.xml")
 
 print(f"\nHTML coverage report generated in {cov_dir}/")
-print(f"XML coverage report generated in coverage.xml")
+print("XML coverage report generated in coverage.xml")
 
 # Show absolute path for debugging
 coverage_file = os.path.abspath("../coverage.xml")
