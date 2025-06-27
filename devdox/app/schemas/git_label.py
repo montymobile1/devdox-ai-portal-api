@@ -5,36 +5,41 @@ from datetime import datetime
 import uuid
 
 from app.schemas.basic import PaginationParams, RequiredPaginationParams
+from app.schemas.field_constants import (
+    GIT_HOSTING_FIELD_DESCRIPTION,
+    LABEL_FIELD_DESCRIPTION,
+    TOKEN_VALUE_FIELD_DESCRIPTION,
+)
 
 
 class GitLabelBase(BaseModel):
     """Base schema for GitLabel"""
 
     label: str = Field(
-        ..., description="Label/name for this git configuration", max_length=100
+        ..., description=LABEL_FIELD_DESCRIPTION, max_length=100
     )
     # username: str = Field(
     #     ..., description="Username for the git hosting service", max_length=100
     # )
     git_hosting: str = Field(
-        ..., description="Git hosting service (e.g., 'github', 'gitlab')"
+        ..., description=GIT_HOSTING_FIELD_DESCRIPTION
     )
     token_value: str = Field(
-        ..., description="Access token for the git hosting service"
+        ..., description=TOKEN_VALUE_FIELD_DESCRIPTION
     )
 
 class GitLabelUpdate(BaseModel):
     label: Optional[str] = Field(
-        None, description="Label/name for this git configuration"
+        None, description=LABEL_FIELD_DESCRIPTION
     )
     git_hosting: Optional[str] = Field(
-        None, description="Git hosting service (e.g., 'github', 'gitlab')"
+        None, description=GIT_HOSTING_FIELD_DESCRIPTION
     )
     username: Optional[str] = Field(
         None, description="Username for the git hosting service"
     )
     token_value: Optional[str] = Field(
-        None, description="Access token for the git hosting service"
+        None, description=TOKEN_VALUE_FIELD_DESCRIPTION
     )
 
 
@@ -88,9 +93,9 @@ class AddGitTokenRequest:
 
 
 class GitLabelDBCreateDTO(BaseModel):
-    label:str = Field(..., description="Unique identifier for the Git label")
+    label:str = Field(..., description=LABEL_FIELD_DESCRIPTION)
     user_id: str = Field(..., max_length=255 , description="Authenticated user id")
-    git_hosting: str = Field(..., max_length=50, description="Git hosting service (e.g., 'github', 'gitlab')")
-    token_value: str = Field(..., description="Access token for the git hosting service")
+    git_hosting: str = Field(..., max_length=50, description=GIT_HOSTING_FIELD_DESCRIPTION)
+    token_value: str = Field(..., description=TOKEN_VALUE_FIELD_DESCRIPTION)
     masked_token: str = Field(..., description="Masked Access token for the git hosting service")
     username: str = Field(..., description="Username for the git hosting service")

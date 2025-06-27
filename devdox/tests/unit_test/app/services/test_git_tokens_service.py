@@ -1,10 +1,27 @@
-import pytest
+import uuid
 
+import pytest
+from models import User
+from tortoise.exceptions import IntegrityError
+
+from app.exceptions.custom_exceptions import BadRequest, ResourceNotFound
+from app.exceptions.exception_constants import (
+    GENERIC_ALREADY_EXIST,
+    TOKEN_MISSING,
+    USER_RESOURCE_NOT_FOUND,
+)
 from app.schemas.basic import PaginationParams, RequiredPaginationParams
-from app.services.git_tokens_service import GetGitLabelService
+from app.schemas.git_label import GitLabelBase
+from app.services.git_tokens_service import GetGitLabelService, PostGitLabelService
 from app.utils.auth import UserClaims
 from tests.unit_test.test_doubles.app.repository.get_label_repository_doubles import FakeGitLabelStore, \
 	make_fake_git_label
+from tests.unit_test.test_doubles.app.repository.user_repository_doubles import (
+    FakeUserStore,
+    make_fake_user,
+)
+from tests.unit_test.test_doubles.app.utils.encryption_doubles import FakeEncryptionHelper
+from tests.unit_test.test_doubles.app.utils.repo_fetcher_doubles import FakeRepoFetcher
 
 
 @pytest.mark.asyncio
@@ -133,3 +150,74 @@ class TestGetGitLabelService__GetGitLabelsByLabel:
         )
         
         assert ("get_by_user_id_and_label", 0, 10, "user123", "feature") in self.store.received_calls
+
+class TestPostGitLabelService__AddGitToken:
+    
+    def setup_method(self):
+        self.fake_label_store = FakeGitLabelStore()
+        self.fake_user_store = FakeUserStore()
+        self.fake_crypto = FakeEncryptionHelper()
+        self.fake_fetcher = FakeRepoFetcher()
+
+        self.service = PostGitLabelService(
+            user_store=self.fake_user_store,
+            label_store=self.fake_label_store,
+            crypto_store=self.fake_crypto,
+            git_manager=self.fake_fetcher
+        )
+
+        self.valid_user = make_fake_user(user_id="user123")
+        self.fake_user_store.set_fake_user(self.valid_user)
+
+        self.valid_payload = GitLabelBase(
+            label="label1",
+            token_value="mytoken",
+            git_hosting="github"
+        )
+
+    @pytest.mark.asyncio
+    async def test_add_token_success(self):
+        result = await self.service.add_git_token(
+            user_claims=UserClaims(sub="user123"),
+            json_payload=self.valid_payload
+        )
+
+        assert result.label == "label1"
+        assert result.username == "mockuser"
+        assert self.fake_crypto.received_calls[0][0] == "encrypt_for_user"
+
+    @pytest.mark.asyncio
+    async def test_raises_if_token_is_blank(self):
+        self.valid_payload.token_value = "   "
+
+        with pytest.raises(BadRequest) as exc:
+            await self.service.add_git_token(UserClaims(sub="user123"), self.valid_payload)
+
+        assert exc.value.user_message == TOKEN_MISSING
+
+    @pytest.mark.asyncio
+    async def test_raises_if_user_not_found(self):
+        self.fake_user_store.set_fake_user(None)
+
+        with pytest.raises(ResourceNotFound) as exc:
+            await self.service.add_git_token(UserClaims(sub="user123"), self.valid_payload)
+
+        assert exc.value.user_message == USER_RESOURCE_NOT_FOUND
+
+    @pytest.mark.asyncio
+    async def test_raises_if_git_user_is_none(self):
+        self.fake_fetcher.github_fetcher.repo_user = None
+
+        with pytest.raises(ResourceNotFound) as exc:
+            await self.service.add_git_token(UserClaims(sub="user123"), self.valid_payload)
+
+        assert exc.value.user_message == TOKEN_MISSING
+
+    @pytest.mark.asyncio
+    async def test_raises_if_integrity_error(self):
+        self.fake_label_store.set_exception("create_new", IntegrityError("fail"))
+
+        with pytest.raises(BadRequest) as exc:
+            await self.service.add_git_token(UserClaims(sub="user123"), self.valid_payload)
+
+        assert exc.value.user_message == GENERIC_ALREADY_EXIST

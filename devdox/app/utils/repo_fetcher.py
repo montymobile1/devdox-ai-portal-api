@@ -19,7 +19,8 @@ class IRepoFetcher(Protocol):
     ) -> dict[str, Any]: ...
 
     def fetch_single_repo(self, token: str, relative_path: str | int): ...
-
+    
+    def fetch_repo_user(self, token): ...
 
 class GitHubRepoFetcher(IRepoFetcher):
     def __init__(self, base_url: str = GitHubManager.default_base_url):
@@ -64,7 +65,6 @@ class GitHubRepoFetcher(IRepoFetcher):
             return None
         
         return user
-
 
 
 class GitLabRepoFetcher(IRepoFetcher):
