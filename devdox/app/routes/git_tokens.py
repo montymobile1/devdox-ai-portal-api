@@ -22,9 +22,9 @@ from app.services.git_tokens_service import (
     GetGitLabelService,
     PostGitLabelService,
 )
-from app.utils import constants, CurrentUser
+from app.utils import constants
 from app.utils.api_response import APIResponse
-from app.utils.auth import AuthenticatedUserDTO, get_authenticated_user, UserClaims
+from app.utils.auth import get_authenticated_user, UserClaims
 
 logger = logging.getLogger(__name__)
 
