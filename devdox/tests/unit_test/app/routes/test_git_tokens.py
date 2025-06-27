@@ -1,13 +1,25 @@
 import pytest
 from fastapi import status
 from fastapi.testclient import TestClient
+
+from app.exceptions.exception_constants import GENERIC_ALREADY_EXIST
 from app.main import app
 from app.utils.auth import UserClaims
-from app.services.git_tokens_service import GetGitLabelService
+from app.services.git_tokens_service import GetGitLabelService, PostGitLabelService
 from app.utils.auth import get_authenticated_user
-from app.exceptions.custom_exceptions import UnauthorizedAccess
+from app.exceptions.custom_exceptions import BadRequest, UnauthorizedAccess
+from app.utils.constants import TOKEN_SAVED_SUCCESSFULLY
 from tests.unit_test.test_doubles.app.repository.get_label_repository_doubles import FakeGitLabelStore, \
     make_fake_git_label
+from tests.unit_test.test_doubles.app.repository.user_repository_doubles import (
+    FakeUserStore,
+    make_fake_user,
+)
+from tests.unit_test.test_doubles.app.utils.encryption_doubles import FakeEncryptionHelper
+from tests.unit_test.test_doubles.app.utils.repo_fetcher_doubles import (
+    FakeGitHubRepoFetcher,
+    FakeRepoFetcher,
+)
 
 
 @pytest.fixture(scope="module")
@@ -179,3 +191,145 @@ class TestGetGitLabelByLabelRouter:
         response = per_t_client.get(f"{self.route_url}?limit=10&offset=0")
         assert response.status_code == status.HTTP_503_SERVICE_UNAVAILABLE
 
+class TestPostGitLabelRouter__AddGitToken:
+    route_url = "/api/v1/git_tokens/"
+
+    @pytest.fixture
+    def override_post_git_label_service_success(self):
+        def _override():
+            fake_user_store = FakeUserStore()
+            fake_crypto = FakeEncryptionHelper()
+            fake_git_manager = FakeRepoFetcher()
+            fake_label_store = FakeGitLabelStore()
+            user = make_fake_user(user_id="user123")
+            label = make_fake_git_label(label="label1", user_id="user123")
+            fake_user_store.set_fake_user(user)
+            fake_label_store.set_fake_data([label])
+            return PostGitLabelService(
+                user_store=fake_user_store,
+                label_store=fake_label_store,
+                crypto_store=fake_crypto,
+                git_manager=fake_git_manager
+            )
+        app.dependency_overrides[PostGitLabelService.with_dependency] = _override
+        try:
+            yield
+        finally:
+            app.dependency_overrides.clear()
+
+    @pytest.fixture
+    def override_post_git_label_service_user_not_found(self):
+        def _override():
+            fake_user_store = FakeUserStore()
+            fake_crypto = FakeEncryptionHelper()
+            fake_git_manager = FakeRepoFetcher()
+            fake_label_store = FakeGitLabelStore()
+            fake_user_store.set_fake_user(None)
+            return PostGitLabelService(
+                user_store=fake_user_store,
+                label_store=fake_label_store,
+                crypto_store=fake_crypto,
+                git_manager=fake_git_manager
+            )
+        app.dependency_overrides[PostGitLabelService.with_dependency] = _override
+        try:
+            yield
+        finally:
+            app.dependency_overrides.clear()
+
+    @pytest.fixture
+    def override_post_git_label_service_duplicate_label(self):
+        def _override():
+            fake_user_store = FakeUserStore()
+            fake_crypto = FakeEncryptionHelper()
+            fake_git_manager = FakeRepoFetcher()
+            fake_label_store = FakeGitLabelStore()
+            user = make_fake_user(user_id="user123")
+            fake_user_store.set_fake_user(user)
+            fake_label_store.set_exception("create_new", BadRequest(reason=GENERIC_ALREADY_EXIST))
+            return PostGitLabelService(
+                user_store=fake_user_store,
+                label_store=fake_label_store,
+                crypto_store=fake_crypto,
+                git_manager=fake_git_manager
+            )
+        app.dependency_overrides[PostGitLabelService.with_dependency] = _override
+        try:
+            yield
+        finally:
+            app.dependency_overrides.clear()
+
+    def test_add_git_token_success(self, t_client, override_auth_user, override_post_git_label_service_success):
+        payload = {
+                "label": "label1",
+                "token_value": "abc123",
+                "git_hosting": "GITHUB"
+        }
+
+        response = t_client.post(self.route_url, json=payload)
+
+        assert response.status_code == status.HTTP_200_OK
+        body = response.json()
+        assert body["success"] is True
+        assert body["message"] == TOKEN_SAVED_SUCCESSFULLY
+        assert "id" in body["data"]
+
+    def test_add_git_token_user_not_found(self, per_t_client, override_auth_user, override_post_git_label_service_user_not_found):
+        payload = {
+                "label": "label1",
+                "token_value": "abc123",
+                "git_hosting": "GITHUB"
+        }
+
+        response = per_t_client.post(self.route_url, json=payload)
+
+        assert response.status_code == status.HTTP_404_NOT_FOUND
+
+    def test_add_git_token_duplicate_label(self, per_t_client, override_auth_user, override_post_git_label_service_duplicate_label):
+        payload = {
+                "label": "label1",
+                "token_value": "abc123",
+                "git_hosting": "GITHUB"
+        }
+
+        response = per_t_client.post(self.route_url, json=payload)
+
+        assert response.status_code == status.HTTP_400_BAD_REQUEST
+
+    def test_add_git_token_missing_token_value(self, per_t_client, override_auth_user):
+        payload = {
+                "label": "label1",
+                "token_value": " ",
+                "git_hosting": "GITHUB"
+        }
+
+        response = per_t_client.post(self.route_url, json=payload)
+
+        assert response.status_code == status.HTTP_422_UNPROCESSABLE_ENTITY
+
+    def test_add_git_token_unauthorized(self, per_t_client):
+        async def _unauth_override():
+            raise UnauthorizedAccess("Unauthorized")
+
+        app.dependency_overrides[get_authenticated_user] = _unauth_override
+
+        payload = {
+                "label": "label1",
+                "token_value": "abc123",
+                "git_hosting": "GITHUB"
+        }
+
+        try:
+            response = per_t_client.post(self.route_url, json=payload)
+            assert response.status_code == status.HTTP_401_UNAUTHORIZED
+        finally:
+            app.dependency_overrides.clear()
+
+    def test_add_git_token_validation_error(self, per_t_client, override_auth_user):
+        payload = {
+                "token_value": "abc123"
+        }
+
+        response = per_t_client.post(self.route_url, json=payload)
+
+        assert response.status_code == status.HTTP_422_UNPROCESSABLE_ENTITY
