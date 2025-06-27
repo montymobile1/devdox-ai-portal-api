@@ -49,9 +49,12 @@ class DummyGitHubUser:
         class DummyPaginated:
             totalCount = 1
             per_page = 2
+
             def get_page(self, page_index):
                 return [DummyGitHubRepo()]
+
         return DummyPaginated()
+
 
 class TestGitHubManager:
     def test_extract_repo_info(self):
@@ -70,7 +73,7 @@ class TestGitHubManager:
                 raise GithubException(401, "Unauthorized", None)
 
         monkeypatch.setattr(f"{real_module_path}.Github", FailingGithub)
-        
+
         manager = GitHubManager()
         with pytest.raises(DevDoxAPIException) as exc_info:
             manager.authenticate("bad-token")
@@ -101,11 +104,14 @@ class TestGitHubManager:
 
 class TestAuthenticatedGitHubManager:
     def test_github_manager_authenticate_default(self, monkeypatch):
-        dummy_auth = AuthenticatedGitHubManager("https://api.github.com", "dummy_client")
+        dummy_auth = AuthenticatedGitHubManager(
+            "https://api.github.com", "dummy_client"
+        )
 
         class DummyGitHub:
             def __init__(self, token):
                 assert token == "valid"
+
             def authenticate(self, token):
                 return dummy_auth
 
@@ -126,7 +132,9 @@ class TestAuthenticatedGitHubManager:
         assert hasattr(user_info, "html_url")
 
     def test_authenticated_manager_repositories(self, monkeypatch):
-        dummy_client = type("Client", (), {"get_user": lambda self: DummyGitHubUser()})()
+        dummy_client = type(
+            "Client", (), {"get_user": lambda self: DummyGitHubUser()}
+        )()
         manager = AuthenticatedGitHubManager("https://api.github.com", dummy_client)
 
         result = manager.get_user_repositories(page=2, per_page=5)
@@ -164,11 +172,7 @@ class DummyGitLab:
 class DummyGitLabRepo:
     def __init__(self):
         self._data = [{"id": 1, "name": "test"}]
-        self._headers = {
-            "X-Total-Pages": "1",
-            "X-Next-Page": "",
-            "X-Prev-Page": ""
-        }
+        self._headers = {"X-Total-Pages": "1", "X-Next-Page": "", "X-Prev-Page": ""}
 
     def json(self):
         return self._data
@@ -211,13 +215,23 @@ class TestAuthenticatedGitLabManager:
         class DummyRequests:
             def get(self, url, headers=None, *args, **kwargs):
                 class Response:
-                    def raise_for_status(self): pass
-                    def json(self): return {"id": 1, "username": "dev"}
+                    def raise_for_status(self):
+                        pass
+
+                    def json(self):
+                        return {"id": 1, "username": "dev"}
+
                 return Response()
 
-            def Session(self): return self
+            def Session(self):
+                return self
 
-        manager = AuthenticatedGitLabManager("https://gitlab.com", DummyGitLab("https://gitlab.com", "good-token"), "good-token", session=DummyRequests())
+        manager = AuthenticatedGitLabManager(
+            "https://gitlab.com",
+            DummyGitLab("https://gitlab.com", "good-token"),
+            "good-token",
+            session=DummyRequests(),
+        )
         user = manager.get_user()
         assert user["username"] == "dev"
 
@@ -226,9 +240,15 @@ class TestAuthenticatedGitLabManager:
             def get(self, url, headers=None, *args, **kwargs):
                 raise requests.exceptions.RequestException("fail")
 
-            def Session(self): return self
+            def Session(self):
+                return self
 
-        manager = AuthenticatedGitLabManager("https://gitlab.com", DummyGitLab("https://gitlab.com", "good-token"), "good-token", session=DummyRequests())
+        manager = AuthenticatedGitLabManager(
+            "https://gitlab.com",
+            DummyGitLab("https://gitlab.com", "good-token"),
+            "good-token",
+            session=DummyRequests(),
+        )
         with pytest.raises(DevDoxAPIException) as exc_info:
             manager.get_user()
         assert "Unable to fetch GitLab user" in str(exc_info.value)
@@ -237,18 +257,29 @@ class TestAuthenticatedGitLabManager:
         class DummyRequests:
             def get(self, url, headers=None, *args, **kwargs):
                 class Response:
-                    def raise_for_status(self): pass
-                    def json(self): return [{"id": 42, "name": "repo"}]
+                    def raise_for_status(self):
+                        pass
+
+                    def json(self):
+                        return [{"id": 42, "name": "repo"}]
+
                     headers = {
                         "X-Total-Pages": "2",
                         "X-Next-Page": "2",
-                        "X-Prev-Page": ""
+                        "X-Prev-Page": "",
                     }
+
                 return Response()
 
-            def Session(self): return self
+            def Session(self):
+                return self
 
-        manager = AuthenticatedGitLabManager("https://gitlab.com", DummyGitLab("https://gitlab.com", "good-token"), "good-token", session=DummyRequests())
+        manager = AuthenticatedGitLabManager(
+            "https://gitlab.com",
+            DummyGitLab("https://gitlab.com", "good-token"),
+            "good-token",
+            session=DummyRequests(),
+        )
         repos = manager.get_user_repositories(page=1, per_page=20)
         assert isinstance(repos["repositories"], list)
         assert repos["pagination_info"]["total_pages"] == 2
@@ -258,9 +289,15 @@ class TestAuthenticatedGitLabManager:
             def get(self, url, headers=None, *args, **kwargs):
                 raise requests.exceptions.RequestException("fail")
 
-            def Session(self): return self
+            def Session(self):
+                return self
 
-        manager = AuthenticatedGitLabManager("https://gitlab.com", DummyGitLab("https://gitlab.com", "good-token"), "good-token", session=DummyRequests())
+        manager = AuthenticatedGitLabManager(
+            "https://gitlab.com",
+            DummyGitLab("https://gitlab.com", "good-token"),
+            "good-token",
+            session=DummyRequests(),
+        )
         with pytest.raises(DevDoxAPIException) as exc_info:
             manager.get_user_repositories()
         assert "Unable to fetch GitLab repositories" in str(exc_info.value)
@@ -269,13 +306,24 @@ class TestAuthenticatedGitLabManager:
         class DummyRequests:
             def get(self, url, headers=None, *args, **kwargs):
                 class Response:
-                    def raise_for_status(self): pass
-                    def json(self): return [{"id": 99}]
+                    def raise_for_status(self):
+                        pass
+
+                    def json(self):
+                        return [{"id": 99}]
+
                     headers = {}
+
                 return Response()
 
-            def Session(self): return self
+            def Session(self):
+                return self
 
-        manager = AuthenticatedGitLabManager("https://gitlab.com", DummyGitLab("https://gitlab.com", "good-token"), "good-token", session=DummyRequests())
+        manager = AuthenticatedGitLabManager(
+            "https://gitlab.com",
+            DummyGitLab("https://gitlab.com", "good-token"),
+            "good-token",
+            session=DummyRequests(),
+        )
         result = manager.get_user_repositories()
         assert result["pagination_info"]["total_pages"] == 1

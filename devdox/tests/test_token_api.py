@@ -42,4 +42,3 @@ def mock_user_model():
         mock_user_class.filter = MagicMock(return_value=mock_filter)
 
         yield mock_user_class
-

@@ -90,24 +90,36 @@ class TestTortoiseGitLabelStore:
             "Whitespace user_id",
         ],
     )
-    async def test_delete_by_id_and_user_id_returns_none_when_input_invalid(self, input_label_id, input_user_id):
-        result = await self.store.delete_by_id_and_user_id(label_id=input_label_id, user_id=input_user_id)
+    async def test_delete_by_id_and_user_id_returns_none_when_input_invalid(
+        self, input_label_id, input_user_id
+    ):
+        result = await self.store.delete_by_id_and_user_id(
+            label_id=input_label_id, user_id=input_user_id
+        )
         assert result == -1
 
     @patch(f"{path_to_actual_module}.GitLabel.filter")
-    async def test_delete_by_id_and_user_id_returns_zero_if_no_rows_deleted(self, mock_filter):
+    async def test_delete_by_id_and_user_id_returns_zero_if_no_rows_deleted(
+        self, mock_filter
+    ):
         mock_query = AsyncMock()
         mock_query.delete.return_value = 0
         mock_filter.return_value = mock_query
 
-        result = await self.store.delete_by_id_and_user_id(label_id=uuid.uuid4(), user_id="user123")
+        result = await self.store.delete_by_id_and_user_id(
+            label_id=uuid.uuid4(), user_id="user123"
+        )
         assert result == 0
 
     @patch(f"{path_to_actual_module}.GitLabel.filter")
-    async def test_delete_by_id_and_user_id_returns_row_count_on_success(self, mock_filter):
+    async def test_delete_by_id_and_user_id_returns_row_count_on_success(
+        self, mock_filter
+    ):
         mock_query = AsyncMock()
         mock_query.delete.return_value = 1
         mock_filter.return_value = mock_query
 
-        result = await self.store.delete_by_id_and_user_id(label_id=uuid.uuid4(), user_id="user123")
+        result = await self.store.delete_by_id_and_user_id(
+            label_id=uuid.uuid4(), user_id="user123"
+        )
         assert result == 1

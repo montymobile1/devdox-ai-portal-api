@@ -3,6 +3,7 @@ import uuid
 from typing import Annotated, Optional
 
 from fastapi import Depends
+from models import GitLabel
 from tortoise.exceptions import IntegrityError
 
 from app.exceptions.custom_exceptions import BadRequest, ResourceNotFound
@@ -17,7 +18,7 @@ from app.repositories.user_repository import TortoiseUserStore
 from app.schemas.basic import PaginationParams, RequiredPaginationParams
 from app.schemas.git_label import GitLabelBase, GitLabelDBCreateDTO, GitLabelResponse
 from app.schemas.repo import GitUserResponse
-from app.utils.auth import AuthenticatedUserDTO, UserClaims
+from app.utils.auth import UserClaims
 from app.utils.encryption import (
     FernetEncryptionHelper,
     get_encryption_helper,
@@ -228,10 +229,10 @@ class DeleteGitLabelService:
         )
 
     async def delete_by_git_label_id(
-        self, user_claims: AuthenticatedUserDTO, git_label_id: uuid.UUID
+        self, user_claims: UserClaims, git_label_id: uuid.UUID
     ) -> int:
         deleted_label = await self.label_store.delete_by_id_and_user_id(
-            label_id=git_label_id, user_id=user_claims.id
+            label_id=git_label_id, user_id=user_claims.sub
         )
 
         if deleted_label <= 0:

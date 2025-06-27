@@ -96,7 +96,9 @@ class RepoProviderService:
             label.token_value, salt_b64=retrieved_user_data.encryption_salt
         )
 
-        fetcher, response_mapper = retrieve_git_fetcher_or_die(store=self.git_fetcher, provider=label.git_hosting)
+        fetcher, response_mapper = retrieve_git_fetcher_or_die(
+            store=self.git_fetcher, provider=label.git_hosting
+        )
 
         fetched_data = fetcher.fetch_user_repositories(
             decrypted_label_token, pagination.offset, pagination.limit

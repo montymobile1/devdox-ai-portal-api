@@ -32,7 +32,9 @@ class RepoBase(BaseModel):
     visibility: Optional[str] = Field(
         None, description="Repository visibility (GitLab)", max_length=50
     )
-    git_hosting: Optional[GitHostingProvider] = Field(None, description="Git hosting provider")
+    git_hosting: Optional[GitHostingProvider] = Field(
+        None, description="Git hosting provider"
+    )
     language: Optional[str] = Field(
         None, description="Primary programming language", max_length=100
     )
@@ -72,8 +74,10 @@ class GitRepoResponse(BaseModel):
     repo_name: str = Field(..., description="Repository name")
     description: Optional[str] = Field(None, description="Repository description")
     html_url: str = Field(..., description="Repository URL")
-    relative_path: str = Field(..., description="The part of the repository's url excluding the domain")
-    
+    relative_path: str = Field(
+        ..., description="The part of the repository's url excluding the domain"
+    )
+
     default_branch: str = Field(..., description="Default branch name")
     forks_count: int = Field(..., description="Number of forks")
     stargazers_count: int = Field(..., description="Number of stars")
@@ -86,6 +90,7 @@ class GitRepoResponse(BaseModel):
     private: Optional[bool] = Field(None, description="Private flag (GitHub)")
     visibility: Optional[str] = Field(None, description="Visibility setting (GitLab)")
 
+
 class GitUserResponse(BaseModel):
     username: Optional[str] = Field(None, description="Git Username")
     id: Optional[int] = Field(None, description="Git user Id")
@@ -94,10 +99,11 @@ class GitUserResponse(BaseModel):
     avatar_url: Optional[str] = Field(None, description="Git user avatar url")
     html_url: Optional[str] = Field(None, description="Git user html url")
 
+
 class GitLabRepoResponseTransformer:
 
     @classmethod
-    def derive_storage_size(cls, statistics:dict):
+    def derive_storage_size(cls, statistics: dict):
         if not statistics:
             return None
 
@@ -186,7 +192,9 @@ class GitLabRepoResponseTransformer:
 class GitHubRepoResponseTransformer:
 
     @classmethod
-    def transform_repository_to_dict(cls, repository: Repository | SimpleNamespace) -> dict:
+    def transform_repository_to_dict(
+        cls, repository: Repository | SimpleNamespace
+    ) -> dict:
         return {
             "id": str(repository.id),
             "name": repository.name,
@@ -201,9 +209,11 @@ class GitHubRepoResponseTransformer:
             "visibility": getattr(repository, "visibility", None),
             "repo_created_at": repository.created_at,
         }
-    
+
     @classmethod
-    def transform_authenticated_user_to_dict(cls, authenticated_user: AuthenticatedUser | SimpleNamespace) -> dict:
+    def transform_authenticated_user_to_dict(
+        cls, authenticated_user: AuthenticatedUser | SimpleNamespace
+    ) -> dict:
         return {
             "login": authenticated_user.login,
             "id": authenticated_user.id,
@@ -212,9 +222,11 @@ class GitHubRepoResponseTransformer:
             "avatar_url": authenticated_user.avatar_url,
             "html_url": authenticated_user.html_url,
         }
-    
+
     @classmethod
-    def from_git(cls, data: Repository | SimpleNamespace | dict) -> GitRepoResponse | None:
+    def from_git(
+        cls, data: Repository | SimpleNamespace | dict
+    ) -> GitRepoResponse | None:
 
         if not data:
             return None
@@ -241,9 +253,11 @@ class GitHubRepoResponseTransformer:
             size=dict_data.get("size", 0),
             repo_created_at=dict_data.get("repo_created_at"),
         )
-    
+
     @classmethod
-    def from_git_user(cls, data: AuthenticatedUser | SimpleNamespace | dict) -> GitUserResponse | None:
+    def from_git_user(
+        cls, data: AuthenticatedUser | SimpleNamespace | dict
+    ) -> GitUserResponse | None:
         if not data:
             return None
         elif isinstance(data, AuthenticatedUser) or isinstance(data, SimpleNamespace):
@@ -254,14 +268,14 @@ class GitHubRepoResponseTransformer:
             raise TypeError(
                 f"Unsupported type for `data`: {type(data)}. Expected AuthenticatedUser or SimpleNamespace or dict."
             )
-        
+
         return GitUserResponse(
-            username= dict_data.get("login") ,
-            id= dict_data.get("id") ,
-            name= dict_data.get("name") ,
-            email= dict_data.get("email") ,
-            avatar_url= dict_data.get("avatar_url") ,
-            html_url= dict_data.get("html_url")
+            username=dict_data.get("login"),
+            id=dict_data.get("id"),
+            name=dict_data.get("name"),
+            email=dict_data.get("email"),
+            avatar_url=dict_data.get("avatar_url"),
+            html_url=dict_data.get("html_url"),
         )
 
 
@@ -276,14 +290,14 @@ class AddRepositoryRequest(BaseModel):
             "- For GitHub: `owner/repo`\n"
             "- For GitLab: `group/subgroup/project`\n\n"
             "This value should match the exact path you see after the domain in the web URL."
-        )
+        ),
     )
 
     model_config = {
         "json_schema_extra": {
             "examples": [
-                {"relative_path": "openai/gpt-4"},                 # GitHub-style
-                {"relative_path": "mygroup/dev/backend-api"}       # GitLab-style
+                {"relative_path": "openai/gpt-4"},  # GitHub-style
+                {"relative_path": "mygroup/dev/backend-api"},  # GitLab-style
             ]
         }
     }

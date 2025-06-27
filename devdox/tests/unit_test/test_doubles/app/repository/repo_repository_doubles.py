@@ -19,7 +19,9 @@ class FakeRepoStore(IRepoStore):
     def set_exception(self, method_name: str, exception: Exception):
         self.exceptions[method_name] = exception
 
-    async def get_all_by_user(self, user_id: str, offset: int, limit: int) -> List[Repo]:
+    async def get_all_by_user(
+        self, user_id: str, offset: int, limit: int
+    ) -> List[Repo]:
         if "get_all_by_user" in self.exceptions:
             raise self.exceptions["get_all_by_user"]
         self.received_calls.append(("get_all_by_user", user_id, offset, limit))

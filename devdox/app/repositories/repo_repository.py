@@ -3,18 +3,22 @@ from typing import Any, List, Protocol
 
 from models import Repo
 
+
 class IRepoStore(Protocol):
     @abstractmethod
-    async def get_all_by_user(self, user_id: str, offset: int, limit: int) -> List[Any]: ...
-    
+    async def get_all_by_user(
+        self, user_id: str, offset: int, limit: int
+    ) -> List[Any]: ...
+
     @abstractmethod
     async def count_by_user(self, user_id: str) -> int: ...
-    
+
     @abstractmethod
     async def create_new_repo(self, repo_model: Any) -> Any: ...
 
+
 class TortoiseRepoStore(IRepoStore):
-    
+
     def __init__(self):
         """
         Have to add this as an empty __init__ to override it, because when using it with Depends(),
@@ -26,7 +30,7 @@ class TortoiseRepoStore(IRepoStore):
         Causing unneeded behavior.
         """
         pass
-    
+
     async def get_all_by_user(
         self, user_id: str, offset: int, limit: int
     ) -> List[Repo]:

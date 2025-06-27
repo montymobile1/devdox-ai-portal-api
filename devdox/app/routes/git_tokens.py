@@ -41,12 +41,12 @@ router = APIRouter()
 async def get_git_labels(
     user_claims: Annotated[UserClaims, Depends(get_authenticated_user)],
     request: Annotated[GetGitLabelsRequest, Depends()],
-	service: Annotated[GetGitLabelService, Depends(GetGitLabelService.with_dependency)],
+    service: Annotated[GetGitLabelService, Depends(GetGitLabelService.with_dependency)],
 ) -> JSONResponse:
     """
     Retrieves all stored git labels with masked token values for API response.
     The Usage of Annotated[callable, Depends(callable)] is the recommended way to perform dependency injection.
-    
+
     Args:
         request: contains all the `Json Body`, `Path Variable`, `Query Parameters` ... , required by the API
         service: represents the service layer that is responsible for performing all the calculations and return a raw result
@@ -80,12 +80,12 @@ async def get_git_label_by_label(
     """
     Retrieves git labels matching the specified label with masked token values.
     The Usage of Annotated[callable, Depends(callable)] is the recommended way to perform dependency injection.
-    
+
     Args:
         request: contains all the `Json Body`, `Path Variable`, `Query Parameters` ... , required by the API
         service: represents the service layer that is responsible for performing all the calculations and return a raw result
         user_claims: represents the injected dependency for authentication of the user
-    
+
     Returns:
             APIResponse with list of matching git labels with masked token values.
     """
@@ -111,14 +111,15 @@ async def get_git_label_by_label(
 async def add_git_token(
     user_claims: Annotated[UserClaims, Depends(get_authenticated_user)],
     request: Annotated[AddGitTokenRequest, Depends()],
-    service: Annotated[PostGitLabelService, Depends(PostGitLabelService.with_dependency)],
+    service: Annotated[
+        PostGitLabelService, Depends(PostGitLabelService.with_dependency)
+    ],
 ) -> JSONResponse:
     """
     Add a new git token configuration with validation based on hosting service.
     """
     results = await service.add_git_token(
-        user_claims=user_claims,
-        json_payload=request.payload
+        user_claims=user_claims, json_payload=request.payload
     )
 
     return APIResponse.success(
@@ -134,9 +135,11 @@ async def add_git_token(
     description="Delete a git label configuration by ID",
 )
 async def delete_git_label(
+    user_claims: Annotated[UserClaims, Depends(get_authenticated_user)],
     request: Annotated[DeleteGitTokenRequest, Depends()],
-    service: Annotated[DeleteGitLabelService, Depends(DeleteGitLabelService.with_dependency)],
-    authenticated_user: AuthenticatedUserDTO = CurrentUser,
+    service: Annotated[
+        DeleteGitLabelService, Depends(DeleteGitLabelService.with_dependency)
+    ],
 ) -> JSONResponse:
     """
     Deletes a git label with the specified ID.
@@ -144,5 +147,7 @@ async def delete_git_label(
     Returns:
             A success response if the git label was deleted, or an error response if not found.
     """
-    await service.delete_by_git_label_id(user_claims=authenticated_user, git_label_id=request.git_label_id)
+    await service.delete_by_git_label_id(
+        user_claims=user_claims, git_label_id=request.git_label_id
+    )
     return APIResponse.success(message=constants.TOKEN_DELETED_SUCCESSFULLY)

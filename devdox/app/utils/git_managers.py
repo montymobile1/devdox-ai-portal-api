@@ -13,9 +13,11 @@ from app.config import GitHosting
 from app.exceptions.custom_exceptions import DevDoxAPIException
 from app.exceptions.exception_constants import SERVICE_UNAVAILABLE
 
+
 class IManager(Protocol):
     @abstractmethod
     def authenticate(self, access_token): ...
+
 
 class AuthenticatedGitHubManager:
 
@@ -219,7 +221,9 @@ class AuthenticatedGitLabManager:
 
     def get_project(self, project_id, timeout: int = DEFAULT_TIMEOUT) -> Project:
         try:
-            return self._git_client.projects.get(project_id, statistics=True, timeout=timeout)
+            return self._git_client.projects.get(
+                project_id, statistics=True, timeout=timeout
+            )
         except GitlabError as e:
             raise DevDoxAPIException(
                 user_message="Unable to fetch GitLab project",
@@ -227,12 +231,16 @@ class AuthenticatedGitLabManager:
                 root_exception=e,
             ) from e
 
-    def get_project_languages(self, project_or_id: int | Project, timeout: int = DEFAULT_TIMEOUT):
+    def get_project_languages(
+        self, project_or_id: int | Project, timeout: int = DEFAULT_TIMEOUT
+    ):
         try:
             if isinstance(project_or_id, Project):
                 return project_or_id.languages()
             else:
-                return self._git_client.projects.get(project_or_id, timeout=timeout).languages()
+                return self._git_client.projects.get(
+                    project_or_id, timeout=timeout
+                ).languages()
         except GitlabError as e:
             raise DevDoxAPIException(
                 user_message="Unable to fetch GitLab project languages",
@@ -308,7 +316,9 @@ class GitLabManager(IManager):
             ) from e
 
 
-def retrieve_git_fetcher_or_die(store, provider: GitHosting | str, include_data_mapper: bool = True) -> tuple[Any, Any]:
+def retrieve_git_fetcher_or_die(
+    store, provider: GitHosting | str, include_data_mapper: bool = True
+) -> tuple[Any, Any]:
     fetcher, fetcher_data_mapper = store.get_components(provider)
     if not fetcher:
         raise DevDoxAPIException(

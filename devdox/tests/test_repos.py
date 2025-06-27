@@ -14,6 +14,7 @@ from app.config import GitHosting
 from app.exceptions.exception_constants import SERVICE_UNAVAILABLE
 from app.utils import constants
 
+
 @pytest.fixture
 def sample_github_repos():
     """Sample GitHub API response"""
@@ -32,7 +33,6 @@ def sample_github_repos():
         ],
         "pagination_info": {"total_count": 1},
     }
-
 
 
 @pytest.fixture

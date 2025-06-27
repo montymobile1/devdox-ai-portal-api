@@ -20,7 +20,9 @@ class FakeGitLabelStore(ILabelStore):
     def set_created_label(self, label: GitLabel):
         self.created_label = label
 
-    def set_fake_data(self, git_labels: List[GitLabel], total_count: Optional[int] = None):
+    def set_fake_data(
+        self, git_labels: List[GitLabel], total_count: Optional[int] = None
+    ):
         self.git_labels = git_labels
         self.total_count = total_count if total_count is not None else len(git_labels)
 
@@ -30,7 +32,9 @@ class FakeGitLabelStore(ILabelStore):
     async def get_by_user_id(self, offset, limit, user_id, git_hosting=None):
         if "get_by_user_id" in self.exceptions:
             raise self.exceptions["get_by_user_id"]
-        self.received_calls.append(("get_by_user_id", offset, limit, user_id, git_hosting))
+        self.received_calls.append(
+            ("get_by_user_id", offset, limit, user_id, git_hosting)
+        )
         return self.git_labels
 
     async def count_by_user_id(self, user_id, git_hosting=None):
@@ -43,19 +47,36 @@ class FakeGitLabelStore(ILabelStore):
         if "get_by_token_id_and_user" in self.exceptions:
             raise self.exceptions["get_by_token_id_and_user"]
         self.received_calls.append(("get_by_token_id_and_user", token_id, user_id))
-        return next((lbl for lbl in self.git_labels if str(lbl.id) == token_id and lbl.user_id == user_id), None)
+        return next(
+            (
+                lbl
+                for lbl in self.git_labels
+                if str(lbl.id) == token_id and lbl.user_id == user_id
+            ),
+            None,
+        )
 
     async def get_git_hosting_map_by_token_id(self, token_ids):
         if "get_git_hosting_map_by_token_id" in self.exceptions:
             raise self.exceptions["get_git_hosting_map_by_token_id"]
         self.received_calls.append(("get_git_hosting_map_by_token_id", token_ids))
-        return [{"id": str(lbl.id), "git_hosting": lbl.git_hosting} for lbl in self.git_labels if str(lbl.id) in token_ids]
+        return [
+            {"id": str(lbl.id), "git_hosting": lbl.git_hosting}
+            for lbl in self.git_labels
+            if str(lbl.id) in token_ids
+        ]
 
     async def get_by_user_id_and_label(self, offset, limit, user_id, label):
         if "get_by_user_id_and_label" in self.exceptions:
             raise self.exceptions["get_by_user_id_and_label"]
-        self.received_calls.append(("get_by_user_id_and_label", offset, limit, user_id, label))
-        return [lbl for lbl in self.git_labels if lbl.user_id == user_id and lbl.label == label]
+        self.received_calls.append(
+            ("get_by_user_id_and_label", offset, limit, user_id, label)
+        )
+        return [
+            lbl
+            for lbl in self.git_labels
+            if lbl.user_id == user_id and lbl.label == label
+        ]
 
     async def create_new(self, label_model: GitLabelDBCreateDTO):
         if "create_new" in self.exceptions:

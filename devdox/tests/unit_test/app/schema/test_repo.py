@@ -3,7 +3,11 @@ from types import SimpleNamespace
 
 import pytest
 
-from app.schemas.repo import GitHubRepoResponseTransformer, GitLabRepoResponseTransformer, GitRepoResponse
+from app.schemas.repo import (
+    GitHubRepoResponseTransformer,
+    GitLabRepoResponseTransformer,
+    GitRepoResponse,
+)
 
 
 class TestGitLabRepoResponseTransformer:
@@ -17,14 +21,14 @@ class TestGitLabRepoResponseTransformer:
     def test_derived_private_field_with_none(self):
         assert GitLabRepoResponseTransformer.derived_private_field(None) is None
 
-    @pytest.mark.parametrize("visibility,expected", [
-        ("private", True),
-        ("internal", True),
-        ("public", False),
-        ("", None)
-    ])
+    @pytest.mark.parametrize(
+        "visibility,expected",
+        [("private", True), ("internal", True), ("public", False), ("", None)],
+    )
     def test_derived_private_field_various_inputs(self, visibility, expected):
-        assert GitLabRepoResponseTransformer.derived_private_field(visibility) == expected
+        assert (
+            GitLabRepoResponseTransformer.derived_private_field(visibility) == expected
+        )
 
     def test_transform_project_to_dict_basic(self):
         now = datetime.utcnow()
@@ -74,13 +78,18 @@ class TestGitLabRepoResponseTransformer:
 
     def test_gitlab_statistics_not_dict(self):
         project = SimpleNamespace(
-            id=1, name="x", default_branch="main", forks_count=0,
-            visibility="public", created_at=None, star_count=0,
-            http_url_to_repo="http://url", statistics="not-a-dict"
+            id=1,
+            name="x",
+            default_branch="main",
+            forks_count=0,
+            visibility="public",
+            created_at=None,
+            star_count=0,
+            http_url_to_repo="http://url",
+            statistics="not-a-dict",
         )
         with pytest.raises(AttributeError):
             GitLabRepoResponseTransformer.from_git(project)
-
 
 
 class TestGitHubRepoResponseTransformer:
@@ -98,7 +107,7 @@ class TestGitHubRepoResponseTransformer:
             private=True,
             visibility="private",
             size=2048,
-            created_at=now
+            created_at=now,
         )
         result = GitHubRepoResponseTransformer.transform_repository_to_dict(repo)
         assert result["name"] == "repo"
