@@ -8,11 +8,16 @@ from app.exceptions.custom_exceptions import BadRequest, ResourceNotFound
 from app.exceptions.exception_constants import (
     GENERIC_ALREADY_EXIST,
     TOKEN_MISSING,
+    TOKEN_NOT_FOUND,
     USER_RESOURCE_NOT_FOUND,
 )
 from app.schemas.basic import PaginationParams, RequiredPaginationParams
 from app.schemas.git_label import GitLabelBase
-from app.services.git_tokens_service import GetGitLabelService, PostGitLabelService
+from app.services.git_tokens_service import (
+    DeleteGitLabelService,
+    GetGitLabelService,
+    PostGitLabelService,
+)
 from app.utils.auth import UserClaims
 from tests.unit_test.test_doubles.app.repository.get_label_repository_doubles import (
     FakeGitLabelStore,
@@ -244,3 +249,46 @@ class TestPostGitLabelService__AddGitToken:
             )
 
         assert exc.value.user_message == GENERIC_ALREADY_EXIST
+
+
+def make_fake_user_claims(user_id="user123"):
+    return UserClaims(sub=user_id)
+
+@pytest.mark.asyncio
+class TestDeleteGitLabelService__DeleteByGitLabelId:
+
+    def setup_method(self):
+        self.fake_store = FakeGitLabelStore()
+        self.service = DeleteGitLabelService(label_store=self.fake_store)
+        self.user_claims = make_fake_user_claims()
+        self.existing_label_id = uuid.uuid4()
+
+    async def test_returns_label_when_found(self):
+        # Arrange
+        self.fake_store.git_labels = [
+            type("GitLabel", (), {"id": self.existing_label_id, "user_id": "user123"})()
+        ]
+
+        # Act
+        result = await self.service.delete_by_git_label_id(
+            user_claims=self.user_claims,
+            git_label_id=self.existing_label_id
+        )
+
+        # Assert
+        assert result == 1
+        assert ("delete_by_id_and_user_id", self.existing_label_id, "user123") in self.fake_store.received_calls
+
+    async def test_raises_when_label_not_found(self):
+        # Arrange: empty store
+        self.fake_store.git_labels = []
+
+        # Act & Assert
+        with pytest.raises(ResourceNotFound) as exc:
+            await self.service.delete_by_git_label_id(
+                user_claims=self.user_claims,
+                git_label_id=self.existing_label_id
+            )
+
+        assert exc.value.user_message == TOKEN_NOT_FOUND
+        assert ("delete_by_id_and_user_id", self.existing_label_id, "user123") in self.fake_store.received_calls

@@ -3,7 +3,6 @@ import uuid
 from typing import Annotated, Optional
 
 from fastapi import Depends
-from models import GitLabel
 from tortoise.exceptions import IntegrityError
 
 from app.exceptions.custom_exceptions import BadRequest, ResourceNotFound
