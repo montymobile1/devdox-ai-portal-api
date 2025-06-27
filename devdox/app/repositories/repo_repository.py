@@ -29,7 +29,7 @@ class TortoiseRepoStore(IRepoStore):
     async def count_by_user(self, user_id: str) -> int:
         return await Repo.filter(user_id=user_id).count()
 
-    async def create_new_repo(self, repo_model: Repo):
+    async def create_new_repo(self, repo_model: Repo) -> Repo:
         await repo_model.save(force_create=True)
         await repo_model.refresh_from_db()
         return repo_model
