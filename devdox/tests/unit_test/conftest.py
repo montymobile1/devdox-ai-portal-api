@@ -4,29 +4,6 @@ import pytest
 from starlette.testclient import TestClient
 
 from app.main import app
-from app.utils.auth import AuthenticatedUserDTO, get_current_user
-
-
-@pytest.fixture
-def mock_user() -> AuthenticatedUserDTO:
-    return AuthenticatedUserDTO(
-        id="user_abc123", email="user@example.com", name="Test User"
-    )
-
-
-@pytest.fixture
-def mock_authenticated_user(mock_user):
-    """
-    Overrides the CurrentUser dependency globally during tests.
-    """
-
-    def _override():
-        return mock_user
-
-    app.dependency_overrides[get_current_user] = _override
-    yield _override()
-    app.dependency_overrides.clear()
-
 
 @pytest.fixture
 def client_permissive():

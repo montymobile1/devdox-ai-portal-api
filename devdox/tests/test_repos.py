@@ -2,17 +2,11 @@
 Updated test cases for repository API endpoints using Tortoise ORM.
 Tests cover all CRUD operations and new functionality.
 """
-
-from datetime import datetime
-from unittest.mock import AsyncMock, MagicMock, Mock, patch
+from unittest.mock import MagicMock, Mock
 
 import pytest
-from fastapi import status
-from tortoise.exceptions import DoesNotExist
 
 from app.config import GitHosting
-from app.exceptions.exception_constants import SERVICE_UNAVAILABLE
-from app.utils import constants
 
 
 @pytest.fixture
@@ -50,3 +44,4 @@ mock_git_label_class = MagicMock(
     name="GitLabel",
     spec=None,
 )
+
