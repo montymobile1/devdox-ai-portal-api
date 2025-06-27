@@ -1,7 +1,12 @@
+import uuid
+from unittest.mock import AsyncMock, patch
+
 import pytest
 
 from app.exceptions.custom_exceptions import DevDoxAPIException
 from app.repositories.git_label_repository import TortoiseGitLabelStore
+
+path_to_actual_module = "app.repositories.git_label_repository"
 
 
 @pytest.mark.asyncio
@@ -65,3 +70,44 @@ class TestTortoiseGitLabelStore:
 
         expected_error = self.store.InternalExceptions.MISSING_LABEL.value
         assert exc.value.error_type == expected_error.get("error_type")
+
+    async def test_delete_by_id_and_user_id_returns_minus_one_for_invalid_input(self):
+        result = await self.store.delete_by_id_and_user_id(label_id=None, user_id=" ")
+        assert result == -1
+
+    @pytest.mark.parametrize(
+        "input_label_id,input_user_id",
+        [
+            (None, "valid_user_id"),
+            (uuid.uuid4(), None),
+            (uuid.uuid4(), ""),
+            (uuid.uuid4(), " "),
+        ],
+        ids=[
+            "None label_id",
+            "None user_id",
+            "Empty user_id",
+            "Whitespace user_id",
+        ],
+    )
+    async def test_delete_by_id_and_user_id_returns_none_when_input_invalid(self, input_label_id, input_user_id):
+        result = await self.store.delete_by_id_and_user_id(label_id=input_label_id, user_id=input_user_id)
+        assert result == -1
+
+    @patch(f"{path_to_actual_module}.GitLabel.filter")
+    async def test_delete_by_id_and_user_id_returns_zero_if_no_rows_deleted(self, mock_filter):
+        mock_query = AsyncMock()
+        mock_query.delete.return_value = 0
+        mock_filter.return_value = mock_query
+
+        result = await self.store.delete_by_id_and_user_id(label_id=uuid.uuid4(), user_id="user123")
+        assert result == 0
+
+    @patch(f"{path_to_actual_module}.GitLabel.filter")
+    async def test_delete_by_id_and_user_id_returns_row_count_on_success(self, mock_filter):
+        mock_query = AsyncMock()
+        mock_query.delete.return_value = 1
+        mock_filter.return_value = mock_query
+
+        result = await self.store.delete_by_id_and_user_id(label_id=uuid.uuid4(), user_id="user123")
+        assert result == 1

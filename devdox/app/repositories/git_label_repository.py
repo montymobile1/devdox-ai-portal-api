@@ -37,7 +37,7 @@ class ILabelStore(Protocol):
     async def create_new(self, label_model: GitLabelDBCreateDTO) -> Any: ...
     
     @abstractmethod
-    async def delete_by_id_and_user_id(self, label_id:uuid.UUID, user_id:str) -> GitLabel | None: ...
+    async def delete_by_id_and_user_id(self, label_id:uuid.UUID, user_id:str) -> int: ...
 
 def internal_error(log_message:str, error_type:str, **kwargs):
     return DevDoxAPIException(
@@ -136,22 +136,14 @@ class TortoiseGitLabelStore(ILabelStore):
     async def create_new(self, label_model: GitLabelDBCreateDTO) -> GitLabel:
         return await GitLabel.create(**label_model.model_dump())
 
-    async def delete_by_id_and_user_id(self, label_id:uuid, user_id:str) -> GitLabel | None:
+    async def delete_by_id_and_user_id(self, label_id:uuid, user_id:str) -> int:
         """
         .delete returns 0 when No record is found or total number of records deleted.
         """
         if not label_id or not user_id or not user_id.strip():
-            return None
+            return -1
 
-        retrieved_git_label = await GitLabel.filter(id=label_id, user_id=user_id).first()
+        number_of_effected_rows = await GitLabel.filter(id=label_id, user_id=user_id).delete()
         
-        if not retrieved_git_label:
-            return None
-        
-        deleted_count = await retrieved_git_label.delete()
-        
-        if deleted_count == 0:
-            return None
-        
-        return retrieved_git_label
+        return number_of_effected_rows
         

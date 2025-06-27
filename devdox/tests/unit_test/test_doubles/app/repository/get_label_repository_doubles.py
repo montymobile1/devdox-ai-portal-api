@@ -67,17 +67,19 @@ class FakeGitLabelStore(ILabelStore):
         self.git_labels.append(result)
         return result
 
-    async def delete_by_id_and_user_id(self, label_id: uuid.UUID, user_id: str) -> GitLabel | None:
-        if "delete_by_id_and_user_id" in self.exceptions:
-            raise self.exceptions["delete_by_id_and_user_id"]
+    async def delete_by_id_and_user_id(self, label_id: uuid.UUID, user_id: str) -> int:
+        if not label_id or not user_id or not user_id.strip():
+            return -1
 
         self.received_calls.append(("delete_by_id_and_user_id", label_id, user_id))
 
-        for idx, label in enumerate(self.git_labels):
-            if label.id == label_id and label.user_id == user_id:
-                return self.git_labels.pop(idx)
-
-        return None
+        initial_count = len(self.git_labels)
+        self.git_labels = [
+            label
+            for label in self.git_labels
+            if not (label.id == label_id and label.user_id == user_id)
+        ]
+        return initial_count - len(self.git_labels)
 
 
 def make_fake_git_label(**overrides) -> GitLabel:
