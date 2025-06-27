@@ -2,6 +2,7 @@
 Updated test cases for repository API endpoints using Tortoise ORM.
 Tests cover all CRUD operations and new functionality.
 """
+
 from unittest.mock import MagicMock, Mock
 
 import pytest
@@ -44,4 +45,3 @@ mock_git_label_class = MagicMock(
     name="GitLabel",
     spec=None,
 )
-

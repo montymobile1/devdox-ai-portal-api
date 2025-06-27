@@ -13,6 +13,7 @@ from app.utils.auth import (
     UserClaims,
 )
 
+
 class FakeSuccessAuthenticator(IUserAuthenticator):
     async def authenticate(self, request: Requestish) -> UserClaims:
         return UserClaims(sub="user-123", email="test@example.com", name="Test User")
