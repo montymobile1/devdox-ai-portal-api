@@ -1,4 +1,5 @@
-from typing import Any, Optional
+from abc import abstractmethod
+from typing import Any, Optional, Protocol
 
 import gitlab
 import requests
@@ -12,6 +13,9 @@ from app.config import GitHosting
 from app.exceptions.custom_exceptions import DevDoxAPIException
 from app.exceptions.exception_constants import SERVICE_UNAVAILABLE
 
+class IManager(Protocol):
+    @abstractmethod
+    def authenticate(self, access_token): ...
 
 class AuthenticatedGitHubManager:
 
@@ -105,7 +109,7 @@ class AuthenticatedGitHubManager:
             )
 
 
-class GitHubManager:
+class GitHubManager(IManager):
 
     default_base_url = "https://api.github.com"
 
@@ -281,7 +285,7 @@ class AuthenticatedGitLabManager:
             ) from e
 
 
-class GitLabManager:
+class GitLabManager(IManager):
 
     default_base_url = "https://gitlab.com"
 

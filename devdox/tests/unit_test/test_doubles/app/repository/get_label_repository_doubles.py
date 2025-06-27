@@ -4,13 +4,20 @@ from uuid import uuid4
 
 from models import GitLabel
 
+from app.repositories.git_label_repository import ILabelStore
+from app.schemas.git_label import GitLabelDBCreateDTO
 
-class FakeGitLabelStore:
+
+class FakeGitLabelStore(ILabelStore):
     def __init__(self):
         self.git_labels: List[GitLabel] = []
         self.total_count = 0
         self.received_calls = []  # for optional spy behavior
         self.exceptions = {}  # method_name -> exception to raise
+        self.created_label = None
+
+    def set_created_label(self, label: GitLabel):
+        self.created_label = label
 
     def set_fake_data(self, git_labels: List[GitLabel], total_count: Optional[int] = None):
         self.git_labels = git_labels
@@ -42,12 +49,22 @@ class FakeGitLabelStore:
             raise self.exceptions["get_git_hosting_map_by_token_id"]
         self.received_calls.append(("get_git_hosting_map_by_token_id", token_ids))
         return [{"id": str(lbl.id), "git_hosting": lbl.git_hosting} for lbl in self.git_labels if str(lbl.id) in token_ids]
-    
+
     async def get_by_user_id_and_label(self, offset, limit, user_id, label):
         if "get_by_user_id_and_label" in self.exceptions:
             raise self.exceptions["get_by_user_id_and_label"]
         self.received_calls.append(("get_by_user_id_and_label", offset, limit, user_id, label))
         return [lbl for lbl in self.git_labels if lbl.user_id == user_id and lbl.label == label]
+
+    async def create_new(self, label_model: GitLabelDBCreateDTO):
+        if "create_new" in self.exceptions:
+            raise self.exceptions["create_new"]
+        self.received_calls.append(("create_new", label_model))
+        if self.created_label:
+            return self.created_label
+        result = GitLabel(**label_model.model_dump())
+        self.git_labels.append(result)
+        return result
 
 
 def make_fake_git_label(**overrides) -> GitLabel:
