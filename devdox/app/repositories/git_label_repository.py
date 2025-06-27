@@ -1,3 +1,4 @@
+import uuid
 from abc import abstractmethod
 from enum import Enum
 from typing import Any, Collection, Dict, List, Optional, Protocol, Union
@@ -34,7 +35,9 @@ class ILabelStore(Protocol):
     
     @abstractmethod
     async def create_new(self, label_model: GitLabelDBCreateDTO) -> Any: ...
-
+    
+    @abstractmethod
+    async def delete_by_id_and_user_id(self, label_id:uuid.UUID, user_id:str) -> int: ...
 
 def internal_error(log_message:str, error_type:str, **kwargs):
     return DevDoxAPIException(
@@ -47,12 +50,24 @@ def internal_error(log_message:str, error_type:str, **kwargs):
 
 class TortoiseGitLabelStore(ILabelStore):
 
+    def __init__(self):
+        """
+        Have to add this as an empty __init__ to override it, because when using it with Depends(),
+        FastAPI dependency mechanism will automatically assume its
+        ```
+        def __init__(self, *args, **kwargs):
+            pass
+        ```
+        Causing unneeded behavior.
+        """
+        pass
+
     class InternalExceptions(Enum):
         MISSING_USER_ID = {
             "error_type": MISSING_USER_ID_TITLE,
             "log_message": MISSING_USER_ID_LOG_MESSAGE
         }
-        
+
         MISSING_LABEL = {
             "error_type": MISSING_LABEL_ID_TITLE,
             "log_message": MISSING_LABEL_LOG_MESSAGE
@@ -103,20 +118,32 @@ class TortoiseGitLabelStore(ILabelStore):
 
         if not user_id:
             raise internal_error(**self.InternalExceptions.MISSING_USER_ID.value)
-        
+
         if not label or not label.strip():
             raise internal_error(**self.InternalExceptions.MISSING_LABEL.value)
-        
+
         query = GitLabel.filter(user_id=user_id, label=label)
-        
+
         git_labels = (
             await query
             .order_by("-created_at")
             .offset(offset).limit(limit)
             .all()
         )
-        
+
         return git_labels
 
     async def create_new(self, label_model: GitLabelDBCreateDTO) -> GitLabel:
         return await GitLabel.create(**label_model.model_dump())
+
+    async def delete_by_id_and_user_id(self, label_id:uuid, user_id:str) -> int:
+        """
+        .delete returns 0 when No record is found or total number of records deleted.
+        """
+        if not label_id or not user_id or not user_id.strip():
+            return -1
+
+        number_of_effected_rows = await GitLabel.filter(id=label_id, user_id=user_id).delete()
+        
+        return number_of_effected_rows
+        

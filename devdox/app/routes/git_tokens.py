@@ -6,21 +6,22 @@ It supports creating, reading, updating, and deleting git hosting service config
 """
 
 import logging
-import uuid
 from typing import Annotated, Any, Dict
 
 from fastapi import APIRouter, Depends, status
 from starlette.responses import JSONResponse
 
-import app.exceptions.exception_constants
-from app.exceptions.exception_constants import SERVICE_UNAVAILABLE
-from models.git_label import GitLabel
 from app.schemas.git_label import (
     AddGitTokenRequest,
+    DeleteGitTokenRequest,
     GetGitLabelByLabelRequest,
-    GetGitLabelsRequest
+    GetGitLabelsRequest,
 )
-from app.services.git_tokens_service import GetGitLabelService, PostGitLabelService
+from app.services.git_tokens_service import (
+    DeleteGitLabelService,
+    GetGitLabelService,
+    PostGitLabelService,
+)
 from app.utils import constants, CurrentUser
 from app.utils.api_response import APIResponse
 from app.utils.auth import AuthenticatedUserDTO, get_authenticated_user, UserClaims
@@ -133,49 +134,15 @@ async def add_git_token(
     description="Delete a git label configuration by ID",
 )
 async def delete_git_label(
-    git_label_id: str,
+    request: Annotated[DeleteGitTokenRequest, Depends()],
+    service: Annotated[DeleteGitLabelService, Depends(DeleteGitLabelService.with_dependency)],
     authenticated_user: AuthenticatedUserDTO = CurrentUser,
 ) -> JSONResponse:
     """
     Deletes a git label with the specified ID.
 
-    Args:
-            git_label_id: The unique identifier of the git label to delete.
-
     Returns:
             A success response if the git label was deleted, or an error response if not found.
     """
-    try:
-        git_label_uuid = uuid.UUID(git_label_id)  # Ensure it's a valid UUID
-
-        git_label = await GitLabel.filter(
-            id=git_label_uuid, user_id=authenticated_user.id
-        ).first()
-        if git_label:
-            await git_label.delete()
-        else:
-            return APIResponse.error(
-                message=app.exceptions.exception_constants.TOKEN_NOT_FOUND,
-                status_code=status.HTTP_404_NOT_FOUND,
-            )
-
-        return APIResponse.success(message=constants.TOKEN_DELETED_SUCCESSFULLY)
-    except ValueError:
-        logger.exception(
-            "Unexpected Failure while attempting to delete git label on Path = '[DELETE] /api/v1/git_tokens/{git_label_id}'"
-        )
-
-        return APIResponse.error(
-            message="Invalid UUID format", status_code=status.HTTP_400_BAD_REQUEST
-        )
-
-    except Exception:
-
-        logger.exception(
-            "Unexpected Failure while attempting to delete git label on Path = '[DELETE] /api/v1/git_tokens/{git_label_id}'"
-        )
-
-        return APIResponse.error(
-            message=SERVICE_UNAVAILABLE,
-            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
-        )
+    await service.delete_by_git_label_id(user_claims=authenticated_user, git_label_id=request.git_label_id)
+    return APIResponse.success(message=constants.TOKEN_DELETED_SUCCESSFULLY)

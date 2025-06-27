@@ -305,7 +305,7 @@ class TestPostGitLabelRouter__AddGitToken:
 
         response = per_t_client.post(self.route_url, json=payload)
 
-        assert response.status_code == status.HTTP_422_UNPROCESSABLE_ENTITY
+        assert response.status_code == status.HTTP_400_BAD_REQUEST
 
     def test_add_git_token_unauthorized(self, per_t_client):
         async def _unauth_override():

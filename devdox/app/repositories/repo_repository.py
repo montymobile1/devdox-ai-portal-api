@@ -14,7 +14,19 @@ class IRepoStore(Protocol):
     async def create_new_repo(self, repo_model: Any) -> Any: ...
 
 class TortoiseRepoStore(IRepoStore):
-
+    
+    def __init__(self):
+        """
+        Have to add this as an empty __init__ to override it, because when using it with Depends(),
+        FastAPI dependency mechanism will automatically assume its
+        ```
+        def __init__(self, *args, **kwargs):
+            pass
+        ```
+        Causing unneeded behavior.
+        """
+        pass
+    
     async def get_all_by_user(
         self, user_id: str, offset: int, limit: int
     ) -> List[Repo]:
