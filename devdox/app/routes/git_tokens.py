@@ -134,9 +134,9 @@ async def add_git_token(
     description="Delete a git label configuration by ID",
 )
 async def delete_git_label(
+    user_claims: Annotated[UserClaims, Depends(get_authenticated_user)],
     request: Annotated[DeleteGitTokenRequest, Depends()],
     service: Annotated[DeleteGitLabelService, Depends(DeleteGitLabelService.with_dependency)],
-    authenticated_user: AuthenticatedUserDTO = CurrentUser,
 ) -> JSONResponse:
     """
     Deletes a git label with the specified ID.
@@ -144,5 +144,5 @@ async def delete_git_label(
     Returns:
             A success response if the git label was deleted, or an error response if not found.
     """
-    await service.delete_by_git_label_id(user_claims=authenticated_user, git_label_id=request.git_label_id)
+    await service.delete_by_git_label_id(user_claims=user_claims, git_label_id=request.git_label_id)
     return APIResponse.success(message=constants.TOKEN_DELETED_SUCCESSFULLY)

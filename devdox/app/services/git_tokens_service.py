@@ -220,10 +220,10 @@ class DeleteGitLabelService:
         )
 
     async def delete_by_git_label_id(
-        self, user_claims: AuthenticatedUserDTO, git_label_id: uuid.UUID
+        self, user_claims: UserClaims, git_label_id: uuid.UUID
     ) -> int:
         deleted_label = await self.label_store.delete_by_id_and_user_id(
-            label_id=git_label_id, user_id=user_claims.id
+            label_id=git_label_id, user_id=user_claims.sub
         )
 
         if deleted_label <= 0:
