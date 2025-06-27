@@ -10,7 +10,8 @@ from app.exceptions.custom_exceptions import BadRequest, ResourceNotFound
 from app.exceptions.exception_constants import (
     GENERIC_ALREADY_EXIST,
     TOKEN_MISSING,
-    TOKEN_NOT_FOUND, USER_RESOURCE_NOT_FOUND,
+    TOKEN_NOT_FOUND,
+    USER_RESOURCE_NOT_FOUND,
 )
 from app.repositories.git_label_repository import TortoiseGitLabelStore
 from app.repositories.user_repository import TortoiseUserStore
@@ -27,53 +28,57 @@ from app.utils.repo_fetcher import RepoFetcher
 
 logger = logging.getLogger(__name__)
 
+
 def format_git_label_data(raw_git_labels):
     formatted_data = []
     for git_label in raw_git_labels:
-        
+
         formatted_data.append(
             GitLabelResponse(
-                id= git_label.id,
+                id=git_label.id,
                 user_id=git_label.user_id,
-                label= git_label.label,
-                git_hosting= git_label.git_hosting,
-                masked_token= git_label.masked_token,
-                username= git_label.username,
-                created_at= git_label.created_at.isoformat(),
-                updated_at= git_label.updated_at.isoformat(),
+                label=git_label.label,
+                git_hosting=git_label.git_hosting,
+                masked_token=git_label.masked_token,
+                username=git_label.username,
+                created_at=git_label.created_at.isoformat(),
+                updated_at=git_label.updated_at.isoformat(),
                 token_value=git_label.token_value,
             ).model_dump(exclude={"token_value", "user_id"})
         )
-    
+
     return formatted_data
 
 
 class GetGitLabelService:
 
-    def __init__(
-            self,
-            label_store: TortoiseGitLabelStore
-    ):
+    def __init__(self, label_store: TortoiseGitLabelStore):
         self.label_store = label_store
-    
+
     @classmethod
-    def with_dependency(cls, label_store: Annotated[TortoiseGitLabelStore, Depends()],
+    def with_dependency(
+        cls,
+        label_store: Annotated[TortoiseGitLabelStore, Depends()],
     ) -> "GetGitLabelService":
         return cls(label_store)
-    
-    async def get_git_labels_by_user(self, pagination:RequiredPaginationParams, user_claims:UserClaims, git_hosting:Optional[str]):
+
+    async def get_git_labels_by_user(
+        self,
+        pagination: RequiredPaginationParams,
+        user_claims: UserClaims,
+        git_hosting: Optional[str],
+    ):
 
         # Get total count
         total = await self.label_store.count_by_user_id(
-            user_id=user_claims.sub,
-            git_hosting=git_hosting
+            user_id=user_claims.sub, git_hosting=git_hosting
         )
 
         if total == 0:
             return {
                 "items": [],
                 "total": total,
-                "page": pagination.offset  + 1,
+                "page": pagination.offset + 1,
                 "size": pagination.limit,
             }
 
@@ -81,7 +86,7 @@ class GetGitLabelService:
             offset=pagination.offset,
             limit=pagination.limit,
             user_id=user_claims.sub,
-            git_hosting=git_hosting
+            git_hosting=git_hosting,
         )
 
         # Format response data with masked tokens
@@ -90,22 +95,25 @@ class GetGitLabelService:
         return {
             "items": formatted_data,
             "total": total,
-            "page": pagination.offset  + 1,
+            "page": pagination.offset + 1,
             "size": pagination.limit,
         }
 
-    async def get_git_labels_by_label(self, pagination: PaginationParams, user_claims: UserClaims, label: str):
+    async def get_git_labels_by_label(
+        self, pagination: PaginationParams, user_claims: UserClaims, label: str
+    ):
 
         git_labels = await self.label_store.get_by_user_id_and_label(
             offset=pagination.offset,
             limit=pagination.limit,
             user_id=user_claims.sub,
-            label=label
+            label=label,
         )
 
         formatted_data = format_git_label_data(git_labels)
 
         return formatted_data
+
 
 def mask_token(token: str) -> str:
     """
@@ -128,10 +136,15 @@ def mask_token(token: str) -> str:
 
     return f"{prefix}{middle_mask}{suffix}"
 
+
 class PostGitLabelService:
 
     def __init__(
-            self, user_store: TortoiseUserStore, label_store: TortoiseGitLabelStore, crypto_store: FernetEncryptionHelper, git_manager: RepoFetcher
+        self,
+        user_store: TortoiseUserStore,
+        label_store: TortoiseGitLabelStore,
+        crypto_store: FernetEncryptionHelper,
+        git_manager: RepoFetcher,
     ):
         self.user_store = user_store
         self.label_store = label_store
@@ -140,50 +153,46 @@ class PostGitLabelService:
 
     @classmethod
     def with_dependency(
-            cls,
-            user_store: Annotated[TortoiseUserStore, Depends()],
-            label_store: Annotated[TortoiseGitLabelStore, Depends()],
-            crypto_store: Annotated[FernetEncryptionHelper, Depends(get_encryption_helper)],
-		    git_manager: Annotated[RepoFetcher, Depends()]
+        cls,
+        user_store: Annotated[TortoiseUserStore, Depends()],
+        label_store: Annotated[TortoiseGitLabelStore, Depends()],
+        crypto_store: Annotated[FernetEncryptionHelper, Depends(get_encryption_helper)],
+        git_manager: Annotated[RepoFetcher, Depends()],
     ) -> "PostGitLabelService":
         return cls(
             user_store=user_store,
             label_store=label_store,
             crypto_store=crypto_store,
-            git_manager=git_manager
+            git_manager=git_manager,
         )
 
-    async def add_git_token(self, user_claims:UserClaims, json_payload: GitLabelBase):
+    async def add_git_token(self, user_claims: UserClaims, json_payload: GitLabelBase):
 
         token = json_payload.token_value.replace(" ", "")
         if not token:
-            raise BadRequest(
-                reason=TOKEN_MISSING
-            )
+            raise BadRequest(reason=TOKEN_MISSING)
 
         user = await self.user_store.get_by_user_id(user_id=user_claims.sub)
 
         if not user:
-            raise ResourceNotFound(
-                reason=USER_RESOURCE_NOT_FOUND
-            )
+            raise ResourceNotFound(reason=USER_RESOURCE_NOT_FOUND)
 
-        encrypted_token = self.crypto_store.encrypt_for_user(token, user.encryption_salt)
+        encrypted_token = self.crypto_store.encrypt_for_user(
+            token, user.encryption_salt
+        )
 
         fetcher, response_transformer = retrieve_git_fetcher_or_die(
-	        store=self.git_manager, provider=json_payload.git_hosting
+            store=self.git_manager, provider=json_payload.git_hosting
         )
 
-        retrieved_git_user = fetcher.fetch_repo_user(
-            token=json_payload.token_value
-        )
+        retrieved_git_user = fetcher.fetch_repo_user(token=json_payload.token_value)
 
         if not retrieved_git_user:
-            raise ResourceNotFound(
-                reason=TOKEN_MISSING
-            )
+            raise ResourceNotFound(reason=TOKEN_MISSING)
 
-        transformed_data: GitUserResponse = response_transformer.from_git_user(retrieved_git_user)
+        transformed_data: GitUserResponse = response_transformer.from_git_user(
+            retrieved_git_user
+        )
 
         try:
             created_label = await self.label_store.create_new(

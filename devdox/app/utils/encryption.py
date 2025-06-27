@@ -153,6 +153,6 @@ class FernetEncryptionHelper(IEncryptionHelper):
         )
         return base64.urlsafe_b64encode(kdf.derive(self.secret_key.encode()))
 
+
 def get_encryption_helper() -> FernetEncryptionHelper:
     return FernetEncryptionHelper()
-

@@ -4,6 +4,7 @@ from models import User
 
 from app.repositories.user_repository import IUserStore
 
+
 class FakeUserStore(IUserStore):
     def __init__(self):
         self.users = {}
@@ -24,10 +25,11 @@ class FakeUserStore(IUserStore):
             raise self.exceptions["get_by_user_id"]
         return self.users.get(user_id)
 
+
 def make_fake_user(user_id="user123", email="test@example.com", encryption_salt="xyz"):
     return User(
         id=uuid.UUID("dd0551f4-2164-4739-bf3f-9ccd1644ca75"),
         user_id=user_id,
         email=email,
-        encryption_salt=encryption_salt
+        encryption_salt=encryption_salt,
     )

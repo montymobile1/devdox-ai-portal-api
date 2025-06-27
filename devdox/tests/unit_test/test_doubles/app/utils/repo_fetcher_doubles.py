@@ -6,12 +6,15 @@ from app.schemas.repo import (
 )
 from app.utils.repo_fetcher import IRepoFetcher
 
+
 class FakeGitHubRepoFetcher(IRepoFetcher):
     def __init__(self):
         self.received_calls = []
         self.repo_user = {"login": "mockuser"}
 
-    def fetch_user_repositories(self, token: str, offset: int, limit: int) -> dict[str, Any]:
+    def fetch_user_repositories(
+        self, token: str, offset: int, limit: int
+    ) -> dict[str, Any]:
         self.received_calls.append(("fetch_user_repositories", token, offset, limit))
         return {"data_count": 1, "data": ["mock-repo"]}
 
@@ -23,12 +26,15 @@ class FakeGitHubRepoFetcher(IRepoFetcher):
         self.received_calls.append(("fetch_repo_user", token))
         return self.repo_user
 
+
 class FakeGitLabRepoFetcher(IRepoFetcher):
     def __init__(self):
         self.received_calls = []
         self.repo_user = {"username": "mockuser"}
 
-    def fetch_user_repositories(self, token: str, offset: int, limit: int) -> dict[str, Any]:
+    def fetch_user_repositories(
+        self, token: str, offset: int, limit: int
+    ) -> dict[str, Any]:
         self.received_calls.append(("fetch_user_repositories", token, offset, limit))
         return {"data_count": 1, "data": ["mock-repo"]}
 

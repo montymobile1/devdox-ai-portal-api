@@ -19,8 +19,9 @@ class IRepoFetcher(Protocol):
     ) -> dict[str, Any]: ...
 
     def fetch_single_repo(self, token: str, relative_path: str | int): ...
-    
+
     def fetch_repo_user(self, token): ...
+
 
 class GitHubRepoFetcher(IRepoFetcher):
     def __init__(self, base_url: str = GitHubManager.default_base_url):
@@ -63,7 +64,7 @@ class GitHubRepoFetcher(IRepoFetcher):
 
         if not user:
             return None
-        
+
         return user
 
 
@@ -115,11 +116,15 @@ class RepoFetcher:
 
     def get_components(
         self, provider: GitHosting | str
-    ) -> tuple[GitHubRepoFetcher, GitHubRepoResponseTransformer] | tuple[GitLabRepoFetcher, GitLabRepoResponseTransformer] | tuple[None, None]:
+    ) -> (
+        tuple[GitHubRepoFetcher, GitHubRepoResponseTransformer]
+        | tuple[GitLabRepoFetcher, GitLabRepoResponseTransformer]
+        | tuple[None, None]
+    ):
         """bool represents whether it has a data transformer which can aid"""
         if provider == GitHosting.GITHUB:
             return GitHubRepoFetcher(), GitHubRepoResponseTransformer()
         elif provider == GitHosting.GITLAB:
             return GitLabRepoFetcher(), GitLabRepoResponseTransformer()
-        
+
         return None, None

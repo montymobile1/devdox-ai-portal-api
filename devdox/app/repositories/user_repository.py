@@ -3,6 +3,7 @@ from typing import Any, Protocol
 
 from models import User
 
+
 class IUserStore(Protocol):
 
     @abstractmethod
@@ -10,7 +11,7 @@ class IUserStore(Protocol):
 
 
 class TortoiseUserStore(IUserStore):
-    
+
     def __init__(self):
         """
         Have to add this as an empty __init__ to override it, because when using it with Depends(),
@@ -22,7 +23,7 @@ class TortoiseUserStore(IUserStore):
         Causing unneeded behavior.
         """
         pass
-    
+
     async def get_by_user_id(self, user_id: str) -> User | None:
         if not user_id or not user_id.strip():
             return None

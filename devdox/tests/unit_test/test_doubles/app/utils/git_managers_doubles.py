@@ -9,7 +9,7 @@ class FakeAuthenticatedGitHubManager:
             "name": "Fake User",
             "email": "fake@github.com",
             "avatar_url": "https://fake-avatar.com",
-            "html_url": "https://github.com/fakeuser"
+            "html_url": "https://github.com/fakeuser",
         }
 
     def get_user(self):
@@ -24,7 +24,7 @@ class FakeAuthenticatedGitHubManager:
     def get_user_repositories(self, *args, **kwargs):
         return {
             "repositories": [{"name": "repo1"}, {"name": "repo2"}],
-            "pagination_info": {"total_count": 2}
+            "pagination_info": {"total_count": 2},
         }
 
 
@@ -36,7 +36,7 @@ class FakeAuthenticatedGitLabManager:
             "name": "Fake User",
             "email": "fake@gitlab.com",
             "avatar_url": "https://fake-avatar.com",
-            "web_url": "https://gitlab.com/fakeuser"
+            "web_url": "https://gitlab.com/fakeuser",
         }
 
     def get_user(self, timeout=30):
@@ -51,7 +51,7 @@ class FakeAuthenticatedGitLabManager:
     def get_user_repositories(self, *args, **kwargs):
         return {
             "repositories": [{"name": "repo1"}, {"name": "repo2"}],
-            "pagination_info": {"total_count": 2}
+            "pagination_info": {"total_count": 2},
         }
 
 
@@ -63,4 +63,3 @@ class FakeGitHubManager(IManager):
 class FakeGitLabManager(IManager):
     def authenticate(self, access_token: str):
         return FakeAuthenticatedGitLabManager()
-

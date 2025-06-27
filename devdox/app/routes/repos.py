@@ -23,6 +23,7 @@ from app.utils.constants import RESOURCE_RETRIEVED_SUCCESSFULLY
 # Create router
 router = APIRouter()
 
+
 @router.get(
     "/",
     response_model=RepoListResponse,
@@ -46,6 +47,7 @@ async def get_repos(
         ),
     )
 
+
 @router.get(
     "/git_repos/users/{token_id}",
     response_model=Dict[str, Any],
@@ -60,7 +62,10 @@ async def get_repos_from_git(
     service: RepoProviderService = Depends(RepoProviderService),
 ):
     total, repos = await service.get_all_provider_repos(token_id, user, pagination)
-    return APIResponse.success("Repositories retrieved successfully", {"total_count": total, "repos": repos})
+    return APIResponse.success(
+        "Repositories retrieved successfully", {"total_count": total, "repos": repos}
+    )
+
 
 @router.post(
     "/git_repos/users/{token_id}",
