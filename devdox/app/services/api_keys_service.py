@@ -1,6 +1,6 @@
 import dataclasses
 import hashlib
-import random
+import secrets
 import string
 from typing import Annotated, Optional
 
@@ -42,7 +42,7 @@ class APIKeyManager:
         prefix: str = DEFAULT_PREFIX, length: int = DEFAULT_MAX_KEY_LENGTH
     ) -> str:
         chars = string.ascii_letters + string.digits
-        random_part = "".join(random.choices(chars, k=length - len(prefix)))
+        random_part = "".join(secrets.choice(chars) for _ in range(length - len(prefix)))
         return prefix + random_part
 
     @staticmethod
