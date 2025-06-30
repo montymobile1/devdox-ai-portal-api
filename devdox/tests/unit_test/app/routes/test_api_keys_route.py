@@ -56,7 +56,6 @@ def override_revoke_service_success():
     yield store, fake_key_id
     app.dependency_overrides.clear()
 
-
 @pytest.fixture
 def override_revoke_service_not_found():
     store = FakeApiKeyStore()  # no matching keys stored
