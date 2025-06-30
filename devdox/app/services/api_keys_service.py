@@ -2,13 +2,15 @@ import dataclasses
 import hashlib
 import secrets
 import string
+import uuid
 from typing import Annotated, Optional
 
 from fastapi import Depends
 
-from app.exceptions.custom_exceptions import BadRequest
+from app.exceptions.custom_exceptions import BadRequest, ResourceNotFound
 from app.exceptions.exception_constants import (
     FAILED_GENERATE_API_KEY_RETRIES_LOG_MESSAGE,
+    INVALID_APIKEY,
     UNIQUE_API_KEY_GENERATION_FAILED,
 )
 from app.repositories.api_key_repository import TortoiseApiKeyStore
@@ -117,3 +119,33 @@ class PostApiKeyService:
         )
 
         return saved_api_key.id, result.plain
+
+
+class RevokeApiKeyService:
+
+    def __init__(
+        self,
+        api_key_store: TortoiseApiKeyStore,
+    ):
+        self.api_key_store = api_key_store
+
+    @classmethod
+    def with_dependency(
+        cls,
+        api_key_store: Annotated[TortoiseApiKeyStore, Depends()],
+    ) -> "RevokeApiKeyService":
+
+        return cls(
+            api_key_store=api_key_store,
+        )
+
+    async def revoke_api_key(self, user_claims: UserClaims, api_key_id:uuid.UUID):
+
+        deleted_api_key = await self.api_key_store.set_inactive_by_user_id_and_api_key_id(
+                user_id=user_claims.sub, api_key_id=api_key_id
+        )
+
+        if deleted_api_key <= 0:
+            raise ResourceNotFound(reason=INVALID_APIKEY)
+
+        return deleted_api_key

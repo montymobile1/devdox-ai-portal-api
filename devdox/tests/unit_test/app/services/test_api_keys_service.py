@@ -1,16 +1,20 @@
 import hashlib
 import re
+from types import SimpleNamespace
+from uuid import uuid4
 
 import pytest
 
-from app.exceptions.custom_exceptions import BadRequest
+from app.exceptions.custom_exceptions import BadRequest, ResourceNotFound
 from app.exceptions.exception_constants import (FAILED_GENERATE_API_KEY_RETRIES_LOG_MESSAGE,
                                                 UNIQUE_API_KEY_GENERATION_FAILED)
 from app.services.api_keys_service import (
     APIKeyManager,
     PostApiKeyService,
+    RevokeApiKeyService,
 )
 from app.services.git_tokens_service import mask_token
+from app.utils.auth import UserClaims
 from tests.unit_test.test_doubles.app.repository.api_key_repository_test_doubles import (
     FakeApiKeyStore,
 )
@@ -119,3 +123,38 @@ class TestPostApiKeyService:
 
         with pytest.raises(RuntimeError, match="DB error"):
             await service.generate_api_key(user_claims)
+
+
+@pytest.mark.asyncio
+class TestRevokeApiKeyService:
+
+    async def test_successful_revoke(self):
+        store = FakeApiKeyStore()
+        user_id = "user123"
+        fake_key_id = uuid4()
+        key = SimpleNamespace(id=fake_key_id, user_id=user_id, is_active=True)
+        store.stored_keys.append(key)
+        service = RevokeApiKeyService(api_key_store=store)
+
+        claims = UserClaims(sub=user_id)
+        result = await service.revoke_api_key(claims, api_key_id=fake_key_id)
+
+        assert result == 1
+        assert not key.is_active
+
+    async def test_revoke_fails_when_key_not_found(self):
+        store = FakeApiKeyStore()
+        service = RevokeApiKeyService(api_key_store=store)
+        claims = UserClaims(sub="user123")
+
+        with pytest.raises(ResourceNotFound):
+            await service.revoke_api_key(claims, api_key_id=uuid4())
+
+    async def test_revoke_handles_store_exception(self):
+        store = FakeApiKeyStore()
+        store.set_exception("set_inactive_by_user_id_and_api_key_id", RuntimeError("DB Error"))
+        service = RevokeApiKeyService(api_key_store=store)
+        claims = UserClaims(sub="user123")
+
+        with pytest.raises(RuntimeError, match="DB Error"):
+            await service.revoke_api_key(claims, api_key_id=uuid4())

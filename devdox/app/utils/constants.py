@@ -6,6 +6,7 @@ GITLAB_USER_RETRIEVE_FAILED = "Could not retrieve GitLab user"
 
 TOKEN_SAVED_SUCCESSFULLY = "Token saved successfully"
 API_KEY_GENERATED_SUCCESSFULLY = "API key generated successfully"
+API_KEY_REVOKED_SUCCESSFULLY = "API key revoked"
 GITLAB_TOKEN_SAVE_FAILED = "Failed to save GitLab token"
 GITHUB_TOKEN_SAVE_FAILED = "Failed to save GitHub token"
 GITHUB_AUTH_FAILED = "Failed to authenticate with GitHub"

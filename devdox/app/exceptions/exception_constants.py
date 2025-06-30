@@ -22,3 +22,5 @@ UNIQUE_API_KEY_GENERATION_FAILED = (
 FAILED_GENERATE_API_KEY_RETRIES_LOG_MESSAGE = (
     "Failed to generate a unique API key after {attempts} attempts"
 )
+
+INVALID_APIKEY = "Invalid API Key"
