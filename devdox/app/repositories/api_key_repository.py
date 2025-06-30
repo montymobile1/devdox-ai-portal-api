@@ -1,5 +1,5 @@
 from abc import abstractmethod
-from typing import Any, List, Protocol
+from typing import Any, Coroutine, List, Optional, Protocol
 
 from models import APIKEY
 from tortoise.expressions import Q
@@ -11,8 +11,8 @@ class IApiKeyStore(Protocol):
 
     @abstractmethod
     async def query_for_existing_hashes(
-        self, hash_key_list: List[str]
-    ) -> None | List[str]: ...
+        self, hash_key: str
+    ) -> bool: ...
 
     @abstractmethod
     async def save_api_key(self, create_model: APIKeyCreate) -> Any: ...
@@ -31,17 +31,15 @@ class TortoiseApiKeyStore(IApiKeyStore):
         Causing unneeded behavior.
         """
         pass
-
+    
     async def query_for_existing_hashes(
-        self, hash_key_list: List[str]
-    ) -> None | List[str]:
+        self, hash_key: str
+    ) -> bool:
 
-        if not hash_key_list:
-            return None
+        if not hash_key or not hash_key.strip():
+            return False
 
-        return await APIKEY.filter(Q(api_key__in=hash_key_list)).values_list(
-            "api_key", flat=True
-        )
+        return await APIKEY.filter(api_key=hash_key).exists()
 
     async def save_api_key(self, create_model: APIKeyCreate) -> APIKEY:
         return await APIKEY.create(**create_model.model_dump())

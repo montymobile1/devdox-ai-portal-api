@@ -26,9 +26,8 @@ class APIKeyManagerReturn:
 
 class APIKeyManager:
 
-    DEFAULT_MAX_KEY_LENGTH = 16
-    DEFAULT_MAX_CANDIDATE_NUMBER = 5
-    DEFAULT_PREFIX = ""
+    DEFAULT_MAX_KEY_LENGTH = 32
+    DEFAULT_PREFIX = "dvd_"
 
     def __init__(self, api_key_store: TortoiseApiKeyStore):
         self.api_key_store = api_key_store
@@ -45,46 +44,25 @@ class APIKeyManager:
         random_part = "".join(secrets.choice(chars) for _ in range(length - len(prefix)))
         return prefix + random_part
 
-    @staticmethod
-    def mask_api_key(unhashed_key: str) -> str:
-        return mask_token(unhashed_key)
-
-    async def find_hashes_if_exist(self, hash_key_list) -> set:
-        existing = await self.api_key_store.query_for_existing_hashes(hash_key_list)
-
-        if not existing:
-            return set()
-
-        existing_set = set(existing)
-
-        return existing_set
-
     async def generate_unique_api_key(
         self,
         prefix: str = DEFAULT_PREFIX,
-        candidates: int = DEFAULT_MAX_CANDIDATE_NUMBER,
         length: int = DEFAULT_MAX_KEY_LENGTH,
     ) -> Optional[APIKeyManagerReturn]:
-        # Generate candidates
-        plain_keys = [
-            self.__generate_plain_key(prefix=prefix, length=length)
-            for _ in range(candidates)
-        ]
 
-        hashed_keys = [self.hash_key(k) for k in plain_keys]
+        plain_key = self.__generate_plain_key(prefix=prefix, length=length)
+
+        hashed_key = self.hash_key(plain_key)
 
         # Query existing hashes in DB
-        # (disclaimer: It's rare to have similar hashes even for the same keys, but this is in place for edge cases)
-        existing_set = await self.find_hashes_if_exist(hashed_keys)
+        key_exists = await self.api_key_store.query_for_existing_hashes(hashed_key)
 
-        # Select a non-conflicting key
-        for plain, hashed in zip(plain_keys, hashed_keys):
-            if hashed not in existing_set:
-                masked = self.mask_api_key(plain)
-                return APIKeyManagerReturn(plain=plain, hashed=hashed, masked=masked)
-
-        # If None that means it has failed to find any key, and it's left to the caller how to handle such a case
-        return None
+        if key_exists:
+            return None
+        
+        masked_plain_key = mask_token(plain_key)
+        
+        return APIKeyManagerReturn(plain=plain_key, hashed=hashed_key, masked=masked_plain_key)
 
 
 class PostApiKeyService:
@@ -112,13 +90,11 @@ class PostApiKeyService:
 
     async def generate_api_key(self, user_claims: UserClaims):
 
-        max_generation_attempts = 3
+        max_generation_attempts = 6
 
         result = None
         for attempt in range(1, max_generation_attempts + 1):
-            tmp_result = await self.api_key_manager.generate_unique_api_key(
-                candidates=2
-            )
+            tmp_result = await self.api_key_manager.generate_unique_api_key()
             if tmp_result:
                 result = tmp_result
                 break
@@ -129,6 +105,7 @@ class PostApiKeyService:
                 log_message=FAILED_GENERATE_API_KEY_RETRIES_LOG_MESSAGE.format(
                     attempts=max_generation_attempts
                 ),
+                
             )
 
         saved_api_key = await self.api_key_store.save_api_key(

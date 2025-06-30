@@ -1,58 +1,43 @@
+import hashlib
 from typing import List, Optional, Set
 
 from app.repositories.api_key_repository import IApiKeyStore
 from app.services.api_keys_service import APIKeyManagerReturn
+from app.services.git_tokens_service import mask_token
 
 
 class FakeAPIKeyManager:
     def __init__(self, api_key_store: IApiKeyStore):
         self.api_key_store = api_key_store
-        self.fixed_keys: List[str] = []
+        self.generated_key = ""
         self.received_calls = []
         self.exceptions = {}
 
-    def set_fixed_keys(self, plain_keys: List[str]):
-        self.fixed_keys = plain_keys
+    def set_fixed_key(self, key: str):
+        self.generated_key = key
 
     def set_exception(self, method_name: str, exception: Exception):
         self.exceptions[method_name] = exception
 
     @staticmethod
     def hash_key(unhashed_api_key: str) -> str:
-        return "hashed_" + unhashed_api_key
-
-    @staticmethod
-    def mask_api_key(unhashed_key: str) -> str:
-        return "****" + unhashed_key[-4:]
-
-    async def find_hashes_if_exist(self, hash_key_list: List[str]) -> Set[str]:
-        if "find_hashes_if_exist" in self.exceptions:
-            raise self.exceptions["find_hashes_if_exist"]
-
-        self.received_calls.append(("find_hashes_if_exist", hash_key_list))
-        existing = await self.api_key_store.query_for_existing_hashes(hash_key_list)
-        return set(existing or [])
+        return hashlib.sha256(unhashed_api_key.encode("utf-8")).hexdigest()
 
     async def generate_unique_api_key(
-        self, prefix: str = "", candidates: int = 5, length: int = 16
+        self, prefix: str = "dvd_", length: int = 32
     ) -> Optional[APIKeyManagerReturn]:
         if "generate_unique_api_key" in self.exceptions:
             raise self.exceptions["generate_unique_api_key"]
 
-        self.received_calls.append(
-            ("generate_unique_api_key", prefix, candidates, length)
-        )
+        self.received_calls.append(("generate_unique_api_key", prefix, length))
 
-        # Use fixed keys for determinism
-        plain_keys = self.fixed_keys[:candidates]
+        plain_key = self.generated_key or f"{prefix}mockkey"
+        hashed_key = self.hash_key(plain_key)
 
-        hashed_keys = [self.hash_key(k) for k in plain_keys]
-        existing_set = await self.find_hashes_if_exist(hashed_keys)
+        exists = await self.api_key_store.query_for_existing_hashes(hashed_key)
 
-        for plain, hashed in zip(plain_keys, hashed_keys):
-            if hashed not in existing_set:
-                return APIKeyManagerReturn(
-                    plain=plain, hashed=hashed, masked=self.mask_api_key(plain)
-                )
+        if exists:
+            return None
 
-        return None
+        masked = mask_token(plain_key)
+        return APIKeyManagerReturn(plain=plain_key, hashed=hashed_key, masked=masked)

@@ -10,26 +10,23 @@ from app.schemas.api_key_schema import APIKeyCreate
 class FakeApiKeyStore(IApiKeyStore):
     def __init__(self):
         self.stored_keys = []
-        self.existing_hashes = set()
         self.received_calls = []
         self.exceptions = {}
+        self.existing_hash_set = set()
 
-    def set_existing_hashes(self, hashes: List[str]):
-        self.existing_hashes = set(hashes)
+    def set_existing_hash(self, existing_hash: str):
+        self.existing_hash_set.add(existing_hash)
 
     def set_exception(self, method_name: str, exception: Exception):
         self.exceptions[method_name] = exception
 
-    async def query_for_existing_hashes(
-        self, hash_key_list: List[str]
-    ) -> Optional[List[str]]:
+    async def query_for_existing_hashes(self, hash_key: str) -> bool:
         if "query_for_existing_hashes" in self.exceptions:
             raise self.exceptions["query_for_existing_hashes"]
 
-        self.received_calls.append(("query_for_existing_hashes", hash_key_list))
+        self.received_calls.append(("query_for_existing_hashes", hash_key))
 
-        matches = [hk for hk in hash_key_list if hk in self.existing_hashes]
-        return matches if matches else None
+        return hash_key in self.existing_hash_set
 
     async def save_api_key(self, create_model: APIKeyCreate) -> Any:
         if "save_api_key" in self.exceptions:
