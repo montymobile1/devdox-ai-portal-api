@@ -1,4 +1,4 @@
-from typing import List, Tuple
+from typing import Annotated, List, Tuple
 
 from fastapi import Depends
 from tortoise.exceptions import IntegrityError
@@ -27,12 +27,23 @@ from app.utils.repo_fetcher import RepoFetcher
 class RepoQueryService:
     def __init__(
         self,
-        repo_store=Depends(TortoiseRepoStore),
-        gl_store=Depends(TortoiseGitLabelStore),
+        repo_store: TortoiseRepoStore,
+        gl_store: TortoiseGitLabelStore,
     ):
         self.repo_store = repo_store
         self.gl_store = gl_store
-
+    
+    @classmethod
+    def with_dependency(
+        cls,
+        repo_store: Annotated[TortoiseRepoStore, Depends()],
+        gl_store: Annotated[TortoiseGitLabelStore, Depends()],
+    ) -> "RepoQueryService":
+        return cls(
+            repo_store=repo_store,
+            gl_store=gl_store
+        )
+    
     async def get_all_user_repositories(
         self, user: UserClaims, pagination: RequiredPaginationParams
     ) -> Tuple[int, List[RepoResponse]]:

@@ -4,13 +4,13 @@ Repository routes for the DevDox AI Portal API
 This module provides endpoints for retrieving and adding Repos with their information.
 """
 
-from typing import Any, Dict
+from typing import Annotated, Any, Dict
 
 from fastapi import APIRouter, Depends, Path, status
 from starlette.responses import JSONResponse
 
 from app.schemas.basic import RequiredPaginationParams
-from app.schemas.repo import AddRepositoryRequest, RepoListResponse
+from app.schemas.repo import AddRepositoryRequest, GetReposRequest, RepoListResponse
 from app.services.repository_service import (
     RepoProviderService,
     RepoManipulationService,
@@ -32,19 +32,17 @@ router = APIRouter()
     description="Retrieve a paginated list of repositories for a user",
 )
 async def get_repos(
-    user: UserClaims = Depends(get_authenticated_user),
-    service: RepoQueryService = Depends(RepoQueryService),
-    pagination: RequiredPaginationParams = Depends(),
+    user_claims: Annotated[UserClaims, Depends(get_authenticated_user)],
+    request: Annotated[GetReposRequest, Depends()],
+    service: Annotated[RepoQueryService, Depends(RepoQueryService.with_dependency)],
 ) -> JSONResponse:
 
     total_count, repo_responses = await service.get_all_user_repositories(
-        user, pagination
+        user_claims, request.pagination
     )
     return APIResponse.success(
         message=RESOURCE_RETRIEVED_SUCCESSFULLY,
-        data=RepoListResponse(total_count=total_count, repos=repo_responses).model_dump(
-            mode="json"
-        ),
+        data=RepoListResponse(total_count=total_count, repos=repo_responses)
     )
 
 

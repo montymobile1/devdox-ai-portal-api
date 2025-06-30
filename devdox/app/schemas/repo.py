@@ -1,13 +1,16 @@
 import uuid
 from types import SimpleNamespace
 
+from fastapi import Depends
 from github.AuthenticatedUser import AuthenticatedUser
 from github.Repository import Repository
 from gitlab.v4.objects import Project
 from pydantic import BaseModel, Field, ConfigDict
-from typing import Optional, List
+from typing import Annotated, Optional, List
 from datetime import datetime
 from enum import Enum
+
+from app.schemas.basic import RequiredPaginationParams
 
 
 class GitHostingProvider(str, Enum):
@@ -35,7 +38,7 @@ class RepoBase(BaseModel):
     git_hosting: Optional[GitHostingProvider] = Field(
         None, description="Git hosting provider"
     )
-    language: Optional[str] = Field(
+    language: Optional[List] = Field(
         None, description="Primary programming language", max_length=100
     )
     size: Optional[int] = Field(None, description="Repository size in KB", ge=0)
@@ -44,6 +47,10 @@ class RepoBase(BaseModel):
     )
     repo_updated_at: Optional[datetime] = Field(
         None, description="Repository last update from provider"
+    )
+
+    relative_path: Optional[str] = Field(
+        None, description="The path to the repository relative to its hosting platform domain", max_length=255
     )
 
 
@@ -301,3 +308,11 @@ class AddRepositoryRequest(BaseModel):
             ]
         }
     }
+
+
+class GetReposRequest:
+    def __init__(
+        self,
+        pagination: Annotated[RequiredPaginationParams, Depends()],
+    ):
+        self.pagination = pagination
