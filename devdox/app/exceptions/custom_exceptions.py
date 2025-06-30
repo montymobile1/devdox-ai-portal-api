@@ -120,7 +120,7 @@ class UnauthorizedAccess(DevDoxAPIException):
 class BadRequest(DevDoxAPIException):
     http_status = status.HTTP_400_BAD_REQUEST
 
-    def __init__(self, reason=GENERIC_BAD_REQUEST, log_message: Optional[str]= None):
+    def __init__(self, reason=GENERIC_BAD_REQUEST, log_message: Optional[str] = None):
         super().__init__(user_message=reason, log_message=log_message)
 
 
