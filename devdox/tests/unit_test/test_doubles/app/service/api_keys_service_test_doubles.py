@@ -34,15 +34,14 @@ class FakeAPIKeyManager:
         return set(existing or [])
 
     async def generate_unique_api_key(
-        self,
-        prefix: str = "",
-        candidates: int = 5,
-        length: int = 16
+        self, prefix: str = "", candidates: int = 5, length: int = 16
     ) -> Optional[APIKeyManagerReturn]:
         if "generate_unique_api_key" in self.exceptions:
             raise self.exceptions["generate_unique_api_key"]
 
-        self.received_calls.append(("generate_unique_api_key", prefix, candidates, length))
+        self.received_calls.append(
+            ("generate_unique_api_key", prefix, candidates, length)
+        )
 
         # Use fixed keys for determinism
         plain_keys = self.fixed_keys[:candidates]
@@ -53,9 +52,7 @@ class FakeAPIKeyManager:
         for plain, hashed in zip(plain_keys, hashed_keys):
             if hashed not in existing_set:
                 return APIKeyManagerReturn(
-                    plain=plain,
-                    hashed=hashed,
-                    masked=self.mask_api_key(plain)
+                    plain=plain, hashed=hashed, masked=self.mask_api_key(plain)
                 )
 
         return None

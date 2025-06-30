@@ -16,5 +16,9 @@ MISSING_USER_ID_LOG_MESSAGE = "user_id was None when trying to fetch Git labels.
 MISSING_LABEL_ID_TITLE = "MISSING_LABEL"
 MISSING_LABEL_LOG_MESSAGE = "label was None when trying to fetch Git labels."
 
-UNIQUE_API_KEY_GENERATION_FAILED = "Could not generate a unique API key, please try again."
-FAILED_GENERATE_API_KEY_RETRIES_LOG_MESSAGE = "Failed to generate a unique API key after {attempts} attempts"
+UNIQUE_API_KEY_GENERATION_FAILED = (
+    "Could not generate a unique API key, please try again."
+)
+FAILED_GENERATE_API_KEY_RETRIES_LOG_MESSAGE = (
+    "Failed to generate a unique API key after {attempts} attempts"
+)

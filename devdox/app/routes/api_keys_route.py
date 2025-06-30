@@ -11,6 +11,7 @@ from app.utils.auth import get_authenticated_user, UserClaims
 
 router = APIRouter()
 
+
 @router.post(
     "/",
     response_model=Dict[str, Any],
@@ -20,17 +21,14 @@ router = APIRouter()
 )
 async def add_new_api_key(
     user_claims: Annotated[UserClaims, Depends(get_authenticated_user)],
-    service: Annotated[
-        PostApiKeyService, Depends(PostApiKeyService.with_dependency)
-    ],
+    service: Annotated[PostApiKeyService, Depends(PostApiKeyService.with_dependency)],
 ) -> JSONResponse:
     """
     Generate a new API key
     """
-    db_id, plain_key = await service.generate_api_key(
-        user_claims=user_claims
-    )
+    db_id, plain_key = await service.generate_api_key(user_claims=user_claims)
 
     return APIResponse.success(
-        message=constants.API_KEY_GENERATED_SUCCESSFULLY, data={"id": db_id, "api_key": plain_key}
+        message=constants.API_KEY_GENERATED_SUCCESSFULLY,
+        data={"id": db_id, "api_key": plain_key},
     )

@@ -8,14 +8,15 @@ from app.schemas.api_key_schema import APIKeyCreate
 
 
 class IApiKeyStore(Protocol):
-    
+
     @abstractmethod
     async def query_for_existing_hashes(
         self, hash_key_list: List[str]
     ) -> None | List[str]: ...
-    
+
     @abstractmethod
     async def save_api_key(self, create_model: APIKeyCreate) -> Any: ...
+
 
 class TortoiseApiKeyStore(IApiKeyStore):
 

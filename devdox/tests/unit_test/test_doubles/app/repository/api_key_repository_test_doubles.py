@@ -20,7 +20,9 @@ class FakeApiKeyStore(IApiKeyStore):
     def set_exception(self, method_name: str, exception: Exception):
         self.exceptions[method_name] = exception
 
-    async def query_for_existing_hashes(self, hash_key_list: List[str]) -> Optional[List[str]]:
+    async def query_for_existing_hashes(
+        self, hash_key_list: List[str]
+    ) -> Optional[List[str]]:
         if "query_for_existing_hashes" in self.exceptions:
             raise self.exceptions["query_for_existing_hashes"]
 
@@ -36,14 +38,14 @@ class FakeApiKeyStore(IApiKeyStore):
         self.received_calls.append(("save_api_key", create_model))
 
         fake_entry = SimpleNamespace(
-            id= uuid4(),
-            user_id= create_model.user_id,
-            api_key= create_model.api_key,
-            masked_api_key= create_model.masked_api_key,
-            is_active= True,
-            created_at= datetime.utcnow(),
-            updated_at= datetime.utcnow(),
-            last_used_at= None,
+            id=uuid4(),
+            user_id=create_model.user_id,
+            api_key=create_model.api_key,
+            masked_api_key=create_model.masked_api_key,
+            is_active=True,
+            created_at=datetime.utcnow(),
+            updated_at=datetime.utcnow(),
+            last_used_at=None,
         )
         self.stored_keys.append(fake_entry)
         return fake_entry

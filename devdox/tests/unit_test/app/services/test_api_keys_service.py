@@ -14,8 +14,13 @@ from app.exceptions.exception_constants import (
     UNIQUE_API_KEY_GENERATION_FAILED,
     FAILED_GENERATE_API_KEY_RETRIES_LOG_MESSAGE,
 )
-from tests.unit_test.test_doubles.app.repository.api_key_repository_test_doubles import FakeApiKeyStore
-from tests.unit_test.test_doubles.app.service.api_keys_service_test_doubles import FakeAPIKeyManager
+from tests.unit_test.test_doubles.app.repository.api_key_repository_test_doubles import (
+    FakeApiKeyStore,
+)
+from tests.unit_test.test_doubles.app.service.api_keys_service_test_doubles import (
+    FakeAPIKeyManager,
+)
+
 
 @pytest.mark.asyncio
 class TestAPIKeyManager:
@@ -48,8 +53,14 @@ class TestAPIKeyManager:
     @pytest.mark.asyncio
     async def test_generate_unique_api_key_success(self, monkeypatch):
         # Force deterministic plain keys
-        monkeypatch.setattr(self.manager, "_APIKeyManager__generate_plain_key", lambda prefix, length: "plainkey123456")
-        monkeypatch.setattr(self.manager, "mask_api_key", lambda x: mask_token("plainkey123456"))
+        monkeypatch.setattr(
+            self.manager,
+            "_APIKeyManager__generate_plain_key",
+            lambda prefix, length: "plainkey123456",
+        )
+        monkeypatch.setattr(
+            self.manager, "mask_api_key", lambda x: mask_token("plainkey123456")
+        )
         monkeypatch.setattr(self.manager, "hash_key", lambda x: "hashedkey")
 
         self.fake_store.set_existing_hashes([])
@@ -63,7 +74,11 @@ class TestAPIKeyManager:
 
     @pytest.mark.asyncio
     async def test_generate_unique_api_key_fails_when_all_conflict(self, monkeypatch):
-        monkeypatch.setattr(self.manager, "_APIKeyManager__generate_plain_key", lambda prefix, length: "conflict")
+        monkeypatch.setattr(
+            self.manager,
+            "_APIKeyManager__generate_plain_key",
+            lambda prefix, length: "conflict",
+        )
         monkeypatch.setattr(self.manager, "hash_key", lambda x: "hashed_conflict")
         monkeypatch.setattr(self.manager, "mask_api_key", lambda x: "****flict")
 
@@ -80,8 +95,7 @@ class TestPostApiKeyService:
         self.fake_store = FakeApiKeyStore()
         self.fake_manager = FakeAPIKeyManager(api_key_store=self.fake_store)
         self.service = PostApiKeyService(
-            api_key_store=self.fake_store,
-            api_key_manager=self.fake_manager
+            api_key_store=self.fake_store, api_key_manager=self.fake_manager
         )
         self.user_claims = UserClaims(sub="user123")
 
@@ -107,7 +121,10 @@ class TestPostApiKeyService:
             await self.service.generate_api_key(self.user_claims)
 
         assert exc.value.user_message == UNIQUE_API_KEY_GENERATION_FAILED
-        assert FAILED_GENERATE_API_KEY_RETRIES_LOG_MESSAGE.format(attempts=3) in exc.value.log_message
+        assert (
+            FAILED_GENERATE_API_KEY_RETRIES_LOG_MESSAGE.format(attempts=3)
+            in exc.value.log_message
+        )
 
     async def test_generate_api_key_bubbles_up_store_error(self):
         # Arrange
