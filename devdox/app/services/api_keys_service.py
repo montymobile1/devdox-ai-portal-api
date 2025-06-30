@@ -45,6 +45,10 @@ class APIKeyManager:
     
     async def find_hashes_if_exist(self, hash_key_list) -> set:
         existing = await self.api_key_store.query_for_existing_hashes(hash_key_list)
+        
+        if not existing:
+            return set()
+        
         existing_set = set(existing)
         
         return existing_set
