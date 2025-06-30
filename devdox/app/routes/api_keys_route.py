@@ -38,7 +38,7 @@ async def add_new_api_key(
 @router.delete(
     "/{api_key_id}",
     response_model=Dict[str, Any],
-    status_code=status.HTTP_201_CREATED,
+    status_code=status.HTTP_200_OK,
     summary="Revokes an api key",
     description="Revokes the API Key via the database api key id, applying a soft delete",
 )
