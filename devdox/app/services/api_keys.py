@@ -95,12 +95,12 @@ class PostApiKeyService:
         )
 
     async def generate_api_key(self, user_claims: UserClaims):
-        
-        max_generation_attempts = 3
-        
-        result= None
-        for attempt in range(1, max_generation_attempts + 1):
-            tmp_result = await self.api_key_manager.generate_unique_api_key(candidates=2)
+
+        max_generation_attempts = 6
+
+        result = None
+        for _ in range(1, max_generation_attempts + 1):
+            tmp_result = await self.api_key_manager.generate_unique_api_key()
             if tmp_result:
                 result = tmp_result
                 break
