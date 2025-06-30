@@ -1,5 +1,5 @@
 import hashlib
-from typing import List, Optional, Set
+from typing import Optional
 
 from app.repositories.api_key_repository import IApiKeyStore
 from app.services.api_keys_service import APIKeyManagerReturn

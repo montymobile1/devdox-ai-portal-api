@@ -1,6 +1,5 @@
 import hashlib
 import re
-from uuid import uuid4
 
 import pytest
 
@@ -12,13 +11,13 @@ from app.services.api_keys_service import (
     PostApiKeyService,
 )
 from app.services.git_tokens_service import mask_token
-from app.utils.auth import UserClaims
 from tests.unit_test.test_doubles.app.repository.api_key_repository_test_doubles import (
     FakeApiKeyStore,
 )
 from tests.unit_test.test_doubles.app.service.api_keys_service_test_doubles import (
     FakeAPIKeyManager,
 )
+
 
 @pytest.mark.asyncio
 class TestAPIKeyManager:
@@ -106,7 +105,7 @@ class TestPostApiKeyService:
 
         assert exc.value.user_message == UNIQUE_API_KEY_GENERATION_FAILED
         
-        pattern = FAILED_GENERATE_API_KEY_RETRIES_LOG_MESSAGE.format(attempts = "\d+")
+        pattern = FAILED_GENERATE_API_KEY_RETRIES_LOG_MESSAGE.format(attempts ="\d+")
         assert re.fullmatch(pattern, exc.value.log_message)
 
     async def test_generate_api_key_raises_on_store_exception(self):

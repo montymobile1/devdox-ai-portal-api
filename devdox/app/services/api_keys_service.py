@@ -93,7 +93,7 @@ class PostApiKeyService:
         max_generation_attempts = 6
 
         result = None
-        for attempt in range(1, max_generation_attempts + 1):
+        for _ in range(1, max_generation_attempts + 1):
             tmp_result = await self.api_key_manager.generate_unique_api_key()
             if tmp_result:
                 result = tmp_result

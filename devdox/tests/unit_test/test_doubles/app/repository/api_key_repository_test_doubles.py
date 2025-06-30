@@ -1,6 +1,6 @@
 from datetime import datetime
 from types import SimpleNamespace
-from typing import Any, List, Optional
+from typing import Any
 from uuid import uuid4
 
 from app.repositories.api_key_repository import IApiKeyStore

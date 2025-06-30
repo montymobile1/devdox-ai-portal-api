@@ -1,8 +1,7 @@
 from abc import abstractmethod
-from typing import Any, Coroutine, List, Optional, Protocol
+from typing import Any, Protocol
 
 from models import APIKEY
-from tortoise.expressions import Q
 
 from app.schemas.api_key_schema import APIKeyCreate
 
