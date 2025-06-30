@@ -1,7 +1,7 @@
+from datetime import datetime
 from types import SimpleNamespace
 from typing import Any, List, Optional
-from uuid import UUID, uuid4
-from datetime import datetime
+from uuid import uuid4
 
 from app.repositories.api_key_repository import IApiKeyStore
 from app.schemas.api_key_schema import APIKeyCreate

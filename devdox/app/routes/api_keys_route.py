@@ -15,8 +15,8 @@ router = APIRouter()
     "/",
     response_model=Dict[str, Any],
     status_code=status.HTTP_201_CREATED,
-    summary="Add a new api token",
-    description="Create a new api token",
+    summary="Create a new API key",
+    description="Create a new API key for the authenticated user",
 )
 async def add_new_api_key(
     user_claims: Annotated[UserClaims, Depends(get_authenticated_user)],
@@ -32,5 +32,5 @@ async def add_new_api_key(
     )
 
     return APIResponse.success(
-        message=constants.API_KEY_GENERATED_SUCCESSFULLY, data={ "id": db_id, "api_key": plain_key }
+        message=constants.API_KEY_GENERATED_SUCCESSFULLY, data={"id": db_id, "api_key": plain_key}
     )

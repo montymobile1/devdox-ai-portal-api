@@ -1,5 +1,5 @@
 from abc import abstractmethod
-from typing import Any, Coroutine, List, Protocol
+from typing import Any, List, Protocol
 
 from models import APIKEY
 from tortoise.expressions import Q
