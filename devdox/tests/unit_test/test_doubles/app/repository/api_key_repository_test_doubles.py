@@ -4,8 +4,8 @@ from types import SimpleNamespace
 from typing import Any
 from uuid import uuid4
 
-from app.repositories.api_key_repository import IApiKeyStore
-from app.schemas.api_key_schema import APIKeyCreate
+from app.repositories.api_key import IApiKeyStore
+from app.schemas.api_key import APIKeyCreate
 
 
 class FakeApiKeyStore(IApiKeyStore):

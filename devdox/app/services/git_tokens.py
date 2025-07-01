@@ -12,8 +12,8 @@ from app.exceptions.exception_constants import (
     TOKEN_NOT_FOUND,
     USER_RESOURCE_NOT_FOUND,
 )
-from app.repositories.git_label_repository import TortoiseGitLabelStore
-from app.repositories.user_repository import TortoiseUserStore
+from app.repositories.git_label import TortoiseGitLabelStore
+from app.repositories.user import TortoiseUserStore
 from app.schemas.basic import PaginationParams, RequiredPaginationParams
 from app.schemas.git_label import GitLabelBase, GitLabelDBCreateDTO, GitLabelResponse
 from app.schemas.repo import GitUserResponse

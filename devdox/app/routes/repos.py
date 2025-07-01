@@ -11,7 +11,7 @@ from starlette.responses import JSONResponse
 
 from app.schemas.basic import RequiredPaginationParams
 from app.schemas.repo import AddRepositoryRequest, RepoListResponse
-from app.services.repository_service import (
+from app.services.repository import (
     RepoProviderService,
     RepoManipulationService,
     RepoQueryService,

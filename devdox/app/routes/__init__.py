@@ -7,7 +7,7 @@ from fastapi import APIRouter
 from app.routes.git_tokens import router as git_tokens
 from app.routes.repos import router as repos
 from app.routes.webhooks import router as webhook_router
-from app.routes.api_keys_route import router as api_keys_router
+from app.routes.api_keys import router as api_keys_router
 
 # Create main router
 router = APIRouter()

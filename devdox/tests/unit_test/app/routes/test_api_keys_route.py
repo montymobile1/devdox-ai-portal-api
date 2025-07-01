@@ -5,7 +5,7 @@ from fastapi import status
 from fastapi.testclient import TestClient
 
 from app.main import app
-from app.services.api_keys_service import RevokeApiKeyService
+from app.services.api_keys import RevokeApiKeyService
 from app.utils.auth import UserClaims, get_authenticated_user
 from app.utils.constants import API_KEY_REVOKED_SUCCESSFULLY
 from app.exceptions.custom_exceptions import UnauthorizedAccess

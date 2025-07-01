@@ -13,9 +13,9 @@ from app.exceptions.exception_constants import (
     USER_RESOURCE_NOT_FOUND,
 )
 from models import Repo
-from app.repositories.git_label_repository import TortoiseGitLabelStore
-from app.repositories.repo_repository import TortoiseRepoStore
-from app.repositories.user_repository import TortoiseUserStore
+from app.repositories.git_label import TortoiseGitLabelStore
+from app.repositories.repo import TortoiseRepoStore
+from app.repositories.user import TortoiseUserStore
 from app.schemas.basic import RequiredPaginationParams
 from app.schemas.repo import GitRepoResponse, RepoResponse
 from app.utils.auth import UserClaims

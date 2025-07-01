@@ -2,7 +2,7 @@ import pytest
 from tortoise.exceptions import IntegrityError
 
 from models import Repo
-from app.services.repository_service import RepoManipulationService
+from app.services.repository import RepoManipulationService
 from app.schemas.repo import GitRepoResponse
 from app.utils.auth import UserClaims
 from app.exceptions.custom_exceptions import (

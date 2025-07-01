@@ -9,7 +9,7 @@ from fastapi.testclient import TestClient
 from app.config import GitHosting
 from app.main import app
 from app.schemas.repo import RepoResponse
-from app.services.repository_service import RepoManipulationService, RepoQueryService
+from app.services.repository import RepoManipulationService, RepoQueryService
 from app.utils.auth import (
     get_authenticated_user,
     get_user_authenticator_dependency,

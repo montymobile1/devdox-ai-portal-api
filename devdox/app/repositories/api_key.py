@@ -4,7 +4,7 @@ from typing import Any, Protocol
 
 from models import APIKEY
 
-from app.schemas.api_key_schema import APIKeyCreate
+from app.schemas.api_key import APIKeyCreate
 
 
 class IApiKeyStore(Protocol):

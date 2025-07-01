@@ -13,9 +13,9 @@ from app.exceptions.exception_constants import (
     INVALID_APIKEY,
     UNIQUE_API_KEY_GENERATION_FAILED,
 )
-from app.repositories.api_key_repository import TortoiseApiKeyStore
-from app.schemas.api_key_schema import APIKeyCreate
-from app.services.git_tokens_service import mask_token
+from app.repositories.api_key import TortoiseApiKeyStore
+from app.schemas.api_key import APIKeyCreate
+from app.services.git_tokens import mask_token
 from app.utils.auth import UserClaims
 
 

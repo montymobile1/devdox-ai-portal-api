@@ -13,7 +13,7 @@ from app.exceptions.exception_constants import (
 )
 from app.schemas.basic import PaginationParams, RequiredPaginationParams
 from app.schemas.git_label import GitLabelBase
-from app.services.git_tokens_service import (
+from app.services.git_tokens import (
     DeleteGitLabelService,
     GetGitLabelService,
     PostGitLabelService,

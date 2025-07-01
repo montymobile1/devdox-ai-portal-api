@@ -2,7 +2,7 @@ from typing import List, Optional
 
 from models import Repo
 
-from app.repositories.repo_repository import IRepoStore
+from app.repositories.repo import IRepoStore
 
 
 class FakeRepoStore(IRepoStore):

@@ -5,7 +5,7 @@ from uuid import uuid4
 
 from models import GitLabel
 
-from app.repositories.git_label_repository import ILabelStore
+from app.repositories.git_label import ILabelStore
 from app.schemas.git_label import GitLabelDBCreateDTO
 
 

@@ -4,8 +4,8 @@ from fastapi import APIRouter, Depends
 from starlette import status
 from starlette.responses import JSONResponse
 
-from app.schemas.api_key_schema import APIKeyRevokeRequest
-from app.services.api_keys_service import PostApiKeyService, RevokeApiKeyService
+from app.schemas.api_key import APIKeyRevokeRequest
+from app.services.api_keys import PostApiKeyService, RevokeApiKeyService
 from app.utils import constants
 from app.utils.api_response import APIResponse
 from app.utils.auth import get_authenticated_user, UserClaims

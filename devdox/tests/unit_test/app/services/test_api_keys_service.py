@@ -8,12 +8,12 @@ import pytest
 from app.exceptions.custom_exceptions import BadRequest, ResourceNotFound
 from app.exceptions.exception_constants import (FAILED_GENERATE_API_KEY_RETRIES_LOG_MESSAGE,
                                                 UNIQUE_API_KEY_GENERATION_FAILED)
-from app.services.api_keys_service import (
+from app.services.api_keys import (
     APIKeyManager,
     PostApiKeyService,
     RevokeApiKeyService,
 )
-from app.services.git_tokens_service import mask_token
+from app.services.git_tokens import mask_token
 from app.utils.auth import UserClaims
 from tests.unit_test.test_doubles.app.repository.api_key_repository_test_doubles import (
     FakeApiKeyStore,
