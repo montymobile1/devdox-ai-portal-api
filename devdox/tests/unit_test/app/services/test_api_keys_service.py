@@ -1,17 +1,21 @@
+import datetime
 import hashlib
 import re
 from types import SimpleNamespace
 from uuid import uuid4
 
 import pytest
+from pydantic import ValidationError
 
 from app.exceptions.custom_exceptions import BadRequest, ResourceNotFound
 from app.exceptions.exception_constants import (
     FAILED_GENERATE_API_KEY_RETRIES_LOG_MESSAGE,
     UNIQUE_API_KEY_GENERATION_FAILED,
 )
+from app.schemas.api_key import APIKeyPublicResponse
 from app.services.api_keys import (
     APIKeyManager,
+    GetApiKeyService,
     PostApiKeyService,
     RevokeApiKeyService,
 )
@@ -170,3 +174,81 @@ class TestRevokeApiKeyService:
 
         with pytest.raises(RuntimeError, match="DB Error"):
             await service.revoke_api_key(claims, api_key_id=uuid4())
+
+
+@pytest.mark.asyncio
+class TestAPIKeyPublicResponse:
+
+    def test_valid_instantiation(self):
+        now = datetime.datetime.utcnow()
+        response = APIKeyPublicResponse(
+            user_id="user123",
+            masked_api_key="****abcd",
+            created_at=now,
+            last_used_at=now,
+        )
+
+        assert response.user_id == "user123"
+        assert response.masked_api_key == "****abcd"
+        assert response.created_at == now
+        assert response.last_used_at == now
+
+    def test_optional_last_used_at_none(self):
+        now = datetime.datetime.utcnow()
+        response = APIKeyPublicResponse(
+            user_id="user123",
+            masked_api_key="****abcd",
+            created_at=now,
+        )
+
+        assert response.last_used_at is None
+
+    def test_missing_required_field_raises(self):
+        now = datetime.datetime.utcnow()
+        with pytest.raises(ValidationError):
+            APIKeyPublicResponse(masked_api_key="****abcd", created_at=now)
+
+
+@pytest.mark.asyncio
+class TestGetApiKeyService:
+
+    async def test_get_api_keys_by_user_returns_expected_models(self):
+        store = FakeApiKeyStore()
+        now = datetime.datetime.utcnow()
+        store.stored_keys = [
+            SimpleNamespace(
+                id="1",
+                user_id="user123",
+                masked_api_key="****abcd",
+                is_active=True,
+                created_at=now,
+                updated_at=now,
+                last_used_at=None,
+            )
+        ]
+        service = GetApiKeyService(api_key_store=store)
+        claims = UserClaims(sub="user123")
+
+        result = await service.get_api_keys_by_user(user_claims=claims)
+
+        assert len(result) == 1
+        assert isinstance(result[0], APIKeyPublicResponse)
+        assert result[0].user_id == "user123"
+
+    async def test_returns_empty_list_when_no_keys(self):
+        store = FakeApiKeyStore()
+        service = GetApiKeyService(api_key_store=store)
+        claims = UserClaims(sub="user123")
+
+        result = await service.get_api_keys_by_user(user_claims=claims)
+
+        assert result == []
+
+    async def test_get_api_keys_by_user_propagates_exception(self):
+        store = FakeApiKeyStore()
+        store.set_exception("get_all_api_keys", RuntimeError("store error"))
+        service = GetApiKeyService(api_key_store=store)
+        claims = UserClaims(sub="user123")
+
+        with pytest.raises(RuntimeError, match="store error"):
+            await service.get_api_keys_by_user(user_claims=claims)

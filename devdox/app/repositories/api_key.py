@@ -1,6 +1,6 @@
 import uuid
 from abc import abstractmethod
-from typing import Any, Protocol
+from typing import Any, List, Protocol
 
 from models import APIKEY
 
@@ -19,6 +19,9 @@ class IApiKeyStore(Protocol):
     async def set_inactive_by_user_id_and_api_key_id(
         self, user_id, api_key_id
     ) -> int: ...
+
+    @abstractmethod
+    async def get_all_api_keys(self, user_id) -> List[Any]: ...
 
 
 class TortoiseApiKeyStore(IApiKeyStore):
@@ -54,3 +57,14 @@ class TortoiseApiKeyStore(IApiKeyStore):
         return await APIKEY.filter(
             user_id=user_id, id=api_key_id, is_active=True
         ).update(is_active=False)
+
+    async def get_all_api_keys(self, user_id: str) -> List[APIKEY]:
+
+        if not user_id or not user_id.strip():
+            return []
+
+        return (
+            await APIKEY.filter(user_id=user_id, is_active=True)
+            .order_by("-created_at")
+            .all()
+        )

@@ -5,7 +5,11 @@ from starlette import status
 from starlette.responses import JSONResponse
 
 from app.schemas.api_key import APIKeyRevokeRequest
-from app.services.api_keys import PostApiKeyService, RevokeApiKeyService
+from app.services.api_keys import (
+    GetApiKeyService,
+    PostApiKeyService,
+    RevokeApiKeyService,
+)
 from app.utils import constants
 from app.utils.api_response import APIResponse
 from app.utils.auth import get_authenticated_user, UserClaims
@@ -49,3 +53,22 @@ async def revoke_api_key(
     await service.revoke_api_key(user_claims=user_claims, api_key_id=request.api_key_id)
 
     return APIResponse.success(message=constants.API_KEY_REVOKED_SUCCESSFULLY)
+
+
+@router.get(
+    "/",
+    response_model=Dict[str, Any],
+    status_code=status.HTTP_200_OK,
+    summary="Retrieve user api keys",
+    description="Retrieves the API Key per user",
+)
+async def get_all_api_keys_for_user(
+    user_claims: Annotated[UserClaims, Depends(get_authenticated_user)],
+    service: Annotated[GetApiKeyService, Depends(GetApiKeyService.with_dependency)],
+) -> JSONResponse:
+
+    results = await service.get_api_keys_by_user(user_claims=user_claims)
+
+    return APIResponse.success(
+        message=constants.GENERIC_SUCCESS, data=results
+    )
