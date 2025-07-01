@@ -6,8 +6,10 @@ from uuid import uuid4
 import pytest
 
 from app.exceptions.custom_exceptions import BadRequest, ResourceNotFound
-from app.exceptions.exception_constants import (FAILED_GENERATE_API_KEY_RETRIES_LOG_MESSAGE,
-                                                UNIQUE_API_KEY_GENERATION_FAILED)
+from app.exceptions.exception_constants import (
+    FAILED_GENERATE_API_KEY_RETRIES_LOG_MESSAGE,
+    UNIQUE_API_KEY_GENERATION_FAILED,
+)
 from app.services.api_keys import (
     APIKeyManager,
     PostApiKeyService,
@@ -46,7 +48,9 @@ class TestAPIKeyManager:
         store.set_existing_hash(precomputed_hash)
 
         # Monkeypatch to return a known key
-        manager._APIKeyManager__generate_plain_key = lambda prefix, length: precomputed_key
+        manager._APIKeyManager__generate_plain_key = (
+            lambda prefix, length: precomputed_key
+        )
 
         result = await manager.generate_unique_api_key()
 
@@ -86,7 +90,9 @@ class TestPostApiKeyService:
         fake_manager = FakeAPIKeyManager(fake_store)
         fake_manager.set_fixed_key("dvd_mock_key")
 
-        service = PostApiKeyService(api_key_store=fake_store, api_key_manager=fake_manager)
+        service = PostApiKeyService(
+            api_key_store=fake_store, api_key_manager=fake_manager
+        )
         user_claims = DummyUserClaims("user-123")
 
         key_id, plain = await service.generate_api_key(user_claims)
@@ -101,15 +107,17 @@ class TestPostApiKeyService:
         fake_store.set_existing_hash(fake_manager.hash_key("dvd_mock_key"))
         fake_manager.set_fixed_key("dvd_mock_key")
 
-        service = PostApiKeyService(api_key_store=fake_store, api_key_manager=fake_manager)
+        service = PostApiKeyService(
+            api_key_store=fake_store, api_key_manager=fake_manager
+        )
         user_claims = DummyUserClaims("user-123")
 
         with pytest.raises(BadRequest) as exc:
             await service.generate_api_key(user_claims)
 
         assert exc.value.user_message == UNIQUE_API_KEY_GENERATION_FAILED
-        
-        pattern = FAILED_GENERATE_API_KEY_RETRIES_LOG_MESSAGE.format(attempts ="\d+")
+
+        pattern = FAILED_GENERATE_API_KEY_RETRIES_LOG_MESSAGE.format(attempts="\d+")
         assert re.fullmatch(pattern, exc.value.log_message)
 
     async def test_generate_api_key_raises_on_store_exception(self):
@@ -118,7 +126,9 @@ class TestPostApiKeyService:
         fake_manager.set_fixed_key("dvd_mock_key")
         fake_store.set_exception("save_api_key", RuntimeError("DB error"))
 
-        service = PostApiKeyService(api_key_store=fake_store, api_key_manager=fake_manager)
+        service = PostApiKeyService(
+            api_key_store=fake_store, api_key_manager=fake_manager
+        )
         user_claims = DummyUserClaims("user-123")
 
         with pytest.raises(RuntimeError, match="DB error"):
@@ -152,7 +162,9 @@ class TestRevokeApiKeyService:
 
     async def test_revoke_handles_store_exception(self):
         store = FakeApiKeyStore()
-        store.set_exception("set_inactive_by_user_id_and_api_key_id", RuntimeError("DB Error"))
+        store.set_exception(
+            "set_inactive_by_user_id_and_api_key_id", RuntimeError("DB Error")
+        )
         service = RevokeApiKeyService(api_key_store=store)
         claims = UserClaims(sub="user123")
 

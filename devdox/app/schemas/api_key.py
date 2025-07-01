@@ -23,6 +23,7 @@ class APIKeyCreate(BaseModel):
         description = "Used when creating a new API key. Includes the full hashed key along with base fields."
         from_attributes = True
 
+
 class APIKeyRevokeRequest:
     def __init__(
         self,

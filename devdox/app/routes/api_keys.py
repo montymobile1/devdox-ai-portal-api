@@ -24,9 +24,6 @@ async def add_new_api_key(
     user_claims: Annotated[UserClaims, Depends(get_authenticated_user)],
     service: Annotated[PostApiKeyService, Depends(PostApiKeyService.with_dependency)],
 ) -> JSONResponse:
-    """
-    Generate a new API key
-    """
     db_id, plain_key = await service.generate_api_key(user_claims=user_claims)
 
     return APIResponse.success(
@@ -49,13 +46,6 @@ async def revoke_api_key(
         RevokeApiKeyService, Depends(RevokeApiKeyService.with_dependency)
     ],
 ) -> JSONResponse:
-    """
-    Generate a new API key
-    """
-    await service.revoke_api_key(
-        user_claims=user_claims, api_key_id=request.api_key_id
-    )
+    await service.revoke_api_key(user_claims=user_claims, api_key_id=request.api_key_id)
 
-    return APIResponse.success(
-        message=constants.API_KEY_REVOKED_SUCCESSFULLY
-    )
+    return APIResponse.success(message=constants.API_KEY_REVOKED_SUCCESSFULLY)

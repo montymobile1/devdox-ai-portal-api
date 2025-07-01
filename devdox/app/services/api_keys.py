@@ -43,7 +43,9 @@ class APIKeyManager:
         prefix: str = DEFAULT_PREFIX, length: int = DEFAULT_MAX_KEY_LENGTH
     ) -> str:
         chars = string.ascii_letters + string.digits
-        random_part = "".join(secrets.choice(chars) for _ in range(length - len(prefix)))
+        random_part = "".join(
+            secrets.choice(chars) for _ in range(length - len(prefix))
+        )
         return prefix + random_part
 
     async def generate_unique_api_key(
@@ -61,10 +63,12 @@ class APIKeyManager:
 
         if key_exists:
             return None
-        
+
         masked_plain_key = mask_token(plain_key)
-        
-        return APIKeyManagerReturn(plain=plain_key, hashed=hashed_key, masked=masked_plain_key)
+
+        return APIKeyManagerReturn(
+            plain=plain_key, hashed=hashed_key, masked=masked_plain_key
+        )
 
 
 class PostApiKeyService:
@@ -107,7 +111,6 @@ class PostApiKeyService:
                 log_message=FAILED_GENERATE_API_KEY_RETRIES_LOG_MESSAGE.format(
                     attempts=max_generation_attempts
                 ),
-                
             )
 
         saved_api_key = await self.api_key_store.save_api_key(
@@ -139,10 +142,12 @@ class RevokeApiKeyService:
             api_key_store=api_key_store,
         )
 
-    async def revoke_api_key(self, user_claims: UserClaims, api_key_id:uuid.UUID):
+    async def revoke_api_key(self, user_claims: UserClaims, api_key_id: uuid.UUID):
 
-        deleted_api_key = await self.api_key_store.set_inactive_by_user_id_and_api_key_id(
+        deleted_api_key = (
+            await self.api_key_store.set_inactive_by_user_id_and_api_key_id(
                 user_id=user_claims.sub, api_key_id=api_key_id
+            )
         )
 
         if deleted_api_key <= 0:
