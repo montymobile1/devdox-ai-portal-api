@@ -17,7 +17,7 @@ from app.schemas.git_label import (
     GetGitLabelByLabelRequest,
     GetGitLabelsRequest,
 )
-from app.services.git_tokens_service import (
+from app.services.git_tokens import (
     DeleteGitLabelService,
     GetGitLabelService,
     PostGitLabelService,

@@ -1,9 +1,9 @@
 import hashlib
 from typing import Optional
 
-from app.repositories.api_key_repository import IApiKeyStore
-from app.services.api_keys_service import APIKeyManagerReturn
-from app.services.git_tokens_service import mask_token
+from app.repositories.api_key import IApiKeyStore
+from app.services.api_keys import APIKeyManagerReturn
+from app.services.git_tokens import mask_token
 
 
 class FakeAPIKeyManager:

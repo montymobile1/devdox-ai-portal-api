@@ -2,7 +2,7 @@ import uuid
 
 from models import User
 
-from app.repositories.user_repository import IUserStore
+from app.repositories.user import IUserStore
 
 
 class FakeUserStore(IUserStore):

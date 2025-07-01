@@ -1,20 +1,24 @@
+import uuid
 from abc import abstractmethod
 from typing import Any, Protocol
 
 from models import APIKEY
 
-from app.schemas.api_key_schema import APIKeyCreate
+from app.schemas.api_key import APIKeyCreate
 
 
 class IApiKeyStore(Protocol):
 
     @abstractmethod
-    async def query_for_existing_hashes(
-        self, hash_key: str
-    ) -> bool: ...
+    async def query_for_existing_hashes(self, hash_key: str) -> bool: ...
 
     @abstractmethod
     async def save_api_key(self, create_model: APIKeyCreate) -> Any: ...
+
+    @abstractmethod
+    async def set_inactive_by_user_id_and_api_key_id(
+        self, user_id, api_key_id
+    ) -> int: ...
 
 
 class TortoiseApiKeyStore(IApiKeyStore):
@@ -30,10 +34,8 @@ class TortoiseApiKeyStore(IApiKeyStore):
         Causing unneeded behavior.
         """
         pass
-    
-    async def query_for_existing_hashes(
-        self, hash_key: str
-    ) -> bool:
+
+    async def query_for_existing_hashes(self, hash_key: str) -> bool:
 
         if not hash_key or not hash_key.strip():
             return False
@@ -42,3 +44,13 @@ class TortoiseApiKeyStore(IApiKeyStore):
 
     async def save_api_key(self, create_model: APIKeyCreate) -> APIKEY:
         return await APIKEY.create(**create_model.model_dump())
+
+    async def set_inactive_by_user_id_and_api_key_id(
+        self, user_id: str, api_key_id: uuid.UUID
+    ) -> int:
+        if (not user_id or not user_id.strip()) or not api_key_id:
+            return -1
+
+        return await APIKEY.filter(
+            user_id=user_id, id=api_key_id, is_active=True
+        ).update(is_active=False)

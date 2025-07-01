@@ -1,5 +1,7 @@
+import uuid
 from typing import Optional
 
+from fastapi.params import Path
 from pydantic import BaseModel, Field
 
 API_KEY_FIELD_DESCRIPTION = "Hashed API key"
@@ -20,3 +22,13 @@ class APIKeyCreate(BaseModel):
         title = "API Key Create Schema"
         description = "Used when creating a new API key. Includes the full hashed key along with base fields."
         from_attributes = True
+
+
+class APIKeyRevokeRequest:
+    def __init__(
+        self,
+        api_key_id: uuid.UUID = Path(
+            description="The id of the API key to revoke retrieved from the database",
+        ),
+    ):
+        self.api_key_id = api_key_id

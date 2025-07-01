@@ -4,9 +4,9 @@ from unittest.mock import AsyncMock, patch
 import pytest
 
 from app.exceptions.custom_exceptions import DevDoxAPIException
-from app.repositories.git_label_repository import TortoiseGitLabelStore
+from app.repositories.git_label import TortoiseGitLabelStore
 
-path_to_actual_module = "app.repositories.git_label_repository"
+path_to_actual_module = "app.repositories.git_label"
 
 
 @pytest.mark.asyncio

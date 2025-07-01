@@ -7,7 +7,7 @@ from fastapi.testclient import TestClient
 from app.exceptions.exception_constants import GENERIC_ALREADY_EXIST
 from app.main import app
 from app.utils.auth import UserClaims
-from app.services.git_tokens_service import (
+from app.services.git_tokens import (
     DeleteGitLabelService,
     GetGitLabelService,
     PostGitLabelService,

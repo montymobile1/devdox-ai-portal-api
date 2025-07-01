@@ -2,18 +2,20 @@ import dataclasses
 import hashlib
 import secrets
 import string
+import uuid
 from typing import Annotated, Optional
 
 from fastapi import Depends
 
-from app.exceptions.custom_exceptions import BadRequest
+from app.exceptions.custom_exceptions import BadRequest, ResourceNotFound
 from app.exceptions.exception_constants import (
     FAILED_GENERATE_API_KEY_RETRIES_LOG_MESSAGE,
+    INVALID_APIKEY,
     UNIQUE_API_KEY_GENERATION_FAILED,
 )
-from app.repositories.api_key_repository import TortoiseApiKeyStore
-from app.schemas.api_key_schema import APIKeyCreate
-from app.services.git_tokens_service import mask_token
+from app.repositories.api_key import TortoiseApiKeyStore
+from app.schemas.api_key import APIKeyCreate
+from app.services.git_tokens import mask_token
 from app.utils.auth import UserClaims
 
 
@@ -41,7 +43,9 @@ class APIKeyManager:
         prefix: str = DEFAULT_PREFIX, length: int = DEFAULT_MAX_KEY_LENGTH
     ) -> str:
         chars = string.ascii_letters + string.digits
-        random_part = "".join(secrets.choice(chars) for _ in range(length - len(prefix)))
+        random_part = "".join(
+            secrets.choice(chars) for _ in range(length - len(prefix))
+        )
         return prefix + random_part
 
     async def generate_unique_api_key(
@@ -59,10 +63,12 @@ class APIKeyManager:
 
         if key_exists:
             return None
-        
+
         masked_plain_key = mask_token(plain_key)
-        
-        return APIKeyManagerReturn(plain=plain_key, hashed=hashed_key, masked=masked_plain_key)
+
+        return APIKeyManagerReturn(
+            plain=plain_key, hashed=hashed_key, masked=masked_plain_key
+        )
 
 
 class PostApiKeyService:
@@ -105,7 +111,6 @@ class PostApiKeyService:
                 log_message=FAILED_GENERATE_API_KEY_RETRIES_LOG_MESSAGE.format(
                     attempts=max_generation_attempts
                 ),
-                
             )
 
         saved_api_key = await self.api_key_store.save_api_key(
@@ -117,3 +122,35 @@ class PostApiKeyService:
         )
 
         return saved_api_key.id, result.plain
+
+
+class RevokeApiKeyService:
+
+    def __init__(
+        self,
+        api_key_store: TortoiseApiKeyStore,
+    ):
+        self.api_key_store = api_key_store
+
+    @classmethod
+    def with_dependency(
+        cls,
+        api_key_store: Annotated[TortoiseApiKeyStore, Depends()],
+    ) -> "RevokeApiKeyService":
+
+        return cls(
+            api_key_store=api_key_store,
+        )
+
+    async def revoke_api_key(self, user_claims: UserClaims, api_key_id: uuid.UUID):
+
+        deleted_api_key = (
+            await self.api_key_store.set_inactive_by_user_id_and_api_key_id(
+                user_id=user_claims.sub, api_key_id=api_key_id
+            )
+        )
+
+        if deleted_api_key <= 0:
+            raise ResourceNotFound(reason=INVALID_APIKEY)
+
+        return deleted_api_key

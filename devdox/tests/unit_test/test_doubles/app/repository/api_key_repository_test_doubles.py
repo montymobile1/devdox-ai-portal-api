@@ -1,10 +1,11 @@
+import uuid
 from datetime import datetime
 from types import SimpleNamespace
 from typing import Any
 from uuid import uuid4
 
-from app.repositories.api_key_repository import IApiKeyStore
-from app.schemas.api_key_schema import APIKeyCreate
+from app.repositories.api_key import IApiKeyStore
+from app.schemas.api_key import APIKeyCreate
 
 
 class FakeApiKeyStore(IApiKeyStore):
@@ -46,3 +47,24 @@ class FakeApiKeyStore(IApiKeyStore):
         )
         self.stored_keys.append(fake_entry)
         return fake_entry
+
+    async def set_inactive_by_user_id_and_api_key_id(
+        self, user_id: str, api_key_id: uuid.UUID
+    ) -> int:
+        if "set_inactive_by_user_id_and_api_key_id" in self.exceptions:
+            raise self.exceptions["set_inactive_by_user_id_and_api_key_id"]
+
+        self.received_calls.append(
+            ("set_inactive_by_user_id_and_api_key_id", user_id, api_key_id)
+        )
+
+        if not user_id or not user_id.strip() or not api_key_id:
+            return -1
+
+        updated = 0
+
+        for key in self.stored_keys:
+            if key.user_id == user_id and key.id == api_key_id and key.is_active:
+                key.is_active = False
+                updated += 1
+        return updated
