@@ -4,11 +4,12 @@ from fastapi import APIRouter, Depends
 from starlette import status
 from starlette.responses import JSONResponse
 
-from app.schemas.api_key import APIKeyRevokeRequest
+from app.schemas.api_key import APIKeyIdPathRequest
 from app.services.api_keys import (
     GetApiKeyService,
     PostApiKeyService,
     RevokeApiKeyService,
+    UpdateLastUsedService,
 )
 from app.utils import constants
 from app.utils.api_response import APIResponse
@@ -45,7 +46,7 @@ async def add_new_api_key(
 )
 async def revoke_api_key(
     user_claims: Annotated[UserClaims, Depends(get_authenticated_user)],
-    request: Annotated[APIKeyRevokeRequest, Depends()],
+    request: Annotated[APIKeyIdPathRequest, Depends()],
     service: Annotated[
         RevokeApiKeyService, Depends(RevokeApiKeyService.with_dependency)
     ],
@@ -71,4 +72,26 @@ async def get_all_api_keys_for_user(
 
     return APIResponse.success(
         message=constants.GENERIC_SUCCESS, data=results
+    )
+
+
+@router.patch(
+    "/{api_key_id}",
+    response_model=Dict[str, Any],
+    status_code=status.HTTP_200_OK,
+    summary="Update API Key 'last_used' timestamp",
+    description="Updates the 'last_used' field of a specific active API key based on its ID. Only the key's owner can perform this action.",
+)
+async def update_api_key_last_used(
+    user_claims: Annotated[UserClaims, Depends(get_authenticated_user)],
+    request: Annotated[APIKeyIdPathRequest, Depends()],
+    service: Annotated[UpdateLastUsedService, Depends(UpdateLastUsedService.with_dependency)],
+) -> JSONResponse:
+
+    _ = await service.update_last_used_by_id(
+        user_claims=user_claims, key_id=request.api_key_id
+    )
+
+    return APIResponse.success(
+        message=constants.GENERIC_SUCCESS
     )

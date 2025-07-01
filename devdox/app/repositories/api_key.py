@@ -1,3 +1,4 @@
+import datetime
 import uuid
 from abc import abstractmethod
 from typing import Any, List, Protocol
@@ -5,7 +6,6 @@ from typing import Any, List, Protocol
 from models import APIKEY
 
 from app.schemas.api_key import APIKeyCreate
-
 
 class IApiKeyStore(Protocol):
 
@@ -22,7 +22,9 @@ class IApiKeyStore(Protocol):
 
     @abstractmethod
     async def get_all_api_keys(self, user_id) -> List[Any]: ...
-
+    
+    @abstractmethod
+    async def update_last_used(self, user_id: str, key_id:uuid.UUID, date_time: datetime.datetime=datetime.datetime.now(datetime.UTC)) -> int: ...
 
 class TortoiseApiKeyStore(IApiKeyStore):
 
@@ -68,3 +70,11 @@ class TortoiseApiKeyStore(IApiKeyStore):
             .order_by("-created_at")
             .all()
         )
+
+    async def update_last_used(self, user_id: str, key_id:uuid.UUID, date_time: datetime.datetime=datetime.datetime.now(datetime.UTC)) -> int:
+        if (not user_id or not user_id.strip()) or not key_id:
+            return -1
+
+        return await APIKEY.filter(
+            user_id=user_id, id=key_id, is_active=True
+        ).update(last_used_at=date_time)

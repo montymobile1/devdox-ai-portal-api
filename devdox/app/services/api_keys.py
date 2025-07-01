@@ -185,3 +185,32 @@ class GetApiKeyService:
         ]
 
         return api_keys_response
+
+class UpdateLastUsedService:
+
+    def __init__(
+        self,
+        api_key_store: TortoiseApiKeyStore,
+    ):
+        self.api_key_store = api_key_store
+
+    @classmethod
+    def with_dependency(
+        cls,
+        api_key_store: Annotated[TortoiseApiKeyStore, Depends()],
+    ) -> "UpdateLastUsedService":
+
+        return cls(
+            api_key_store=api_key_store,
+        )
+
+    async def update_last_used_by_id(self, user_claims: UserClaims, key_id:uuid.UUID):
+
+        updated_row = await self.api_key_store.update_last_used(
+            user_id=user_claims.sub, key_id=key_id
+        )
+
+        if updated_row <= 0:
+            raise ResourceNotFound(reason=INVALID_APIKEY)
+
+        return updated_row

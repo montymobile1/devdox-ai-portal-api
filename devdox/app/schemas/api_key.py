@@ -27,7 +27,7 @@ class APIKeyCreate(BaseModel):
         from_attributes = True
 
 
-class APIKeyRevokeRequest:
+class APIKeyIdPathRequest:
     def __init__(
         self,
         api_key_id: uuid.UUID = Path(
@@ -49,3 +49,4 @@ class APIKeyPublicResponse(BaseModel):
         title = "API Key Public Schema"
         description = "Used when returning API Key records to the user"
         from_attributes = True
+
