@@ -8,7 +8,7 @@ from app.main import app
 from app.schemas.api_key import APIKeyPublicResponse
 from app.services.api_keys import GetApiKeyService, RevokeApiKeyService
 from app.utils.auth import UserClaims
-from app.utils.constants import API_KEY_REVOKED_SUCCESSFULLY
+from app.utils.constants import API_KEY_REVOKED_SUCCESSFULLY, GENERIC_SUCCESS
 
 from tests.unit_test.test_doubles.app.repository.api_key_repository_test_doubles import (
     FakeApiKeyStore,
@@ -157,7 +157,7 @@ class TestGetApiKeyRouter:
         assert response.status_code == status.HTTP_200_OK
         body = response.json()
         assert body["success"] is True
-        assert body["message"] == API_KEY_REVOKED_SUCCESSFULLY
+        assert body["message"] == GENERIC_SUCCESS
         assert "data" in body
         assert isinstance(body["data"], list)
         assert body["data"][0]["user_id"] == "user123"
@@ -169,7 +169,7 @@ class TestGetApiKeyRouter:
         assert response.status_code == status.HTTP_200_OK
         body = response.json()
         assert body["success"] is True
-        assert body["message"] == API_KEY_REVOKED_SUCCESSFULLY
+        assert body["message"] == GENERIC_SUCCESS
         assert body["data"] == []
 
     def test_service_failure_raises_503(

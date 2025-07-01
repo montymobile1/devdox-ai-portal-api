@@ -42,7 +42,7 @@ class APIKeyPublicResponse(BaseModel):
     masked_api_key: str = Field(..., description=MASKED_API_KEY_FIELD_DESCRIPTION)
     created_at: datetime.datetime = Field(..., description=CREATED_AT_FIELD_DESCRIPTION)
     last_used_at: Optional[datetime.datetime] = Field(
-        default=None, description=CREATED_AT_FIELD_DESCRIPTION
+        default=None, description=LAST_USED_AT_FIELD_DESCRIPTION
     )
 
     class Config:

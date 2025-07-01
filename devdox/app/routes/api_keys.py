@@ -62,7 +62,7 @@ async def revoke_api_key(
     summary="Retrieve user api keys",
     description="Retrieves the API Key per user",
 )
-async def revoke_api_key(
+async def get_all_api_keys_for_user(
     user_claims: Annotated[UserClaims, Depends(get_authenticated_user)],
     service: Annotated[GetApiKeyService, Depends(GetApiKeyService.with_dependency)],
 ) -> JSONResponse:
@@ -70,5 +70,5 @@ async def revoke_api_key(
     results = await service.get_api_keys_by_user(user_claims=user_claims)
 
     return APIResponse.success(
-        message=constants.API_KEY_REVOKED_SUCCESSFULLY, data=results
+        message=constants.GENERIC_SUCCESS, data=results
     )
