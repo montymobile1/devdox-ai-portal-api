@@ -8,6 +8,14 @@ import app.repositories.git_label as actual_module_path
 
 PATH_TO_ACTUAL_MODULE = actual_module_path.__name__
 
+PATH_TO_GITLABEL = (
+    f"{actual_module_path.__name__}.{actual_module_path.GitLabel.__name__}"
+)
+PATH_TO_GITLABEL_FILTER = (
+    f"{PATH_TO_GITLABEL}.{actual_module_path.GitLabel.filter.__name__}"
+)
+
+
 
 @pytest.mark.asyncio
 class TestTortoiseGitLabelStore:
@@ -98,7 +106,7 @@ class TestTortoiseGitLabelStore:
         )
         assert result == -1
 
-    @patch(f"{PATH_TO_ACTUAL_MODULE}.GitLabel.filter")
+    @patch(PATH_TO_GITLABEL_FILTER)
     async def test_delete_by_id_and_user_id_returns_zero_if_no_rows_deleted(
         self, mock_filter
     ):
@@ -111,7 +119,7 @@ class TestTortoiseGitLabelStore:
         )
         assert result == 0
 
-    @patch(f"{PATH_TO_ACTUAL_MODULE}.GitLabel.filter")
+    @patch(PATH_TO_GITLABEL_FILTER)
     async def test_delete_by_id_and_user_id_returns_row_count_on_success(
         self, mock_filter
     ):

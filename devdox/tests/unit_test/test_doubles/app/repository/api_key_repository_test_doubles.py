@@ -87,3 +87,21 @@ class FakeApiKeyStore(IApiKeyStore):
             key=lambda k: k.created_at,
             reverse=True,
         )
+    
+    async def update_last_used(self, user_id: str, key_id: uuid.UUID, date_time: datetime.datetime = datetime.datetime.now(datetime.UTC)) -> int:
+        if "update_last_used" in self.exceptions:
+            raise self.exceptions["update_last_used"]
+
+        self.received_calls.append(("update_last_used", user_id, key_id, date_time))
+
+        if not user_id or not user_id.strip() or not key_id:
+            return -1
+
+        updated = 0
+
+        for key in self.stored_keys:
+            if key.user_id == user_id and key.id == key_id and key.is_active:
+                key.last_used_at = date_time
+                updated += 1
+
+        return updated

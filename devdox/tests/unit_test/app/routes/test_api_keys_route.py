@@ -6,7 +6,11 @@ from fastapi import status
 
 from app.main import app
 from app.schemas.api_key import APIKeyPublicResponse
-from app.services.api_keys import GetApiKeyService, RevokeApiKeyService
+from app.services.api_keys import (
+    GetApiKeyService,
+    RevokeApiKeyService,
+    UpdateLastUsedService,
+)
 from app.utils.auth import UserClaims
 from app.utils.constants import API_KEY_REVOKED_SUCCESSFULLY, GENERIC_SUCCESS
 
@@ -79,33 +83,32 @@ class TestRevokeApiKeyRouter:
         assert response.status_code == status.HTTP_422_UNPROCESSABLE_ENTITY
 
 
-class FakeGetApiKeyService:
-    def __init__(self):
-        self.return_keys = []
-        self.should_raise = False
-        self.received_calls = []
-
-    def set_keys(self, keys):
-        self.return_keys = keys
-
-    def set_exception(self):
-        self.should_raise = True
-
-    async def get_api_keys_by_user(self, user_claims: UserClaims):
-        self.received_calls.append(user_claims.sub)
-        if self.should_raise:
-            raise RuntimeError("Service failure")
-        return self.return_keys
-
-
 class TestGetApiKeyRouter:
 
     route_url = "/api/v1/api-keys/"
 
+    class FakeGetApiKeyService:
+        def __init__(self):
+            self.return_keys = []
+            self.should_raise = False
+            self.received_calls = []
+
+        def set_keys(self, keys):
+            self.return_keys = keys
+
+        def set_exception(self):
+            self.should_raise = True
+
+        async def get_api_keys_by_user(self, user_claims: UserClaims):
+            self.received_calls.append(user_claims.sub)
+            if self.should_raise:
+                raise RuntimeError("Service failure")
+            return self.return_keys
+
     @pytest.fixture
     def override_get_service_success(self):
         def _override():
-            service = FakeGetApiKeyService()
+            service = self.FakeGetApiKeyService()
             service.set_keys(
                 [
                     APIKeyPublicResponse(
@@ -128,7 +131,7 @@ class TestGetApiKeyRouter:
     @pytest.fixture
     def override_get_service_empty(self):
         def _override():
-            return FakeGetApiKeyService()  # returns empty list by default
+            return self.FakeGetApiKeyService()  # returns empty list by default
 
         app.dependency_overrides[GetApiKeyService.with_dependency] = _override
 
@@ -140,7 +143,7 @@ class TestGetApiKeyRouter:
     @pytest.fixture
     def override_get_service_failure(self):
         def _override():
-            service = FakeGetApiKeyService()
+            service = self.FakeGetApiKeyService()
             service.set_exception()
             return service
 
@@ -183,3 +186,71 @@ class TestGetApiKeyRouter:
     ):
         response = test_client.get(self.route_url)
         assert response.status_code == status.HTTP_401_UNAUTHORIZED
+
+class TestUpdateLastUsedRouter:
+    route_url = "/api/v1/api-keys/"
+
+    @pytest.fixture
+    def override_update_last_used_success(self):
+        store = FakeApiKeyStore()
+        fake_key_id = uuid.uuid4()
+        store.stored_keys.append(
+            SimpleNamespace(
+                id=fake_key_id,
+                user_id="user123",
+                is_active=True,
+                last_used_at=None,
+                created_at=None,
+            )
+        )
+        service = UpdateLastUsedService(api_key_store=store)
+
+        def _override():
+            return service
+
+        app.dependency_overrides[UpdateLastUsedService.with_dependency] = _override
+        yield store, fake_key_id
+        app.dependency_overrides.clear()
+
+    @pytest.fixture
+    def override_update_last_used_not_found(self):
+        store = FakeApiKeyStore()  # empty store
+        service = UpdateLastUsedService(api_key_store=store)
+
+        def _override():
+            return service
+
+        app.dependency_overrides[UpdateLastUsedService.with_dependency] = _override
+        yield
+        app.dependency_overrides.clear()
+
+    def test_successful_update_last_used(
+        self, test_client, override_auth_user, override_update_last_used_success
+    ):
+        _, fake_key_id = override_update_last_used_success
+        response = test_client.patch(f"{self.route_url}{fake_key_id}")
+        assert response.status_code == status.HTTP_200_OK
+        assert response.json()["success"] is True
+        assert response.json()["message"] == GENERIC_SUCCESS
+
+    def test_update_last_used_not_found(
+        self, test_client, override_auth_user, override_update_last_used_not_found
+    ):
+        response = test_client.patch(f"{self.route_url}{uuid.uuid4()}")
+        assert response.status_code == status.HTTP_404_NOT_FOUND
+
+    def test_unauthorized_access(
+        self,
+        test_client,
+        override_auth_user_unauthorized,
+        override_update_last_used_success,
+    ):
+        _, fake_key_id = override_update_last_used_success
+        response = test_client.patch(f"{self.route_url}{fake_key_id}")
+        assert response.status_code == status.HTTP_401_UNAUTHORIZED
+
+    def test_invalid_uuid_path(
+        self, test_client, override_auth_user, override_update_last_used_success
+    ):
+        response = test_client.patch(f"{self.route_url}not-a-uuid")
+        assert response.status_code == status.HTTP_422_UNPROCESSABLE_ENTITY

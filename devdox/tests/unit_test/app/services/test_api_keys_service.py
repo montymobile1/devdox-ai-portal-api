@@ -18,6 +18,7 @@ from app.services.api_keys import (
     GetApiKeyService,
     PostApiKeyService,
     RevokeApiKeyService,
+    UpdateLastUsedService,
 )
 from app.services.git_tokens import mask_token
 from app.utils.auth import UserClaims
@@ -81,13 +82,12 @@ class TestAPIKeyManager:
         assert len(result.plain) == length
 
 
-class DummyUserClaims:
-    def __init__(self, user_id):
-        self.sub = user_id
-
-
 @pytest.mark.asyncio
 class TestPostApiKeyService:
+
+    class DummyUserClaims:
+        def __init__(self, user_id):
+            self.sub = user_id
 
     async def test_generate_api_key_success(self):
         fake_store = FakeApiKeyStore()
@@ -97,7 +97,7 @@ class TestPostApiKeyService:
         service = PostApiKeyService(
             api_key_store=fake_store, api_key_manager=fake_manager
         )
-        user_claims = DummyUserClaims("user-123")
+        user_claims = self.DummyUserClaims("user-123")
 
         key_id, plain = await service.generate_api_key(user_claims)
 
@@ -114,7 +114,7 @@ class TestPostApiKeyService:
         service = PostApiKeyService(
             api_key_store=fake_store, api_key_manager=fake_manager
         )
-        user_claims = DummyUserClaims("user-123")
+        user_claims = self.DummyUserClaims("user-123")
 
         with pytest.raises(BadRequest) as exc:
             await service.generate_api_key(user_claims)
@@ -133,7 +133,7 @@ class TestPostApiKeyService:
         service = PostApiKeyService(
             api_key_store=fake_store, api_key_manager=fake_manager
         )
-        user_claims = DummyUserClaims("user-123")
+        user_claims = self.DummyUserClaims("user-123")
 
         with pytest.raises(RuntimeError, match="DB error"):
             await service.generate_api_key(user_claims)
@@ -252,3 +252,49 @@ class TestGetApiKeyService:
 
         with pytest.raises(RuntimeError, match="store error"):
             await service.get_api_keys_by_user(user_claims=claims)
+
+
+@pytest.mark.asyncio
+class TestUpdateLastUsedService:
+
+    async def test_successful_update_last_used(self):
+        store = FakeApiKeyStore()
+        user_id = "user123"
+        key_id = uuid4()
+        now = SimpleNamespace()
+
+        # Insert active key for user
+        store.stored_keys.append(SimpleNamespace(
+            id=key_id,
+            user_id=user_id,
+            is_active=True,
+            last_used_at=None,
+            created_at=now,
+            updated_at=now
+        ))
+
+        service = UpdateLastUsedService(api_key_store=store)
+        claims = UserClaims(sub=user_id)
+
+        updated = await service.update_last_used_by_id(claims, key_id)
+
+        assert updated == 1
+        assert store.stored_keys[0].last_used_at is not None
+
+    async def test_update_last_used_not_found(self):
+        store = FakeApiKeyStore()  # no key inserted
+        service = UpdateLastUsedService(api_key_store=store)
+        claims = UserClaims(sub="user123")
+
+        with pytest.raises(ResourceNotFound):
+            await service.update_last_used_by_id(claims, uuid4())
+
+    async def test_update_last_used_exception_raised_from_store(self):
+        store = FakeApiKeyStore()
+        store.set_exception("update_last_used", RuntimeError("store failed"))
+
+        service = UpdateLastUsedService(api_key_store=store)
+        claims = UserClaims(sub="user123")
+
+        with pytest.raises(RuntimeError, match="store failed"):
+            await service.update_last_used_by_id(claims, uuid4())

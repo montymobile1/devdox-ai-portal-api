@@ -55,3 +55,17 @@ class TestTortoiseApiKeyStore:
         assert await store.get_all_api_keys(None) == []
         assert await store.get_all_api_keys("") == []
         assert await store.get_all_api_keys("  ") == []
+
+    async def test_update_last_used_returns_negative_on_invalid_input(self):
+        store = TortoiseApiKeyStore()
+
+        invalid_cases = [
+            (None, uuid.uuid4()),
+            ("", uuid.uuid4()),
+            (" ", uuid.uuid4()),
+            ("user", None),
+        ]
+
+        for user_id, key_id in invalid_cases:
+            result = await store.update_last_used(user_id, key_id)
+            assert result == -1
