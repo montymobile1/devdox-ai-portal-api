@@ -29,6 +29,7 @@ from tests.unit_test.test_doubles.app.utils.repo_fetcher_doubles import (
     FakeRepoFetcher,
 )
 
+
 class TestGetGitLabelsRouter:
 
     route_url = "/api/v1/git_tokens/"
@@ -103,7 +104,10 @@ class TestGetGitLabelsRouter:
         assert response.status_code == status.HTTP_401_UNAUTHORIZED
 
     def test_get_git_labels_service_raises(
-        self, permissible_test_client, override_auth_user, override_git_label_service_exception
+        self,
+        permissible_test_client,
+        override_auth_user,
+        override_git_label_service_exception,
     ):
         response = permissible_test_client.get(f"{self.route_url}?limit=10&offset=0")
         assert response.status_code == status.HTTP_503_SERVICE_UNAVAILABLE
@@ -292,7 +296,9 @@ class TestPostGitLabelRouter__AddGitToken:
 
         assert response.status_code == status.HTTP_400_BAD_REQUEST
 
-    def test_add_git_token_missing_token_value(self, permissible_test_client, override_auth_user):
+    def test_add_git_token_missing_token_value(
+        self, permissible_test_client, override_auth_user
+    ):
         payload = {"label": "label1", "token_value": " ", "git_hosting": "GITHUB"}
 
         response = permissible_test_client.post(self.route_url, json=payload)
@@ -313,7 +319,9 @@ class TestPostGitLabelRouter__AddGitToken:
         finally:
             app.dependency_overrides.clear()
 
-    def test_add_git_token_validation_error(self, permissible_test_client, override_auth_user):
+    def test_add_git_token_validation_error(
+        self, permissible_test_client, override_auth_user
+    ):
         payload = {"token_value": "abc123"}
 
         response = permissible_test_client.post(self.route_url, json=payload)
@@ -362,7 +370,10 @@ class TestDeleteGitLabel:
             app.dependency_overrides.clear()
 
     def test_delete_git_label_success(
-        self, test_client: TestClient, override_auth_user, override_delete_service_success
+        self,
+        test_client: TestClient,
+        override_auth_user,
+        override_delete_service_success,
     ):
         response = test_client.delete(self.route_url)
 

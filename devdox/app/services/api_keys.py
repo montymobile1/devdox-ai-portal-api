@@ -155,6 +155,7 @@ class RevokeApiKeyService:
 
         return deleted_api_key
 
+
 class GetApiKeyService:
 
     def __init__(
@@ -176,9 +177,11 @@ class GetApiKeyService:
     async def get_api_keys_by_user(self, user_claims: UserClaims):
 
         api_keys_list = await self.api_key_store.get_all_api_keys(
-                user_id=user_claims.sub
+            user_id=user_claims.sub
         )
 
-        api_keys_response = [APIKeyPublicResponse.model_validate(api_key) for api_key in api_keys_list]
+        api_keys_response = [
+            APIKeyPublicResponse.model_validate(api_key) for api_key in api_keys_list
+        ]
 
         return api_keys_response

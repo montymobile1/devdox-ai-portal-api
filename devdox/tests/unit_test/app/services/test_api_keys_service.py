@@ -8,8 +8,10 @@ import pytest
 from pydantic import ValidationError
 
 from app.exceptions.custom_exceptions import BadRequest, ResourceNotFound
-from app.exceptions.exception_constants import (FAILED_GENERATE_API_KEY_RETRIES_LOG_MESSAGE,
-                                                UNIQUE_API_KEY_GENERATION_FAILED)
+from app.exceptions.exception_constants import (
+    FAILED_GENERATE_API_KEY_RETRIES_LOG_MESSAGE,
+    UNIQUE_API_KEY_GENERATION_FAILED,
+)
 from app.schemas.api_key import APIKeyPublicResponse
 from app.services.api_keys import (
     APIKeyManager,
@@ -172,7 +174,7 @@ class TestRevokeApiKeyService:
 
         with pytest.raises(RuntimeError, match="DB Error"):
             await service.revoke_api_key(claims, api_key_id=uuid4())
-            
+
 
 @pytest.mark.asyncio
 class TestAPIKeyPublicResponse:
@@ -204,9 +206,8 @@ class TestAPIKeyPublicResponse:
     def test_missing_required_field_raises(self):
         now = datetime.datetime.utcnow()
         with pytest.raises(ValidationError):
-            APIKeyPublicResponse(
-                masked_api_key="****abcd", created_at=now
-            )
+            APIKeyPublicResponse(masked_api_key="****abcd", created_at=now)
+
 
 @pytest.mark.asyncio
 class TestGetApiKeyService:

@@ -10,7 +10,10 @@ from app.services.api_keys import GetApiKeyService, RevokeApiKeyService
 from app.utils.auth import UserClaims
 from app.utils.constants import API_KEY_REVOKED_SUCCESSFULLY
 
-from tests.unit_test.test_doubles.app.repository.api_key_repository_test_doubles import FakeApiKeyStore
+from tests.unit_test.test_doubles.app.repository.api_key_repository_test_doubles import (
+    FakeApiKeyStore,
+)
+
 
 class TestRevokeApiKeyRouter:
 
@@ -44,25 +47,37 @@ class TestRevokeApiKeyRouter:
         yield
         app.dependency_overrides.clear()
 
-    def test_successful_revoke(self, test_client, override_auth_user, override_revoke_service_success):
+    def test_successful_revoke(
+        self, test_client, override_auth_user, override_revoke_service_success
+    ):
         _, fake_key_id = override_revoke_service_success
         response = test_client.delete(f"{self.route_url}{fake_key_id}")
         assert response.status_code == status.HTTP_200_OK
         assert response.json()["success"] is True
         assert response.json()["message"] == API_KEY_REVOKED_SUCCESSFULLY
 
-    def test_revoke_not_found(self, test_client, override_auth_user, override_revoke_service_not_found):
+    def test_revoke_not_found(
+        self, test_client, override_auth_user, override_revoke_service_not_found
+    ):
         response = test_client.delete(f"{self.route_url}{uuid.uuid4()}")
         assert response.status_code == status.HTTP_404_NOT_FOUND
 
-    def test_revoke_unauthorized(self, test_client, override_auth_user_unauthorized, override_revoke_service_success):
+    def test_revoke_unauthorized(
+        self,
+        test_client,
+        override_auth_user_unauthorized,
+        override_revoke_service_success,
+    ):
         _, fake_key_id = override_revoke_service_success
         response = test_client.delete(f"{self.route_url}{fake_key_id}")
         assert response.status_code == status.HTTP_401_UNAUTHORIZED
 
-    def test_invalid_uuid_path(self, test_client, override_auth_user, override_revoke_service_success):
+    def test_invalid_uuid_path(
+        self, test_client, override_auth_user, override_revoke_service_success
+    ):
         response = test_client.delete(f"{self.route_url}not-a-uuid")
         assert response.status_code == status.HTTP_422_UNPROCESSABLE_ENTITY
+
 
 class FakeGetApiKeyService:
     def __init__(self):
@@ -104,7 +119,7 @@ class TestGetApiKeyRouter:
             return service
 
         app.dependency_overrides[GetApiKeyService.with_dependency] = _override
-        
+
         try:
             yield
         finally:
@@ -116,7 +131,7 @@ class TestGetApiKeyRouter:
             return FakeGetApiKeyService()  # returns empty list by default
 
         app.dependency_overrides[GetApiKeyService.with_dependency] = _override
-        
+
         try:
             yield
         finally:
@@ -135,7 +150,9 @@ class TestGetApiKeyRouter:
         finally:
             app.dependency_overrides.clear()
 
-    def test_successful_get_keys(self, test_client, override_auth_user, override_get_service_success):
+    def test_successful_get_keys(
+        self, test_client, override_auth_user, override_get_service_success
+    ):
         response = test_client.get(self.route_url)
         assert response.status_code == status.HTTP_200_OK
         body = response.json()
@@ -145,7 +162,9 @@ class TestGetApiKeyRouter:
         assert isinstance(body["data"], list)
         assert body["data"][0]["user_id"] == "user123"
 
-    def test_empty_keys_list(self, test_client, override_auth_user, override_get_service_empty):
+    def test_empty_keys_list(
+        self, test_client, override_auth_user, override_get_service_empty
+    ):
         response = test_client.get(self.route_url)
         assert response.status_code == status.HTTP_200_OK
         body = response.json()
@@ -153,10 +172,14 @@ class TestGetApiKeyRouter:
         assert body["message"] == API_KEY_REVOKED_SUCCESSFULLY
         assert body["data"] == []
 
-    def test_service_failure_raises_503(self, permissible_test_client, override_auth_user, override_get_service_failure):
+    def test_service_failure_raises_503(
+        self, permissible_test_client, override_auth_user, override_get_service_failure
+    ):
         response = permissible_test_client.get(self.route_url)
         assert response.status_code == status.HTTP_503_SERVICE_UNAVAILABLE
 
-    def test_unauthorized_access(self, test_client, override_auth_user_unauthorized, override_get_service_success):
+    def test_unauthorized_access(
+        self, test_client, override_auth_user_unauthorized, override_get_service_success
+    ):
         response = test_client.get(self.route_url)
         assert response.status_code == status.HTTP_401_UNAUTHORIZED

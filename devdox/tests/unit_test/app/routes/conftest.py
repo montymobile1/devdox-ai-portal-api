@@ -10,19 +10,23 @@ from app.utils.auth import get_authenticated_user, UserClaims
 def test_client():
     yield TestClient(app)
 
+
 @pytest.fixture(scope="module")
 def permissible_test_client():
     """Prevents pytest from automatically handling exceptions as soon as they happen"""
     client = TestClient(app, raise_server_exceptions=False)
     yield client
 
+
 @pytest.fixture
 def override_auth_user():
     async def _override():
         return UserClaims(sub="user123")
+
     app.dependency_overrides[get_authenticated_user] = _override
     yield
     app.dependency_overrides.clear()
+
 
 @pytest.fixture
 def override_auth_user_unauthorized():

@@ -23,6 +23,7 @@ class IApiKeyStore(Protocol):
     @abstractmethod
     async def get_all_api_keys(self, user_id) -> List[Any]: ...
 
+
 class TortoiseApiKeyStore(IApiKeyStore):
 
     def __init__(self):
@@ -56,10 +57,14 @@ class TortoiseApiKeyStore(IApiKeyStore):
         return await APIKEY.filter(
             user_id=user_id, id=api_key_id, is_active=True
         ).update(is_active=False)
-    
-    async def get_all_api_keys(self, user_id:str) -> List[APIKEY]:
+
+    async def get_all_api_keys(self, user_id: str) -> List[APIKEY]:
 
         if not user_id or not user_id.strip():
             return []
 
-        return await APIKEY.filter(user_id=user_id, is_active=True).order_by("-created_at").all()
+        return (
+            await APIKEY.filter(user_id=user_id, is_active=True)
+            .order_by("-created_at")
+            .all()
+        )

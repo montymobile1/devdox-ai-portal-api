@@ -8,9 +8,15 @@ from app.schemas.api_key import APIKeyCreate
 
 import app.repositories.api_key as actual_module_path
 
-PATH_TO_REPOSITORY_APIKEY = f"{actual_module_path.__name__}.{actual_module_path.APIKEY.__name__}"
-PATH_TO_REPOSITORY_FILTER = f"{PATH_TO_REPOSITORY_APIKEY}.{actual_module_path.APIKEY.filter.__name__}"
-PATH_TO_REPOSITORY_CREATE = f"{PATH_TO_REPOSITORY_APIKEY}.{actual_module_path.APIKEY.create.__name__}"
+PATH_TO_REPOSITORY_APIKEY = (
+    f"{actual_module_path.__name__}.{actual_module_path.APIKEY.__name__}"
+)
+PATH_TO_REPOSITORY_FILTER = (
+    f"{PATH_TO_REPOSITORY_APIKEY}.{actual_module_path.APIKEY.filter.__name__}"
+)
+PATH_TO_REPOSITORY_CREATE = (
+    f"{PATH_TO_REPOSITORY_APIKEY}.{actual_module_path.APIKEY.create.__name__}"
+)
 
 
 @pytest.mark.asyncio

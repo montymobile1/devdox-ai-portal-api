@@ -68,7 +68,7 @@ class FakeApiKeyStore(IApiKeyStore):
                 key.is_active = False
                 updated += 1
         return updated
-    
+
     async def get_all_api_keys(self, user_id) -> List[Any]:
         if "get_all_api_keys" in self.exceptions:
             raise self.exceptions["get_all_api_keys"]
