@@ -4,16 +4,16 @@ from unittest.mock import AsyncMock, patch
 import pytest
 
 from app.exceptions.custom_exceptions import DevDoxAPIException
-from app.repositories.git_label import TortoiseGitLabelStore
+import app.repositories.git_label as actual_module_path
 
-path_to_actual_module = "app.repositories.git_label"
+PATH_TO_ACTUAL_MODULE = actual_module_path.__name__
 
 
 @pytest.mark.asyncio
 class TestTortoiseGitLabelStore:
 
     def setup_method(self):
-        self.store = TortoiseGitLabelStore()
+        self.store = actual_module_path.TortoiseGitLabelStore()
 
     async def test_raises_when_user_id_is_none(self):
         with pytest.raises(DevDoxAPIException) as exc:
@@ -98,7 +98,7 @@ class TestTortoiseGitLabelStore:
         )
         assert result == -1
 
-    @patch(f"{path_to_actual_module}.GitLabel.filter")
+    @patch(f"{PATH_TO_ACTUAL_MODULE}.GitLabel.filter")
     async def test_delete_by_id_and_user_id_returns_zero_if_no_rows_deleted(
         self, mock_filter
     ):
@@ -111,7 +111,7 @@ class TestTortoiseGitLabelStore:
         )
         assert result == 0
 
-    @patch(f"{path_to_actual_module}.GitLabel.filter")
+    @patch(f"{PATH_TO_ACTUAL_MODULE}.GitLabel.filter")
     async def test_delete_by_id_and_user_id_returns_row_count_on_success(
         self, mock_filter
     ):

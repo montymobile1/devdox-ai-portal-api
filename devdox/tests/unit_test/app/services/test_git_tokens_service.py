@@ -1,7 +1,6 @@
 import uuid
 
 import pytest
-from models import User
 from tortoise.exceptions import IntegrityError
 
 from app.exceptions.custom_exceptions import BadRequest, ResourceNotFound

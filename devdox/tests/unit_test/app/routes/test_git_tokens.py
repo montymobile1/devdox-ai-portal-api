@@ -6,7 +6,6 @@ from fastapi.testclient import TestClient
 
 from app.exceptions.exception_constants import GENERIC_ALREADY_EXIST
 from app.main import app
-from app.utils.auth import UserClaims
 from app.services.git_tokens import (
     DeleteGitLabelService,
     GetGitLabelService,
@@ -29,43 +28,6 @@ from tests.unit_test.test_doubles.app.utils.encryption_doubles import (
 from tests.unit_test.test_doubles.app.utils.repo_fetcher_doubles import (
     FakeRepoFetcher,
 )
-
-
-@pytest.fixture(scope="module")
-def t_client():
-    client = TestClient(app)
-    yield client
-
-
-@pytest.fixture(scope="module")
-def per_t_client():
-    client = TestClient(app, raise_server_exceptions=False)
-    yield client
-
-
-@pytest.fixture
-def override_auth_user():
-    async def _override():
-        return UserClaims(sub="user123")
-
-    app.dependency_overrides[get_authenticated_user] = _override
-    try:
-        yield
-    finally:
-        app.dependency_overrides.clear()
-
-
-@pytest.fixture
-def override_auth_user_unauthorized():
-    async def _override():
-        raise UnauthorizedAccess("Invalid token")
-
-    app.dependency_overrides[get_authenticated_user] = _override
-    try:
-        yield
-    finally:
-        app.dependency_overrides.clear()
-
 
 class TestGetGitLabelsRouter:
 
@@ -111,21 +73,10 @@ class TestGetGitLabelsRouter:
         finally:
             app.dependency_overrides.clear()
 
-    @pytest.fixture
-    def override_auth_user_unauthorized(self):
-        async def _override():
-            raise UnauthorizedAccess("Invalid token")
-
-        app.dependency_overrides[get_authenticated_user] = _override
-        try:
-            yield
-        finally:
-            app.dependency_overrides.clear()
-
     def test_get_git_labels_success(
-        self, t_client, override_auth_user, override_git_label_service_with_data
+        self, test_client, override_auth_user, override_git_label_service_with_data
     ):
-        response = t_client.get(f"{self.route_url}?limit=10&offset=0")
+        response = test_client.get(f"{self.route_url}?limit=10&offset=0")
 
         assert response.status_code == status.HTTP_200_OK
         body = response.json()
@@ -135,9 +86,9 @@ class TestGetGitLabelsRouter:
         assert body["data"]["total"] == 1
 
     def test_get_git_labels_empty(
-        self, t_client, override_auth_user, override_git_label_service_empty
+        self, test_client, override_auth_user, override_git_label_service_empty
     ):
-        response = t_client.get(f"{self.route_url}?limit=10&offset=0")
+        response = test_client.get(f"{self.route_url}?limit=10&offset=0")
 
         assert response.status_code == status.HTTP_200_OK
         body = response.json()
@@ -145,16 +96,16 @@ class TestGetGitLabelsRouter:
         assert body["data"]["total"] == 0
 
     def test_get_git_labels_auth_failure(
-        self, t_client, override_auth_user_unauthorized
+        self, test_client, override_auth_user_unauthorized
     ):
-        response = t_client.get(f"{self.route_url}?limit=10&offset=0")
+        response = test_client.get(f"{self.route_url}?limit=10&offset=0")
 
         assert response.status_code == status.HTTP_401_UNAUTHORIZED
 
     def test_get_git_labels_service_raises(
-        self, per_t_client, override_auth_user, override_git_label_service_exception
+        self, permissible_test_client, override_auth_user, override_git_label_service_exception
     ):
-        response = per_t_client.get(f"{self.route_url}?limit=10&offset=0")
+        response = permissible_test_client.get(f"{self.route_url}?limit=10&offset=0")
         assert response.status_code == status.HTTP_503_SERVICE_UNAVAILABLE
 
 
@@ -205,29 +156,29 @@ class TestGetGitLabelByLabelRouter:
             app.dependency_overrides.clear()
 
     def test_get_git_label_by_label_success(
-        self, t_client, override_auth_user, override_git_label_service_label
+        self, test_client, override_auth_user, override_git_label_service_label
     ):
-        response = t_client.get(f"{self.route_url}?limit=10&offset=0")
+        response = test_client.get(f"{self.route_url}?limit=10&offset=0")
         assert response.status_code == status.HTTP_200_OK
         body = response.json()
         assert body["success"] is True
         assert body["data"]["items"][0]["label"] == "feature"
 
     def test_get_git_label_by_label_empty(
-        self, t_client, override_auth_user, override_git_label_service_label_empty
+        self, test_client, override_auth_user, override_git_label_service_label_empty
     ):
-        response = t_client.get(f"{self.route_url}?limit=10&offset=0")
+        response = test_client.get(f"{self.route_url}?limit=10&offset=0")
         assert response.status_code == status.HTTP_200_OK
         body = response.json()
         assert body["data"]["items"] == []
 
     def test_get_git_label_by_label_exception(
         self,
-        per_t_client,
+        permissible_test_client,
         override_auth_user,
         override_git_label_service_label_exception,
     ):
-        response = per_t_client.get(f"{self.route_url}?limit=10&offset=0")
+        response = permissible_test_client.get(f"{self.route_url}?limit=10&offset=0")
         assert response.status_code == status.HTTP_503_SERVICE_UNAVAILABLE
 
 
@@ -305,11 +256,11 @@ class TestPostGitLabelRouter__AddGitToken:
             app.dependency_overrides.clear()
 
     def test_add_git_token_success(
-        self, t_client, override_auth_user, override_post_git_label_service_success
+        self, test_client, override_auth_user, override_post_git_label_service_success
     ):
         payload = {"label": "label1", "token_value": "abc123", "git_hosting": "GITHUB"}
 
-        response = t_client.post(self.route_url, json=payload)
+        response = test_client.post(self.route_url, json=payload)
 
         assert response.status_code == status.HTTP_200_OK
         body = response.json()
@@ -319,36 +270,36 @@ class TestPostGitLabelRouter__AddGitToken:
 
     def test_add_git_token_user_not_found(
         self,
-        per_t_client,
+        permissible_test_client,
         override_auth_user,
         override_post_git_label_service_user_not_found,
     ):
         payload = {"label": "label1", "token_value": "abc123", "git_hosting": "GITHUB"}
 
-        response = per_t_client.post(self.route_url, json=payload)
+        response = permissible_test_client.post(self.route_url, json=payload)
 
         assert response.status_code == status.HTTP_404_NOT_FOUND
 
     def test_add_git_token_duplicate_label(
         self,
-        per_t_client,
+        permissible_test_client,
         override_auth_user,
         override_post_git_label_service_duplicate_label,
     ):
         payload = {"label": "label1", "token_value": "abc123", "git_hosting": "GITHUB"}
 
-        response = per_t_client.post(self.route_url, json=payload)
+        response = permissible_test_client.post(self.route_url, json=payload)
 
         assert response.status_code == status.HTTP_400_BAD_REQUEST
 
-    def test_add_git_token_missing_token_value(self, per_t_client, override_auth_user):
+    def test_add_git_token_missing_token_value(self, permissible_test_client, override_auth_user):
         payload = {"label": "label1", "token_value": " ", "git_hosting": "GITHUB"}
 
-        response = per_t_client.post(self.route_url, json=payload)
+        response = permissible_test_client.post(self.route_url, json=payload)
 
         assert response.status_code == status.HTTP_400_BAD_REQUEST
 
-    def test_add_git_token_unauthorized(self, per_t_client):
+    def test_add_git_token_unauthorized(self, permissible_test_client):
         async def _unauth_override():
             raise UnauthorizedAccess("Unauthorized")
 
@@ -357,15 +308,15 @@ class TestPostGitLabelRouter__AddGitToken:
         payload = {"label": "label1", "token_value": "abc123", "git_hosting": "GITHUB"}
 
         try:
-            response = per_t_client.post(self.route_url, json=payload)
+            response = permissible_test_client.post(self.route_url, json=payload)
             assert response.status_code == status.HTTP_401_UNAUTHORIZED
         finally:
             app.dependency_overrides.clear()
 
-    def test_add_git_token_validation_error(self, per_t_client, override_auth_user):
+    def test_add_git_token_validation_error(self, permissible_test_client, override_auth_user):
         payload = {"token_value": "abc123"}
 
-        response = per_t_client.post(self.route_url, json=payload)
+        response = permissible_test_client.post(self.route_url, json=payload)
 
         assert response.status_code == status.HTTP_422_UNPROCESSABLE_ENTITY
 
@@ -411,9 +362,9 @@ class TestDeleteGitLabel:
             app.dependency_overrides.clear()
 
     def test_delete_git_label_success(
-        self, t_client: TestClient, override_auth_user, override_delete_service_success
+        self, test_client: TestClient, override_auth_user, override_delete_service_success
     ):
-        response = t_client.delete(self.route_url)
+        response = test_client.delete(self.route_url)
 
         assert response.status_code == status.HTTP_200_OK
         body = response.json()
@@ -422,15 +373,15 @@ class TestDeleteGitLabel:
 
     def test_delete_git_label_not_found(
         self,
-        per_t_client: TestClient,
+        permissible_test_client: TestClient,
         override_auth_user,
         override_delete_service_not_found,
     ):
-        response = per_t_client.delete(self.route_url)
+        response = permissible_test_client.delete(self.route_url)
         assert response.status_code == status.HTTP_404_NOT_FOUND
 
     def test_delete_git_label_unauthorized(
-        self, per_t_client: TestClient, override_auth_user_unauthorized
+        self, permissible_test_client: TestClient, override_auth_user_unauthorized
     ):
-        response = per_t_client.delete(self.route_url)
+        response = permissible_test_client.delete(self.route_url)
         assert response.status_code == status.HTTP_401_UNAUTHORIZED
