@@ -1,7 +1,7 @@
 import uuid
-from datetime import datetime
+import datetime
 from types import SimpleNamespace
-from typing import Any
+from typing import Any, List
 from uuid import uuid4
 
 from app.repositories.api_key import IApiKeyStore
@@ -41,8 +41,8 @@ class FakeApiKeyStore(IApiKeyStore):
             api_key=create_model.api_key,
             masked_api_key=create_model.masked_api_key,
             is_active=True,
-            created_at=datetime.utcnow(),
-            updated_at=datetime.utcnow(),
+            created_at=datetime.datetime.now(datetime.UTC),
+            updated_at=datetime.datetime.now(datetime.UTC),
             last_used_at=None,
         )
         self.stored_keys.append(fake_entry)
@@ -68,3 +68,22 @@ class FakeApiKeyStore(IApiKeyStore):
                 key.is_active = False
                 updated += 1
         return updated
+    
+    async def get_all_api_keys(self, user_id) -> List[Any]:
+        if "get_all_api_keys" in self.exceptions:
+            raise self.exceptions["get_all_api_keys"]
+
+        self.received_calls.append(("get_all_api_keys", user_id))
+
+        if not user_id or not user_id.strip():
+            return []
+
+        return sorted(
+            [
+                key
+                for key in self.stored_keys
+                if key.user_id == user_id and key.is_active
+            ],
+            key=lambda k: k.created_at,
+            reverse=True,
+        )

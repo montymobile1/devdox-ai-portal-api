@@ -14,7 +14,7 @@ from app.exceptions.exception_constants import (
     UNIQUE_API_KEY_GENERATION_FAILED,
 )
 from app.repositories.api_key import TortoiseApiKeyStore
-from app.schemas.api_key import APIKeyCreate
+from app.schemas.api_key import APIKeyCreate, APIKeyPublicResponse
 from app.services.git_tokens import mask_token
 from app.utils.auth import UserClaims
 
@@ -154,3 +154,31 @@ class RevokeApiKeyService:
             raise ResourceNotFound(reason=INVALID_APIKEY)
 
         return deleted_api_key
+
+class GetApiKeyService:
+
+    def __init__(
+        self,
+        api_key_store: TortoiseApiKeyStore,
+    ):
+        self.api_key_store = api_key_store
+
+    @classmethod
+    def with_dependency(
+        cls,
+        api_key_store: Annotated[TortoiseApiKeyStore, Depends()],
+    ) -> "GetApiKeyService":
+
+        return cls(
+            api_key_store=api_key_store,
+        )
+
+    async def get_api_keys_by_user(self, user_claims: UserClaims):
+
+        api_keys_list = await self.api_key_store.get_all_api_keys(
+                user_id=user_claims.sub
+        )
+
+        api_keys_response = [APIKeyPublicResponse.model_validate(api_key) for api_key in api_keys_list]
+
+        return api_keys_response

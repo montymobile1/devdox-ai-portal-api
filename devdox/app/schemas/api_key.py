@@ -1,5 +1,5 @@
 import uuid
-import uuid
+import datetime
 from typing import Optional
 
 from fastapi.params import Path
@@ -9,6 +9,8 @@ API_KEY_FIELD_DESCRIPTION = "Hashed API key"
 USER_ID_FIELD_DESCRIPTION = "User identifier (owner of the API key)"
 MASKED_API_KEY_FIELD_DESCRIPTION = "Masked version of the API key"
 IS_ACTIVE_FIELD_DESCRIPTION = "Whether this API key is active or soft deleted"
+CREATED_AT_FIELD_DESCRIPTION = "The date and time the API Key was created"
+LAST_USED_AT_FIELD_DESCRIPTION = "The date and time the API Key was last used"
 
 
 class APIKeyCreate(BaseModel):
@@ -33,3 +35,17 @@ class APIKeyRevokeRequest:
         ),
     ):
         self.api_key_id = api_key_id
+
+
+class APIKeyPublicResponse(BaseModel):
+    user_id: str = Field(..., description=USER_ID_FIELD_DESCRIPTION)
+    masked_api_key: str = Field(..., description=MASKED_API_KEY_FIELD_DESCRIPTION)
+    created_at: datetime.datetime = Field(..., description=CREATED_AT_FIELD_DESCRIPTION)
+    last_used_at: Optional[datetime.datetime] = Field(
+        default=None, description=CREATED_AT_FIELD_DESCRIPTION
+    )
+
+    class Config:
+        title = "API Key Public Schema"
+        description = "Used when returning API Key records to the user"
+        from_attributes = True
