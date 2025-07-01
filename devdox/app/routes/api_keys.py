@@ -54,6 +54,7 @@ async def revoke_api_key(
 
     return APIResponse.success(message=constants.API_KEY_REVOKED_SUCCESSFULLY)
 
+
 @router.get(
     "/",
     response_model=Dict[str, Any],

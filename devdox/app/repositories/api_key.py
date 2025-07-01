@@ -19,7 +19,7 @@ class IApiKeyStore(Protocol):
     async def set_inactive_by_user_id_and_api_key_id(
         self, user_id, api_key_id
     ) -> int: ...
-    
+
     @abstractmethod
     async def get_all_api_keys(self, user_id) -> List[Any]: ...
 
