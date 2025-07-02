@@ -38,7 +38,7 @@ class TestRepoRouter:
             is_private=True,
             visibility="private",
             git_hosting=GitHosting.GITHUB.value,
-            language="Python",
+            language=["Python"],
             size=512,
             repo_created_at=datetime.datetime.now(),
             repo_updated_at=datetime.datetime.now(),
