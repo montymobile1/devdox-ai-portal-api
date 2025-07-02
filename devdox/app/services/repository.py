@@ -1,5 +1,6 @@
 from typing import List, Tuple
 
+from encryption_src.fernet.service import FernetEncryptionHelper
 from fastapi import Depends
 from tortoise.exceptions import IntegrityError
 
@@ -19,7 +20,7 @@ from app.repositories.user import TortoiseUserStore
 from app.schemas.basic import RequiredPaginationParams
 from app.schemas.repo import GitRepoResponse, RepoResponse
 from app.utils.auth import UserClaims
-from app.utils.encryption import FernetEncryptionHelper, get_encryption_helper
+from app.utils.encryption import get_encryption_helper
 from app.utils.git_managers import retrieve_git_fetcher_or_die
 from app.utils.repo_fetcher import RepoFetcher
 

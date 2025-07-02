@@ -1,6 +1,7 @@
 import uuid
 
 import pytest
+from encryption_src.test_doubles import FakeEncryptionHelper
 from fastapi import status
 from fastapi.testclient import TestClient
 
@@ -22,9 +23,7 @@ from tests.unit_test.test_doubles.app.repository.user_repository_doubles import 
     FakeUserStore,
     make_fake_user,
 )
-from tests.unit_test.test_doubles.app.utils.encryption_doubles import (
-    FakeEncryptionHelper,
-)
+
 from tests.unit_test.test_doubles.app.utils.repo_fetcher_doubles import (
     FakeRepoFetcher,
 )

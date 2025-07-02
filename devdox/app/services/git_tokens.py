@@ -2,6 +2,7 @@ import logging
 import uuid
 from typing import Annotated, Optional
 
+from encryption_src.fernet.service import FernetEncryptionHelper
 from fastapi import Depends
 from tortoise.exceptions import IntegrityError
 
@@ -19,7 +20,6 @@ from app.schemas.git_label import GitLabelBase, GitLabelDBCreateDTO, GitLabelRes
 from app.schemas.repo import GitUserResponse
 from app.utils.auth import UserClaims
 from app.utils.encryption import (
-    FernetEncryptionHelper,
     get_encryption_helper,
 )
 from app.utils.git_managers import retrieve_git_fetcher_or_die
