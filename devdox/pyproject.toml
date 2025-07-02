@@ -24,7 +24,7 @@ dependencies = [
     "fastapi-cli==0.0.7",
     "starlette==0.46.2",
     "uvicorn==0.34.2",
-    "uvloop==0.21.0",
+    #"uvloop==0.21.0",
     
     # HTTP and networking
     "charset-normalizer==3.4.2",
@@ -45,7 +45,10 @@ dependencies = [
 
     #models
     "models @ git+https://github.com/montymobile1/devdox-ai-models.git@74e4941",
-    
+
+    # Ecnryption package
+    "encryption-service @ git+https://github.com/montymobile1/devdox-ai-encryption.git@f35a8c8",
+
     # Utilities
     "click==8.2.0",
     "python-dotenv==1.1.0",
