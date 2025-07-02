@@ -35,8 +35,8 @@ class RepoBase(BaseModel):
     git_hosting: Optional[GitHostingProvider] = Field(
         None, description="Git hosting provider"
     )
-    language: Optional[str] = Field(
-        None, description="Primary programming language", max_length=100
+    language: Optional[List] = Field(
+        None, description="Primary programming language"
     )
     size: Optional[int] = Field(None, description="Repository size in KB", ge=0)
     repo_created_at: Optional[datetime] = Field(
@@ -44,6 +44,12 @@ class RepoBase(BaseModel):
     )
     repo_updated_at: Optional[datetime] = Field(
         None, description="Repository last update from provider"
+    )
+
+    relative_path: Optional[str] = Field(
+        default=None,
+        description="The path to the repository relative to its hosting platform domain",
+        max_length=255,
     )
 
 
@@ -107,7 +113,7 @@ class GitLabRepoResponseTransformer:
         if not statistics:
             return None
 
-        return statistics.get("storage_size", 0)
+        return statistics.get("repository_size", 0)
 
     @classmethod
     def derived_private_field(cls, visibility: str):
@@ -190,7 +196,14 @@ class GitLabRepoResponseTransformer:
 
 
 class GitHubRepoResponseTransformer:
-
+    
+    @classmethod
+    def resolve_git_size_from_kb_to_byte(cls, size: int):
+        if not size:
+            return 0
+        
+        return size * 1024
+    
     @classmethod
     def transform_repository_to_dict(
         cls, repository: Repository | SimpleNamespace
@@ -250,7 +263,7 @@ class GitHubRepoResponseTransformer:
             html_url=dict_data.get("html_url"),
             private=dict_data.get("private"),
             visibility=dict_data.get("visibility"),
-            size=dict_data.get("size", 0),
+            size=cls.resolve_git_size_from_kb_to_byte(dict_data.get("size", 0)),
             repo_created_at=dict_data.get("repo_created_at"),
         )
 

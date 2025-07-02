@@ -1,4 +1,4 @@
-from datetime import datetime
+import datetime
 from types import SimpleNamespace
 
 import pytest
@@ -15,7 +15,10 @@ class TestGitLabRepoResponseTransformer:
         assert GitLabRepoResponseTransformer.derive_storage_size(None) is None
 
     def test_derive_storage_size_with_value(self):
-        statistics = {"storage_size": 1234}
+        statistics = {
+            "storage_size": 1234,
+            "repository_size": 1234
+        }
         assert GitLabRepoResponseTransformer.derive_storage_size(statistics) == 1234
 
     def test_derived_private_field_with_none(self):
@@ -31,7 +34,7 @@ class TestGitLabRepoResponseTransformer:
         )
 
     def test_transform_project_to_dict_basic(self):
-        now = datetime.utcnow()
+        now = datetime.datetime.now(datetime.UTC)
         project = SimpleNamespace(
             id=1,
             name="project",
@@ -63,8 +66,8 @@ class TestGitLabRepoResponseTransformer:
             "http_url_to_repo": "http://example.com",
             "path_with_namespace": "repo",
             "visibility": "internal",
-            "created_at": datetime.utcnow(),
-            "statistics": {"storage_size": 512},
+            "created_at": datetime.datetime.now(datetime.UTC),
+            "statistics": {"storage_size": 512, "repository_size": 512},
         }
         response = GitLabRepoResponseTransformer.from_git(data)
         assert isinstance(response, GitRepoResponse)
@@ -94,7 +97,7 @@ class TestGitLabRepoResponseTransformer:
 
 class TestGitHubRepoResponseTransformer:
     def test_transform_repository_to_dict(self):
-        now = datetime.utcnow()
+        now = datetime.datetime.now(datetime.UTC)
         repo = SimpleNamespace(
             id=1,
             name="repo",
@@ -117,7 +120,7 @@ class TestGitHubRepoResponseTransformer:
         assert GitHubRepoResponseTransformer.from_git(None) is None
 
     def test_from_github_dict_returns_expected_schema(self):
-        now = datetime.utcnow()
+        now = datetime.datetime.now(datetime.UTC)
         data = {
             "id": 99,
             "name": "gh-repo",
