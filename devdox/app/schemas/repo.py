@@ -35,8 +35,8 @@ class RepoBase(BaseModel):
     git_hosting: Optional[GitHostingProvider] = Field(
         None, description="Git hosting provider"
     )
-    language: Optional[List] = Field(
-        None, description="Primary programming language"
+    language: Optional[List[str]] = Field(
+        None, description="Primary programming languages"
     )
     size: Optional[int] = Field(None, description="Repository size in KB", ge=0)
     repo_created_at: Optional[datetime] = Field(
