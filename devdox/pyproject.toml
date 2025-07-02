@@ -46,7 +46,7 @@ dependencies = [
     #models
     "models @ git+https://github.com/montymobile1/devdox-ai-models.git@74e4941",
 
-    # Ecnryption package
+    # Encryption package
     "devdox-ai-encryption @ git+https://github.com/montymobile1/devdox-ai-encryption.git@f35a8c8",
 
     # Utilities
