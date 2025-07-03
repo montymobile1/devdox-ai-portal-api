@@ -93,7 +93,7 @@ class RepoProviderService:
             raise ResourceNotFound(reason="Token not found")
 
         decrypted_label_token = self.encryption.decrypt_for_user(
-            label.token_value, salt_b64=retrieved_user_data.encryption_salt
+            label.token_value, salt_b64=self.encryption.decrypt(retrieved_user_data.encryption_salt)
         )
 
         fetcher, response_mapper = retrieve_git_fetcher_or_die(
@@ -162,7 +162,7 @@ class RepoManipulationService:
 
         decrypted_label_token = self.encryption.decrypt_for_user(
             retrieved_git_label.token_value,
-            salt_b64=retrieved_user_data.encryption_salt,
+            salt_b64=self.encryption.decrypt(retrieved_user_data.encryption_salt),
         )
 
         repo_data, languages = fetcher.fetch_single_repo(

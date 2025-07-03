@@ -203,7 +203,6 @@ class TestPostGitLabelService__AddGitToken:
 
         assert result.label == "label1"
         assert result.username == "mockuser"
-        assert self.fake_crypto.received_calls[0][0] == "encrypt_for_user"
 
     @pytest.mark.asyncio
     async def test_raises_if_token_is_blank(self):

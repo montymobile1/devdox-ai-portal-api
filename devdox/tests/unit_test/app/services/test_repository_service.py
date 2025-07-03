@@ -34,6 +34,9 @@ class StubEncryption:
     def decrypt_for_user(self, encrypted, salt_b64):
         return "decrypted_token"
 
+    def decrypt(self, encrypted_text: str):
+        return "decrypt"
+
 
 class StubTransformer:
     def from_git(self, data):

@@ -12,6 +12,12 @@ from app.schemas.user import WebhookUserData
 from app.utils import constants
 from app.utils.api_response import APIResponse
 
+from app.utils.encryption import (
+    FernetEncryptionHelper,
+    get_encryption_helper,
+)
+
+
 router = APIRouter()
 
 logger = logging.getLogger(__name__)
@@ -32,13 +38,15 @@ async def webhook_handler(request: Request, response: Response):
         # Verify webhook signature
         wh = Webhook(settings.CLERK_WEBHOOK_SECRET)
         msg = wh.verify(payload, headers)
-
+        
+        encryptor:FernetEncryptionHelper = get_encryption_helper()
+        
         event_type = msg.get("type")
         data = msg.get("data", {})
         logger.info(f"Processing webhook event: {event_type}")
 
         if event_type == "user.created":
-            res = await _handle_user_created(data)
+            res = await _handle_user_created(encryptor, data)
             if not res:
                 APIResponse.success(message=constants.USER_EXIST)
         else:
@@ -61,7 +69,7 @@ async def webhook_handler(request: Request, response: Response):
         )
 
 
-async def _handle_user_created(data: dict) -> None:
+async def _handle_user_created(encryptor:FernetEncryptionHelper, data: dict) -> None:
     """Handle user.created webhook event."""
     try:
         # Validate and clean the webhook data using Pydantic
@@ -85,7 +93,7 @@ async def _handle_user_created(data: dict) -> None:
             last_name=user_data.last_name,
             email=user_data.primary_email,
             username=user_data.username,  # This is now cleaned by Pydantic
-            encryption_salt=salt_b64,
+            encryption_salt=encryptor.encrypt(salt_b64),
             role="user",
             active=True,
         )
