@@ -1,3 +1,4 @@
+import json
 from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
@@ -6,6 +7,7 @@ from svix.webhooks import WebhookVerificationError
 
 import app.exceptions.exception_constants
 from app.utils import constants
+from tests.unit_test.test_doubles.app.utils.encryption_doubles import FakeEncryptionHelper
 
 
 class TestWebhookEndpoint:
@@ -34,34 +36,43 @@ class TestWebhookEndpoint:
         }
 
     @pytest.mark.asyncio
+    @patch("app.routes.webhooks.get_encryption_helper", return_value=FakeEncryptionHelper())
     @patch("app.routes.webhooks.Webhook")
-    @patch("app.routes.webhooks.User.filter")
-    @patch("app.routes.webhooks.User.create")
+    @patch("app.routes.webhooks.User")
     async def test_user_created_success(
         self,
-        mock_create,
-        mock_filter,
+        mock_user,
         mock_webhook_class,
+        mock_get_encryption,
         client,
         test_payload,
         test_headers,
     ):
+        raw_payload = json.dumps(test_payload).encode("utf-8")
+
+        # Setup webhook.verify to return the full dict
         mock_webhook_instance = MagicMock()
         mock_webhook_instance.verify.return_value = test_payload
-        mock_webhook_class.return_value = (
-            mock_webhook_instance  # Return mock instance on init
-        )
+        mock_webhook_class.return_value = mock_webhook_instance
 
-        mock_filter.return_value.exists = AsyncMock(return_value=False)
-        mock_create.return_value = AsyncMock()
+        # Setup User.filter().exists() → False
+        mock_user.filter.return_value.exists = AsyncMock(return_value=False)
+        # Setup User.create()
+        mock_user.create = AsyncMock()
+
+        # Fire request
         response = client.post(
-            "/api/v1/webhooks/", json=test_payload, headers=test_headers
+            "/api/v1/webhooks/",
+            data=raw_payload,
+            headers=test_headers,
         )
 
+        # Assertions
         assert response.status_code == status.HTTP_200_OK
         assert response.json()["message"] == constants.USER_CREATED_SUCCESS
-        mock_create.assert_called_once()  # Verify user creation was attempted
-        mock_filter.assert_called_once_with(user_id="user_123")  # Verify user lookup
+
+        mock_user.filter.assert_called_once_with(user_id="user_123")
+        mock_user.create.assert_called_once()
 
     @pytest.mark.asyncio
     @patch("app.routes.webhooks.Webhook")
