@@ -175,9 +175,11 @@ class PostGitLabelService:
 
         if not user:
             raise ResourceNotFound(reason=USER_RESOURCE_NOT_FOUND)
-
+        
+        decrypted_encryption_salt = self.crypto_store.decrypt(user.encryption_salt)
+        
         encrypted_token = self.crypto_store.encrypt_for_user(
-            token, self.crypto_store.decrypt(user.encryption_salt)
+            token, decrypted_encryption_salt
         )
 
         fetcher, response_transformer = retrieve_git_fetcher_or_die(
