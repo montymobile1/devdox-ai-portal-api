@@ -13,7 +13,7 @@ from app.exceptions.exception_constants import (
     INVALID_APIKEY,
     UNIQUE_API_KEY_GENERATION_FAILED,
 )
-from app.repositories.api_key import TortoiseApiKeyStore
+from app.repositories.api_key import TortoiseApiKeyStore as ApiKeyStore
 from app.schemas.api_key import APIKeyCreate, APIKeyPublicResponse
 from app.services.git_tokens import mask_token
 from app.utils.auth import UserClaims
@@ -31,7 +31,7 @@ class APIKeyManager:
     DEFAULT_MAX_KEY_LENGTH = 32
     DEFAULT_PREFIX = "dvd_"
 
-    def __init__(self, api_key_store: TortoiseApiKeyStore):
+    def __init__(self, api_key_store: ApiKeyStore):
         self.api_key_store = api_key_store
 
     @staticmethod
@@ -75,7 +75,7 @@ class PostApiKeyService:
 
     def __init__(
         self,
-        api_key_store: TortoiseApiKeyStore,
+        api_key_store: ApiKeyStore,
         api_key_manager: APIKeyManager,
     ):
         self.api_key_store = api_key_store
@@ -84,7 +84,7 @@ class PostApiKeyService:
     @classmethod
     def with_dependency(
         cls,
-        api_key_store: Annotated[TortoiseApiKeyStore, Depends()],
+        api_key_store: Annotated[ApiKeyStore, Depends()],
     ) -> "PostApiKeyService":
 
         api_key_manager = APIKeyManager(api_key_store=api_key_store)
@@ -128,14 +128,14 @@ class RevokeApiKeyService:
 
     def __init__(
         self,
-        api_key_store: TortoiseApiKeyStore,
+        api_key_store: ApiKeyStore,
     ):
         self.api_key_store = api_key_store
 
     @classmethod
     def with_dependency(
         cls,
-        api_key_store: Annotated[TortoiseApiKeyStore, Depends()],
+        api_key_store: Annotated[ApiKeyStore, Depends()],
     ) -> "RevokeApiKeyService":
 
         return cls(
@@ -160,14 +160,14 @@ class GetApiKeyService:
 
     def __init__(
         self,
-        api_key_store: TortoiseApiKeyStore,
+        api_key_store: ApiKeyStore,
     ):
         self.api_key_store = api_key_store
 
     @classmethod
     def with_dependency(
         cls,
-        api_key_store: Annotated[TortoiseApiKeyStore, Depends()],
+        api_key_store: Annotated[ApiKeyStore, Depends()],
     ) -> "GetApiKeyService":
 
         return cls(

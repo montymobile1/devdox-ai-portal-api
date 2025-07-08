@@ -97,7 +97,7 @@ async def get_git_label_by_label(
     )
 
     return APIResponse.success(
-        message="Git labels retrieved successfully", data={"items": results}
+        message="Git labels retrieved successfully", data=results
     )
 
 
