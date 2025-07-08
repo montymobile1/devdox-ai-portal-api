@@ -13,9 +13,9 @@ from app.exceptions.exception_constants import (
     USER_RESOURCE_NOT_FOUND,
 )
 from models import Repo
-from app.repositories.git_label import TortoiseGitLabelStore
-from app.repositories.repo import TortoiseRepoStore
-from app.repositories.user import TortoiseUserStore
+from app.repositories.git_label import TortoiseGitLabelStore as GitLabelStore
+from app.repositories.repo import TortoiseRepoStore as RepoStore
+from app.repositories.user import TortoiseUserStore as UserStore
 from app.schemas.basic import RequiredPaginationParams
 from app.schemas.repo import GitRepoResponse, RepoResponse
 from app.utils.auth import UserClaims
@@ -27,8 +27,8 @@ from app.utils.repo_fetcher import RepoFetcher
 class RepoQueryService:
     def __init__(
         self,
-        repo_store=Depends(TortoiseRepoStore),
-        gl_store=Depends(TortoiseGitLabelStore),
+        repo_store=Depends(RepoStore),
+        gl_store=Depends(GitLabelStore),
     ):
         self.repo_store = repo_store
         self.gl_store = gl_store
@@ -64,8 +64,8 @@ class RepoQueryService:
 class RepoProviderService:
     def __init__(
         self,
-        label_store: TortoiseGitLabelStore = Depends(),
-        user_store: TortoiseUserStore = Depends(),
+        label_store: GitLabelStore = Depends(),
+        user_store: UserStore = Depends(),
         encryption: FernetEncryptionHelper = Depends(get_encryption_helper),
         git_fetcher: RepoFetcher = Depends(),
     ):
@@ -114,7 +114,7 @@ class RepoProviderService:
         return fetched_data["data_count"], transformed_response
 
 
-async def retrieve_user_by_id_or_die(store: TortoiseUserStore, user_id):
+async def retrieve_user_by_id_or_die(store: UserStore, user_id):
     retrieved_user_data = await store.get_by_user_id(user_id)
 
     if retrieved_user_data is None:
@@ -134,9 +134,9 @@ async def retrieve_git_label_by_id_and_user_or_die(store, id, user_id):
 class RepoManipulationService:
     def __init__(
         self,
-        label_store: TortoiseGitLabelStore = Depends(),
-        repo_store: TortoiseRepoStore = Depends(),
-        user_store: TortoiseUserStore = Depends(),
+        label_store: GitLabelStore = Depends(),
+        repo_store: RepoStore = Depends(),
+        user_store: UserStore = Depends(),
         encryption: FernetEncryptionHelper = Depends(get_encryption_helper),
         git_fetcher: RepoFetcher = Depends(),
     ):

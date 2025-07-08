@@ -42,7 +42,13 @@ class FakeGitLabelStore(ILabelStore):
             raise self.exceptions["count_by_user_id"]
         self.received_calls.append(("count_by_user_id", user_id, git_hosting))
         return self.total_count
-
+    
+    async def count_by_user_id_and_label(self, user_id, label=None):
+        if "count_by_user_id_and_label" in self.exceptions:
+            raise self.exceptions["count_by_user_id_and_label"]
+        self.received_calls.append(("count_by_user_id_and_label", user_id, label))
+        return self.total_count
+    
     async def get_by_token_id_and_user(self, token_id, user_id):
         if "get_by_token_id_and_user" in self.exceptions:
             raise self.exceptions["get_by_token_id_and_user"]

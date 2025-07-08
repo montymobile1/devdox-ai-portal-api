@@ -115,13 +115,14 @@ class TestGetGitLabelService__GetGitLabelsByLabel:
             user_claims=self.user_claims,
             label="bug",
         )
-
-        assert result[0]["label"] == "bug"
-        assert result[0]["masked_token"] == "****1234"
+        
+        dict_res = result.get('items', {})
+        assert dict_res[0]["label"] == "bug"
+        assert dict_res[0]["masked_token"] == "****1234"
 
     async def test_get_git_labels_by_label_handles_store_exception(self):
         self.store.set_exception(
-            "get_by_user_id_and_label", ValueError("Simulated error")
+            "count_by_user_id_and_label", ValueError("Simulated error")
         )
 
         with pytest.raises(ValueError, match="Simulated error"):
@@ -138,7 +139,7 @@ class TestGetGitLabelService__GetGitLabelsByLabel:
             pagination=self.pagination, user_claims=self.user_claims, label="anything"
         )
 
-        assert result == []
+        assert result["items"] == []
 
     async def test_get_git_labels_by_label_applies_formatting(self):
         label = make_fake_git_label(
@@ -150,7 +151,7 @@ class TestGetGitLabelService__GetGitLabelsByLabel:
             pagination=self.pagination, user_claims=self.user_claims, label="bug"
         )
 
-        item = result[0]
+        item = result.get("items", {})[0]
         assert item["label"] == "bug"
         assert item["masked_token"] == "****abcd"
         assert "id" in item and "created_at" in item
