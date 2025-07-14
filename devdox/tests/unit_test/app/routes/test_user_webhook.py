@@ -2,12 +2,12 @@ import json
 from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
+from encryption_src.test_doubles import FakeEncryptionHelper
 from fastapi import status
 from svix.webhooks import WebhookVerificationError
 
 import app.exceptions.exception_constants
 from app.utils import constants
-from tests.unit_test.test_doubles.app.utils.encryption_doubles import FakeEncryptionHelper
 
 
 class TestWebhookEndpoint:
