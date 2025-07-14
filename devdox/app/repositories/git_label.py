@@ -42,7 +42,11 @@ class ILabelStore(Protocol):
     async def get_by_user_id_and_label(
         self, offset, limit, user_id, label: str
     ) -> list[Any]: ...
-
+    
+    async def count_by_user_id_and_label(
+            self, user_id, label: str
+    ) -> int: ...
+    
     @abstractmethod
     async def create_new(self, label_model: GitLabelDBCreateDTO) -> Any: ...
 
@@ -129,17 +133,29 @@ class TortoiseGitLabelStore(ILabelStore):
 
         return await query.count()
 
-    async def get_by_user_id_and_label(
-        self, offset, limit, user_id, label: str
-    ) -> list[GitLabel]:
-
+    def __get_by_user_id_and_label_query(self, user_id, label: str):
         if not user_id:
             raise internal_error(**self.InternalExceptions.MISSING_USER_ID.value)
 
         if not label or not label.strip():
             raise internal_error(**self.InternalExceptions.MISSING_LABEL.value)
 
-        query = GitLabel.filter(user_id=user_id, label=label)
+        query = GitLabel.filter(user_id=user_id, label__icontains=label)
+
+        return query
+
+    async def count_by_user_id_and_label(
+        self, user_id, label: str
+    ) -> int:
+
+        query = self.__get_by_user_id_and_label_query(user_id, label)
+        return await query.count()
+
+    async def get_by_user_id_and_label(
+        self, offset, limit, user_id, label: str
+    ) -> list[GitLabel]:
+
+        query = self.__get_by_user_id_and_label_query(user_id, label)
 
         git_labels = (
             await query.order_by("-created_at").offset(offset).limit(limit).all()

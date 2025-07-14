@@ -12,8 +12,8 @@ from app.exceptions.exception_constants import (
     TOKEN_NOT_FOUND,
     USER_RESOURCE_NOT_FOUND,
 )
-from app.repositories.git_label import TortoiseGitLabelStore
-from app.repositories.user import TortoiseUserStore
+from app.repositories.git_label import TortoiseGitLabelStore as GitLabelStore
+from app.repositories.user import TortoiseUserStore as UserStore
 from app.schemas.basic import PaginationParams, RequiredPaginationParams
 from app.schemas.git_label import GitLabelBase, GitLabelDBCreateDTO, GitLabelResponse
 from app.schemas.repo import GitUserResponse
@@ -51,13 +51,13 @@ def format_git_label_data(raw_git_labels):
 
 class GetGitLabelService:
 
-    def __init__(self, label_store: TortoiseGitLabelStore):
+    def __init__(self, label_store: GitLabelStore):
         self.label_store = label_store
 
     @classmethod
     def with_dependency(
         cls,
-        label_store: Annotated[TortoiseGitLabelStore, Depends()],
+        label_store: Annotated[GitLabelStore, Depends()],
     ) -> "GetGitLabelService":
         return cls(label_store)
 
@@ -102,6 +102,19 @@ class GetGitLabelService:
         self, pagination: PaginationParams, user_claims: UserClaims, label: str
     ):
 
+        total = await self.label_store.count_by_user_id_and_label(
+            user_id=user_claims.sub,
+            label=label,
+        )
+
+        if total == 0:
+            return {
+                "items": [],
+                "total": total,
+                "page": pagination.offset + 1,
+                "size": pagination.limit,
+            }
+
         git_labels = await self.label_store.get_by_user_id_and_label(
             offset=pagination.offset,
             limit=pagination.limit,
@@ -111,7 +124,12 @@ class GetGitLabelService:
 
         formatted_data = format_git_label_data(git_labels)
 
-        return formatted_data
+        return {
+            "items": formatted_data,
+            "total": total,
+            "page": pagination.offset + 1,
+            "size": pagination.limit,
+        }
 
 
 def mask_token(token: str) -> str:
@@ -140,8 +158,8 @@ class PostGitLabelService:
 
     def __init__(
         self,
-        user_store: TortoiseUserStore,
-        label_store: TortoiseGitLabelStore,
+        user_store: UserStore,
+        label_store: GitLabelStore,
         crypto_store: FernetEncryptionHelper,
         git_manager: RepoFetcher,
     ):
@@ -153,8 +171,8 @@ class PostGitLabelService:
     @classmethod
     def with_dependency(
         cls,
-        user_store: Annotated[TortoiseUserStore, Depends()],
-        label_store: Annotated[TortoiseGitLabelStore, Depends()],
+        user_store: Annotated[UserStore, Depends()],
+        label_store: Annotated[GitLabelStore, Depends()],
         crypto_store: Annotated[FernetEncryptionHelper, Depends(get_encryption_helper)],
         git_manager: Annotated[RepoFetcher, Depends()],
     ) -> "PostGitLabelService":
@@ -216,14 +234,14 @@ class DeleteGitLabelService:
 
     def __init__(
         self,
-        label_store: TortoiseGitLabelStore,
+        label_store: GitLabelStore,
     ):
         self.label_store = label_store
 
     @classmethod
     def with_dependency(
         cls,
-        label_store: Annotated[TortoiseGitLabelStore, Depends()],
+        label_store: Annotated[GitLabelStore, Depends()],
     ) -> "DeleteGitLabelService":
         return cls(
             label_store=label_store,

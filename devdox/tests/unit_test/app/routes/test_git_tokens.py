@@ -147,6 +147,7 @@ class TestGetGitLabelByLabelRouter:
     def override_git_label_service_label_exception(self):
         def _override():
             store = FakeGitLabelStore()
+            store.total_count = 1
             store.set_exception(
                 "get_by_user_id_and_label", ValueError("Simulated error")
             )
