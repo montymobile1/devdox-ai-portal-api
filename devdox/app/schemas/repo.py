@@ -1,6 +1,7 @@
 import uuid
 from types import SimpleNamespace
 
+from app.config import GitHosting
 from github.AuthenticatedUser import AuthenticatedUser
 from github.Repository import Repository
 from gitlab.v4.objects import Project
@@ -8,13 +9,6 @@ from pydantic import BaseModel, Field, ConfigDict
 from typing import Optional, List
 from datetime import datetime
 from enum import Enum
-
-
-class GitHostingProvider(str, Enum):
-    """Supported Git hosting providers"""
-
-    GITHUB = "github"
-    GITLAB = "gitlab"
 
 
 class RepoBase(BaseModel):
@@ -32,7 +26,7 @@ class RepoBase(BaseModel):
     visibility: Optional[str] = Field(
         None, description="Repository visibility (GitLab)", max_length=50
     )
-    git_hosting: Optional[GitHostingProvider] = Field(
+    git_hosting: Optional[GitHosting] = Field(
         None, description="Git hosting provider"
     )
     language: Optional[List[str]] = Field(
