@@ -15,9 +15,7 @@ from starlette.testclient import TestClient
 
 from app.exceptions.custom_exceptions import DevDoxAPIException, UnauthorizedAccess
 from app.exceptions.exception_handlers import (
-    devdox_base_exception_handler,
-    generic_exception_handler,
-    generic_exception_handler_status_code,
+    generic_exception_handler_status_code
 )
 from app.exceptions.exception_manager import (
     manage_dev_dox_base_exception,

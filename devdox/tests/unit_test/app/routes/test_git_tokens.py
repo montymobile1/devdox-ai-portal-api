@@ -294,7 +294,7 @@ class TestPostGitLabelRouter__AddGitToken:
         override_auth_user,
         override_post_git_label_service_duplicate_label,
     ):
-        payload = {"label": "label1", "token_value": "abc123", "git_hosting": "GITHUB"}
+        payload = {"label": "label1", "token_value": "abc123", "git_hosting": "github"}
 
         response = permissible_test_client.post(self.route_url, json=payload)
 
@@ -303,7 +303,7 @@ class TestPostGitLabelRouter__AddGitToken:
     def test_add_git_token_missing_token_value(
         self, permissible_test_client, override_auth_user
     ):
-        payload = {"label": "label1", "token_value": " ", "git_hosting": "GITHUB"}
+        payload = {"label": "label1", "token_value": " ", "git_hosting": "github"}
 
         response = permissible_test_client.post(self.route_url, json=payload)
 
@@ -315,7 +315,7 @@ class TestPostGitLabelRouter__AddGitToken:
 
         app.dependency_overrides[get_authenticated_user] = _unauth_override
 
-        payload = {"label": "label1", "token_value": "abc123", "git_hosting": "GITHUB"}
+        payload = {"label": "label1", "token_value": "abc123", "git_hosting": "github"}
 
         try:
             response = permissible_test_client.post(self.route_url, json=payload)
