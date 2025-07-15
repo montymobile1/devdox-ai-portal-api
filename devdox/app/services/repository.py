@@ -10,6 +10,7 @@ from app.exceptions.custom_exceptions import (
 from app.exceptions.exception_constants import (
     GIT_LABEL_TOKEN_RESOURCE_NOT_FOUND,
     REPOSITORY_ALREADY_EXISTS,
+    TOKEN_NOT_FOUND,
     USER_RESOURCE_NOT_FOUND,
     REPOSITORY_TOKEN_RESOURCE_NOT_FOUND,
 )
@@ -86,13 +87,13 @@ class RepoProviderService:
         retrieved_user_data = await self.user_store.get_by_user_id(user_claims.sub)
 
         if retrieved_user_data is None:
-            raise ResourceNotFound(reason="User not found")
+            raise ResourceNotFound(reason=USER_RESOURCE_NOT_FOUND)
 
         label = await self.label_store.get_by_token_id_and_user(
             token_id, user_claims.sub
         )
         if label is None:
-            raise ResourceNotFound(reason="Token not found")
+            raise ResourceNotFound(reason=TOKEN_NOT_FOUND)
 
         decrypted_label_token = self.encryption.decrypt_for_user(
             label.token_value,
