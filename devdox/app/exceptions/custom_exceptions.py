@@ -28,7 +28,7 @@ Example:
 These exceptions are globally handled and logged by the `devdox_exception_handler`
 defined in `handlers.py`, and registered into the FastAPI app via `register.py`.
 """
-
+import dataclasses
 from typing import Any, Dict, Optional
 
 from starlette import status
@@ -39,6 +39,14 @@ from app.exceptions.exception_constants import (
     GENERIC_RESOURCE_NOT_FOUND,
 )
 
+
+@dataclasses.dataclass
+class ErrorPayload:
+    message: str
+    status_code: int
+    details: Optional[Dict[str, Any]] = None
+    debug: Optional[Any] = None
+    error_type: Optional[str] = None
 
 class DevDoxAPIException(Exception):
     """
@@ -60,7 +68,6 @@ class DevDoxAPIException(Exception):
                         error_type="REPO_SYNC_FAILED",
                         public_context=None,
                         internal_context={"repo_id": repo_id, "provider": provider},
-                        root_exception=cause,
                     )
     ```
     """
@@ -77,7 +84,6 @@ class DevDoxAPIException(Exception):
         error_type: Optional[str] = None,
         public_context: Optional[Dict[str, Any]] = None,
         internal_context: Optional[Dict[str, Any]] = None,
-        root_exception: Optional[Exception] = None,
         http_status_override: Optional[int] = None,
         log_level: Optional[str] = None,
     ):
@@ -90,7 +96,6 @@ class DevDoxAPIException(Exception):
                 internal_context: Optional context to include in logs only (e.g., {"repo_id": 123}).
 
                 error_type: Optional machine-readable code.
-                root_exception: Original exception (for traceback chaining).
                 http_status_override: Override the default HTTP status for this exception.
         """
         super().__init__(user_message)
@@ -100,18 +105,20 @@ class DevDoxAPIException(Exception):
         self.error_type = error_type or self.__class__.__name__.upper()
         self.public_context = public_context or {}
         self.internal_context = internal_context or {}
-        self.root_exception = root_exception
         self.http_status = http_status_override or self.http_status
         self.log_level = log_level.lower() if log_level else "warning"
 
     def __str__(self):
         return f"[{self.error_type}] {self.user_message}"
 
-
 class UnauthorizedAccess(DevDoxAPIException):
     http_status = status.HTTP_401_UNAUTHORIZED
 
-    def __init__(self, reason=AUTH_FAILED, log_message=None, log_level=None):
+    def __init__(self, reason=None, log_message=None, log_level=None):
+        
+        if not reason or not reason.strip():
+            reason = AUTH_FAILED
+        
         super().__init__(
             user_message=reason, log_message=log_message, log_level=log_level
         )
@@ -120,12 +127,20 @@ class UnauthorizedAccess(DevDoxAPIException):
 class BadRequest(DevDoxAPIException):
     http_status = status.HTTP_400_BAD_REQUEST
 
-    def __init__(self, reason=GENERIC_BAD_REQUEST, log_message: Optional[str] = None):
-        super().__init__(user_message=reason, log_message=log_message)
+    def __init__(self, reason=None, log_message: Optional[str] = None):
+        
+        if not reason or not reason.strip():
+            reason = GENERIC_BAD_REQUEST
+        
+        super().__init__(user_message=reason, log_message=log_message, log_level="warning")
 
 
 class ResourceNotFound(DevDoxAPIException):
     http_status = status.HTTP_404_NOT_FOUND
 
-    def __init__(self, reason=GENERIC_RESOURCE_NOT_FOUND):
+    def __init__(self, reason=None):
+        
+        if not reason or not reason.strip():
+            reason = GENERIC_RESOURCE_NOT_FOUND
+        
         super().__init__(user_message=reason)
