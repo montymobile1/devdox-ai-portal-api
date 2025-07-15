@@ -32,7 +32,6 @@ class AuthenticatedGitHubManager:
             raise DevDoxAPIException(
                 user_message="Unable to fetch GithHub project",
                 log_message="GitHub project fetch failed",
-                root_exception=e,
             ) from e
 
     def get_project_languages(
@@ -49,7 +48,6 @@ class AuthenticatedGitHubManager:
             raise DevDoxAPIException(
                 user_message="Unable to fetch GitHub project languages",
                 log_message="GitHub project languages fetch failed",
-                root_exception=e,
             ) from e
 
     def get_user(self) -> AuthenticatedUser:
@@ -61,8 +59,7 @@ class AuthenticatedGitHubManager:
             raise DevDoxAPIException(
                 user_message="Unable to fetch GitHub user.",
                 log_message="GitHub user fetch failed",
-                root_exception=e,
-            )
+            ) from e
 
     def get_user_repositories(
         self,
@@ -107,8 +104,7 @@ class AuthenticatedGitHubManager:
             raise DevDoxAPIException(
                 user_message="Unable to fetch GitHub repositories.",
                 log_message="GitHub repository list fetch failed",
-                root_exception=e,
-            )
+            ) from e
 
 
 class GitHubManager(IManager):
@@ -136,7 +132,6 @@ class GitHubManager(IManager):
             raise DevDoxAPIException(
                 user_message="GitHub authentication failed",
                 log_message="Failed to authenticate GitHubManager",
-                root_exception=e,
             ) from e
 
     @staticmethod
@@ -228,7 +223,6 @@ class AuthenticatedGitLabManager:
             raise DevDoxAPIException(
                 user_message="Unable to fetch GitLab project",
                 log_message="GitLab project fetch failed",
-                root_exception=e,
             ) from e
 
     def get_project_languages(
@@ -245,7 +239,6 @@ class AuthenticatedGitLabManager:
             raise DevDoxAPIException(
                 user_message="Unable to fetch GitLab project languages",
                 log_message="GitLab project languages fetch failed",
-                root_exception=e,
             ) from e
 
     def get_user(self, timeout: int = DEFAULT_TIMEOUT):
@@ -258,7 +251,6 @@ class AuthenticatedGitLabManager:
             raise DevDoxAPIException(
                 user_message="Unable to fetch GitLab user.",
                 log_message="GitLab user fetch failed",
-                root_exception=e,
             ) from e
 
     def get_user_repositories(
@@ -289,7 +281,6 @@ class AuthenticatedGitLabManager:
             raise DevDoxAPIException(
                 user_message="Unable to fetch GitLab repositories.",
                 log_message="GitLab repository list fetch failed",
-                root_exception=e,
             ) from e
 
 
@@ -312,7 +303,6 @@ class GitLabManager(IManager):
             raise DevDoxAPIException(
                 user_message="GitLab authentication failed",
                 log_message="Failed to authenticate GitLabManager",
-                root_exception=e,
             ) from e
 
 
