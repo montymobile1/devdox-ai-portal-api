@@ -10,13 +10,19 @@ import logging
 
 import pytest
 from fastapi import FastAPI
+from fastapi.exceptions import RequestValidationError
 from starlette.testclient import TestClient
 
 from app.exceptions.custom_exceptions import DevDoxAPIException, UnauthorizedAccess
-from app.exceptions.handlers import (
+from app.exceptions.exception_handlers import (
     devdox_base_exception_handler,
     generic_exception_handler,
     generic_exception_handler_status_code,
+)
+from app.exceptions.exception_manager import (
+    manage_dev_dox_base_exception,
+    manage_generic_exception,
+    manage_validation_exception,
 )
 
 
@@ -32,8 +38,9 @@ def exception_test_app() -> FastAPI:
     Defines isolated routes to simulate all key branches of exception handling.
     """
     app = FastAPI()
-    app.add_exception_handler(Exception, generic_exception_handler)
-    app.add_exception_handler(DevDoxAPIException, devdox_base_exception_handler)
+    app.add_exception_handler(Exception, manage_generic_exception)
+    app.add_exception_handler(DevDoxAPIException, manage_dev_dox_base_exception)
+    app.add_exception_handler(RequestValidationError, manage_validation_exception)
 
     @app.get("/boom/generic")
     def _generic():

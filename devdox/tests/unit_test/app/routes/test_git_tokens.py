@@ -13,7 +13,11 @@ from app.services.git_tokens import (
     PostGitLabelService,
 )
 from app.utils.auth import get_authenticated_user
-from app.exceptions.custom_exceptions import BadRequest, UnauthorizedAccess
+from app.exceptions.custom_exceptions import (
+    BadRequest,
+    UnauthorizedAccess,
+    ValidationFailed,
+)
 from app.utils.constants import TOKEN_DELETED_SUCCESSFULLY, TOKEN_SAVED_SUCCESSFULLY
 from tests.unit_test.test_doubles.app.repository.get_label_repository_doubles import (
     FakeGitLabelStore,
@@ -262,7 +266,7 @@ class TestPostGitLabelRouter__AddGitToken:
     def test_add_git_token_success(
         self, test_client, override_auth_user, override_post_git_label_service_success
     ):
-        payload = {"label": "label1", "token_value": "abc123", "git_hosting": "GITHUB"}
+        payload = {"label": "label1", "token_value": "abc123", "git_hosting": "github"}
 
         response = test_client.post(self.route_url, json=payload)
 
@@ -278,7 +282,7 @@ class TestPostGitLabelRouter__AddGitToken:
         override_auth_user,
         override_post_git_label_service_user_not_found,
     ):
-        payload = {"label": "label1", "token_value": "abc123", "git_hosting": "GITHUB"}
+        payload = {"label": "label1", "token_value": "abc123", "git_hosting": "github"}
 
         response = permissible_test_client.post(self.route_url, json=payload)
 
@@ -326,7 +330,7 @@ class TestPostGitLabelRouter__AddGitToken:
 
         response = permissible_test_client.post(self.route_url, json=payload)
 
-        assert response.status_code == status.HTTP_422_UNPROCESSABLE_ENTITY
+        assert response.status_code == ValidationFailed.http_status
 
 
 class TestDeleteGitLabel:

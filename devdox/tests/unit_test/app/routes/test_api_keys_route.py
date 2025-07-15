@@ -4,6 +4,7 @@ import pytest
 from types import SimpleNamespace
 from fastapi import status
 
+from app.exceptions.custom_exceptions import ValidationFailed
 from app.main import app
 from app.schemas.api_key import APIKeyPublicResponse
 from app.services.api_keys import GetApiKeyService, RevokeApiKeyService
@@ -76,7 +77,7 @@ class TestRevokeApiKeyRouter:
         self, test_client, override_auth_user, override_revoke_service_success
     ):
         response = test_client.delete(f"{self.route_url}not-a-uuid")
-        assert response.status_code == status.HTTP_422_UNPROCESSABLE_ENTITY
+        assert response.status_code == ValidationFailed.http_status
 
 
 class FakeGetApiKeyService:
