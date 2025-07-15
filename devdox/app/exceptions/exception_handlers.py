@@ -18,14 +18,17 @@ This ensures a clean separation of concerns:
 """
 
 import logging
+from typing import Dict
 
+from fastapi.exceptions import RequestValidationError
 from starlette import status
 from starlette.requests import Request
 
 from app.exceptions import exception_constants
 from app.exceptions.custom_exceptions import (
     DevDoxAPIException,
-    ErrorPayload
+    ErrorPayload,
+    ValidationFailed,
 )
 
 logger = logging.getLogger(__name__)
@@ -110,3 +113,27 @@ def devdox_base_exception_handler(
         details=exc.public_context,
         error_type=exc_error_type,
     )
+
+def validation_exception_handler(request: Request, exc: RequestValidationError) -> ErrorPayload:
+    """
+    Catch FastAPI/Pydantic validation errors and return structured per-field feedback.
+    """
+    # Group errors by field
+    field_errors: Dict[str, list] = {}
+
+    for err in exc.errors():
+        # Remove "body"/"query"/"path"/etc. from loc and turn it into a dotted field name
+        loc_parts = [str(part) for part in err["loc"] if part not in {"body", "query", "path", "header"}]
+        field = ".".join(loc_parts) or "general"
+        field_errors.setdefault(field, []).append(err["msg"])
+
+    exception = ValidationFailed(field_errors)
+
+    error_report = ErrorPayload(
+        message=exception.user_message,
+        status_code=exception.http_status,
+        details=exception.public_context,
+        error_type=exception.error_type
+    )
+
+    return error_report

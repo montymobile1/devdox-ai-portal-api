@@ -37,6 +37,7 @@ from app.exceptions.exception_constants import (
     AUTH_FAILED,
     GENERIC_BAD_REQUEST,
     GENERIC_RESOURCE_NOT_FOUND,
+    GENERIC_VALIDATION_FAILED_USER_MESSAGE,
 )
 
 
@@ -144,3 +145,12 @@ class ResourceNotFound(DevDoxAPIException):
             reason = GENERIC_RESOURCE_NOT_FOUND
         
         super().__init__(user_message=reason)
+
+class ValidationFailed(DevDoxAPIException):
+    http_status = status.HTTP_400_BAD_REQUEST
+
+    def __init__(self, field_errors: Dict[str, list]):
+        super().__init__(
+            user_message=GENERIC_VALIDATION_FAILED_USER_MESSAGE,
+            public_context=field_errors
+        )

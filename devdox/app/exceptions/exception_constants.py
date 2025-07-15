@@ -3,6 +3,7 @@ FAILED_GENERATE_API_KEY_RETRIES_LOG_MESSAGE = "Failed to generate a unique API k
 GENERIC_ALREADY_EXIST = "Already Exists"
 GENERIC_BAD_REQUEST = "Bad Request"
 GENERIC_RESOURCE_NOT_FOUND = "Resource Not Found"
+GENERIC_VALIDATION_FAILED_USER_MESSAGE = "Your request contains validation errors"
 GIT_LABEL_TOKEN_RESOURCE_NOT_FOUND = "Git Label Token Not Found"
 INVALID_APIKEY = "Invalid API Key"
 INVALID_BEARER_TOKEN_SCHEMA = "Missing or malformed Authorization header"
