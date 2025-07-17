@@ -16,24 +16,35 @@ This ensures a clean separation of concerns:
 - `handlers.py` = defines the logic of how to respond to errors
 - `register.py` = plugs that logic into the FastAPI lifecycle
 """
-
+import dataclasses
 import logging
+from typing import Any, Dict, Optional
 
+from fastapi.exceptions import RequestValidationError
 from starlette import status
 from starlette.requests import Request
-from starlette.responses import JSONResponse
 
-import app.exceptions.exception_constants
-from app.config import settings
-from app.exceptions.custom_exceptions import DevDoxAPIException
-from app.utils.api_response import APIResponse
+from app.exceptions import exception_constants
+from app.exceptions.local_exceptions import (
+    ValidationFailed,
+)
+from app.exceptions.base_exceptions import DevDoxAPIException
 
 logger = logging.getLogger(__name__)
 
 generic_exception_handler_status_code = status.HTTP_503_SERVICE_UNAVAILABLE
 
 
-def generic_exception_handler(request: Request, exc: Exception) -> JSONResponse:
+@dataclasses.dataclass
+class ErrorPayload:
+    message: str
+    status_code: int
+    details: Optional[Dict[str, Any]] = None
+    debug: Optional[Any] = None
+    error_type: Optional[str] = None
+
+
+def generic_exception_handler(request: Request, exc: Exception) -> ErrorPayload:
     """
     Handle all uncaught exceptions with standardized error response.
 
@@ -44,7 +55,7 @@ def generic_exception_handler(request: Request, exc: Exception) -> JSONResponse:
     Returns:
         Standardized error response dictionary
     """
-
+    
     path = request.url.path
     method = getattr(request, "method", None) or request.scope.get("method") or "HTTP"
     exc_type = type(exc).__name__
@@ -57,22 +68,18 @@ def generic_exception_handler(request: Request, exc: Exception) -> JSONResponse:
         method,
         status_code,
     )
-
-    debug_payload = None
-    if settings.API_ENV in ["development", "test"]:
-        debug_payload = {"exception": type(exc).__name__, "str": str(exc)}
-
-    return APIResponse.error(
-        message=app.exceptions.exception_constants.SERVICE_UNAVAILABLE,
+    
+    error_report = ErrorPayload(
+        message=exception_constants.SERVICE_UNAVAILABLE,
         status_code=status_code,
-        debug=debug_payload,
         error_type=exc_type,
     )
 
+    return error_report
 
 def devdox_base_exception_handler(
     request: Request, exc: DevDoxAPIException
-) -> JSONResponse:
+) -> ErrorPayload:
     """
     Handle DevDoxAPIException with structured logging and response.
 
@@ -86,7 +93,9 @@ def devdox_base_exception_handler(
     path = request.url.path
     method = getattr(request, "method", None) or request.scope.get("method") or "HTTP"
     exc_error_type = exc.error_type
-
+    
+    log_extra = {}
+    
     log_parts = [
         f"[{exc_error_type}] {exc.log_message}",
         f"Path: {path}",
@@ -95,27 +104,48 @@ def devdox_base_exception_handler(
     ]
 
     if exc.internal_context:
-        log_parts.append(f"Context: {exc.internal_context}")
+        log_extra["internal_context"]= exc.internal_context
 
     # Combine all parts into the final message
     log_message = " | ".join(log_parts)
 
-    # Log with traceback if root_exception is present
+    # Log with traceback if `from e` __context__ present
+    extra_for_logs = log_extra if log_extra else None
+    
     if exc.log_level == "error":
-        logger.error(log_message, exc_info=exc.root_exception or exc)
+        logger.error(log_message, exc_info=exc.__cause__ or exc, extra=extra_for_logs)
     elif exc.log_level == "exception":
-        logger.exception(log_message, exc_info=exc.root_exception or exc)
+        logger.exception(log_message, exc_info=exc.__cause__ or exc, extra=extra_for_logs)
     else:
-        logger.warning(log_message)
-
-    debug_payload = None
-    if settings.API_ENV in ["development", "test"]:
-        debug_payload = {"exception": type(exc).__name__, "str": str(exc)}
-
-    return APIResponse.error(
+        logger.warning(log_message, extra=extra_for_logs)
+    
+    return ErrorPayload(
         message=exc.user_message,
         status_code=exc.http_status,
         details=exc.public_context,
-        debug=debug_payload,
         error_type=exc_error_type,
     )
+
+def validation_exception_handler(request: Request, exc: RequestValidationError) -> ErrorPayload:
+    """
+    Catch FastAPI/Pydantic validation errors and return structured per-field feedback.
+    """
+    # Group errors by field
+    field_errors: Dict[str, list] = {}
+
+    for err in exc.errors():
+        # Remove "body"/"query"/"path"/etc. from loc and turn it into a dotted field name
+        loc_parts = [str(part) for part in err["loc"] if part not in {"body", "query", "path", "header"}]
+        field = ".".join(loc_parts) or "general"
+        field_errors.setdefault(field, []).append(err["msg"])
+
+    exception = ValidationFailed(field_errors)
+
+    error_report = ErrorPayload(
+        message=exception.user_message,
+        status_code=exception.http_status,
+        details=exception.public_context,
+        error_type=exception.error_type
+    )
+
+    return error_report

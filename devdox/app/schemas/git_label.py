@@ -1,3 +1,4 @@
+from app.config import GitHosting
 from fastapi import Body, Depends, Query, Path
 from pydantic import BaseModel, Field, ConfigDict
 from typing import Annotated, Optional
@@ -19,13 +20,13 @@ class GitLabelBase(BaseModel):
     # username: str = Field(
     #     ..., description="Username for the git hosting service", max_length=100
     # )
-    git_hosting: str = Field(..., description=GIT_HOSTING_FIELD_DESCRIPTION)
-    token_value: str = Field(..., description=TOKEN_VALUE_FIELD_DESCRIPTION)
+    git_hosting: GitHosting = Field(..., description=GIT_HOSTING_FIELD_DESCRIPTION)
+    token_value: str = Field(..., description=TOKEN_VALUE_FIELD_DESCRIPTION, max_length=100)
 
 
 class GitLabelUpdate(BaseModel):
     label: Optional[str] = Field(None, description=LABEL_FIELD_DESCRIPTION)
-    git_hosting: Optional[str] = Field(None, description=GIT_HOSTING_FIELD_DESCRIPTION)
+    git_hosting: Optional[GitHosting] = Field(None, description=GIT_HOSTING_FIELD_DESCRIPTION)
     username: Optional[str] = Field(
         None, description="Username for the git hosting service"
     )
@@ -61,7 +62,7 @@ class GetGitLabelsRequest:
     def __init__(
         self,
         pagination: Annotated[RequiredPaginationParams, Depends()],
-        git_hosting: Optional[str] = Query(
+        git_hosting: Optional[GitHosting] = Query(
             None, description="Filter by git hosting service"
         ),
     ):
@@ -99,8 +100,8 @@ class DeleteGitTokenRequest:
 class GitLabelDBCreateDTO(BaseModel):
     label: str = Field(..., description=LABEL_FIELD_DESCRIPTION)
     user_id: str = Field(..., max_length=255, description="Authenticated user id")
-    git_hosting: str = Field(
-        ..., max_length=50, description=GIT_HOSTING_FIELD_DESCRIPTION
+    git_hosting: GitHosting = Field(
+        ..., description=GIT_HOSTING_FIELD_DESCRIPTION
     )
     token_value: str = Field(..., description=TOKEN_VALUE_FIELD_DESCRIPTION)
     masked_token: str = Field(
