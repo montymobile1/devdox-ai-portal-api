@@ -85,7 +85,9 @@ def devdox_base_exception_handler(
     path = request.url.path
     method = getattr(request, "method", None) or request.scope.get("method") or "HTTP"
     exc_error_type = exc.error_type
-
+    
+    log_extra = {}
+    
     log_parts = [
         f"[{exc_error_type}] {exc.log_message}",
         f"Path: {path}",
@@ -94,18 +96,20 @@ def devdox_base_exception_handler(
     ]
 
     if exc.internal_context:
-        log_parts.append(f"Context: {exc.internal_context}")
+        log_extra["internal_context"]= exc.internal_context
 
     # Combine all parts into the final message
     log_message = " | ".join(log_parts)
 
     # Log with traceback if `from e` __context__ present
+    extra_for_logs = log_extra if log_extra else None
+    
     if exc.log_level == "error":
-        logger.error(log_message, exc_info=exc.__cause__ or exc)
+        logger.error(log_message, exc_info=exc.__cause__ or exc, extra=extra_for_logs)
     elif exc.log_level == "exception":
-        logger.exception(log_message, exc_info=exc.__cause__ or exc)
+        logger.exception(log_message, exc_info=exc.__cause__ or exc, extra=extra_for_logs)
     else:
-        logger.warning(log_message)
+        logger.warning(log_message, extra=extra_for_logs)
     
     return ErrorPayload(
         message=exc.user_message,

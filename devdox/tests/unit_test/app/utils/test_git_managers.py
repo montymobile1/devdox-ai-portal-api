@@ -3,14 +3,12 @@ import requests
 from github import GithubException
 from gitlab import GitlabError
 
+from app.exceptions import exception_constants
 from app.exceptions.custom_exceptions import DevDoxAPIException
-from app.exceptions.exception_constants import GIT_PROJECT_FETCH_FAILED
 from app.utils.git_managers import (
     AuthenticatedGitHubManager,
     AuthenticatedGitLabManager,
-    GITHUB_REPOSITORY_NAME,
     GitHubManager,
-    GITLAB_REPOSITORY_NAME,
     GitLabManager,
 )
 
@@ -80,7 +78,7 @@ class TestGitHubManager:
         manager = GitHubManager()
         with pytest.raises(DevDoxAPIException) as exc_info:
             manager.authenticate("bad-token")
-        assert "GitHub authentication failed" in str(exc_info.value)
+        assert exception_constants.GIT_AUTH_FAILED in str(exc_info.value)
 
     def test_get_user_repositories_raises(self, monkeypatch):
         class FailingUser:
@@ -102,7 +100,7 @@ class TestGitHubManager:
 
         with pytest.raises(DevDoxAPIException) as exc_info:
             manager.get_user_repositories()
-        assert GIT_PROJECT_FETCH_FAILED.format(repository=GITHUB_REPOSITORY_NAME) in str(exc_info.value)
+        assert exception_constants.GIT_REPOS_FETCH_FAILED in str(exc_info.value)
 
 
 class TestAuthenticatedGitHubManager:
@@ -213,7 +211,7 @@ class TestGitLabManager:
         manager = GitLabManager()
         with pytest.raises(DevDoxAPIException) as exc_info:
             manager.authenticate("bad-token")
-        assert "GitLab authentication failed" in str(exc_info.value)
+        assert exception_constants.GIT_AUTH_FAILED in str(exc_info.value)
 
 
 class TestAuthenticatedGitLabManager:
@@ -260,7 +258,7 @@ class TestAuthenticatedGitLabManager:
         )
         with pytest.raises(DevDoxAPIException) as exc_info:
             manager.get_user()
-        assert GIT_PROJECT_FETCH_FAILED.format(repository=GITLAB_REPOSITORY_NAME) in str(exc_info.value)
+        assert exception_constants.GIT_USER_FETCH_FAILED in str(exc_info.value)
 
     def test_get_user_repositories_success(self):
         class DummyRequests:
@@ -312,7 +310,7 @@ class TestAuthenticatedGitLabManager:
         )
         with pytest.raises(DevDoxAPIException) as exc_info:
             manager.get_user_repositories()
-        assert GIT_PROJECT_FETCH_FAILED.format(repository=GITLAB_REPOSITORY_NAME) in str(exc_info.value)
+        assert exception_constants.GIT_REPOS_FETCH_FAILED in str(exc_info.value)
 
     def test_get_user_repositories_missing_headers(self):
         class DummyRequests:
