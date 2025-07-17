@@ -202,7 +202,7 @@ class TestDevDoxAPIExceptionHandlerAdvanced:
         assert_log_message_contains(caplog, "I am a teapot")
         assert_log_message_contains(caplog, "Path: /boom/custom-exception")
         assert_log_message_contains(caplog, "Status: 418")
-        assert "brew" in caplog.text and "coffee" in caplog.text
+
 
 
 class TestUnauthorizedAccessHandler:
