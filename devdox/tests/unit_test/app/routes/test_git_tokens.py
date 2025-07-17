@@ -13,7 +13,7 @@ from app.services.git_tokens import (
     PostGitLabelService,
 )
 from app.utils.auth import get_authenticated_user
-from app.exceptions.custom_exceptions import (
+from app.exceptions.local_exceptions import (
     BadRequest,
     UnauthorizedAccess,
     ValidationFailed,

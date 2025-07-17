@@ -1,7 +1,7 @@
 import pytest
 from starlette.testclient import TestClient
 
-from app.exceptions.custom_exceptions import UnauthorizedAccess
+from app.exceptions.local_exceptions import UnauthorizedAccess
 from app.main import app
 from app.utils.auth import get_authenticated_user, UserClaims
 

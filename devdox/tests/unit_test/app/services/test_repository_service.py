@@ -5,11 +5,11 @@ from models import Repo
 from app.services.repository import RepoManipulationService
 from app.schemas.repo import GitRepoResponse
 from app.utils.auth import UserClaims
-from app.exceptions.custom_exceptions import (
+from app.exceptions.local_exceptions import (
     BadRequest,
-    DevDoxAPIException,
     ResourceNotFound,
 )
+from app.exceptions.base_exceptions import DevDoxAPIException
 
 
 class StubUserStore:

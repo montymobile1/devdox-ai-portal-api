@@ -3,7 +3,7 @@ from typing import List, Tuple
 from fastapi import Depends
 from tortoise.exceptions import IntegrityError
 
-from app.exceptions.custom_exceptions import (
+from app.exceptions.local_exceptions import (
     BadRequest,
     ResourceNotFound,
 )
