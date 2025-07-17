@@ -16,24 +16,32 @@ This ensures a clean separation of concerns:
 - `handlers.py` = defines the logic of how to respond to errors
 - `register.py` = plugs that logic into the FastAPI lifecycle
 """
-
+import dataclasses
 import logging
-from typing import Dict
+from typing import Any, Dict, Optional
 
 from fastapi.exceptions import RequestValidationError
 from starlette import status
 from starlette.requests import Request
 
 from app.exceptions import exception_constants
-from app.exceptions.custom_exceptions import (
-    DevDoxAPIException,
-    ErrorPayload,
+from app.exceptions.local_exceptions import (
     ValidationFailed,
 )
+from app.exceptions.base_exceptions import DevDoxAPIException
 
 logger = logging.getLogger(__name__)
 
 generic_exception_handler_status_code = status.HTTP_503_SERVICE_UNAVAILABLE
+
+
+@dataclasses.dataclass
+class ErrorPayload:
+    message: str
+    status_code: int
+    details: Optional[Dict[str, Any]] = None
+    debug: Optional[Any] = None
+    error_type: Optional[str] = None
 
 
 def generic_exception_handler(request: Request, exc: Exception) -> ErrorPayload:

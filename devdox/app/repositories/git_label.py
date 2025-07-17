@@ -6,7 +6,7 @@ from uuid import UUID
 
 from models import GitLabel
 
-from app.exceptions.custom_exceptions import DevDoxAPIException
+from app.exceptions.base_exceptions import DevDoxAPIException
 from app.exceptions.exception_constants import (
     MISSING_LABEL_ID_TITLE,
     MISSING_LABEL_LOG_MESSAGE,

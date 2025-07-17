@@ -4,7 +4,7 @@ import pytest
 from encryption_src.test_doubles import FakeEncryptionHelper
 from tortoise.exceptions import IntegrityError
 
-from app.exceptions.custom_exceptions import BadRequest, ResourceNotFound
+from app.exceptions.local_exceptions import BadRequest, ResourceNotFound
 from app.exceptions.exception_constants import (
     GENERIC_ALREADY_EXIST,
     TOKEN_MISSING,

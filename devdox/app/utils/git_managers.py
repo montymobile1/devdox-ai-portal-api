@@ -10,7 +10,7 @@ from gitlab import Gitlab, GitlabError
 from gitlab.v4.objects import Project
 
 from app.config import GitHosting
-from app.exceptions.custom_exceptions import DevDoxAPIException
+from app.exceptions.base_exceptions import DevDoxAPIException
 from app.exceptions.exception_constants import (
     GIT_AUTH_FAILED,
     GIT_PROJECT_FETCH_FAILED,

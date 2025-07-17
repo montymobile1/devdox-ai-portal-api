@@ -4,7 +4,7 @@ from clerk_backend_api.jwks_helpers import AuthStatus
 from fastapi.security import HTTPAuthorizationCredentials
 from starlette.requests import Request
 
-from app.exceptions.custom_exceptions import UnauthorizedAccess
+from app.exceptions.local_exceptions import UnauthorizedAccess
 from app.exceptions.exception_constants import INVALID_BEARER_TOKEN_SCHEMA
 from app.utils.auth import (
     ClerkUserAuthenticator,

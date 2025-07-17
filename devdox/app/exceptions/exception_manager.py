@@ -18,7 +18,7 @@ from starlette.requests import Request
 from app.config import settings
 from fastapi import FastAPI
 
-from app.exceptions.custom_exceptions import DevDoxAPIException
+from app.exceptions.base_exceptions import DevDoxAPIException
 from app.exceptions.exception_handlers import (
     devdox_base_exception_handler,
     generic_exception_handler,

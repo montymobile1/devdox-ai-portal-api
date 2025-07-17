@@ -13,7 +13,8 @@ from fastapi import FastAPI
 from fastapi.exceptions import RequestValidationError
 from starlette.testclient import TestClient
 
-from app.exceptions.custom_exceptions import DevDoxAPIException, UnauthorizedAccess
+from app.exceptions.local_exceptions import UnauthorizedAccess
+from app.exceptions.base_exceptions import DevDoxAPIException
 from app.exceptions.exception_handlers import (
     generic_exception_handler_status_code
 )

@@ -4,7 +4,7 @@ from github import GithubException
 from gitlab import GitlabError
 
 from app.exceptions import exception_constants
-from app.exceptions.custom_exceptions import DevDoxAPIException
+from app.exceptions.base_exceptions import DevDoxAPIException
 from app.utils.git_managers import (
     AuthenticatedGitHubManager,
     AuthenticatedGitLabManager,

@@ -16,7 +16,7 @@ from pydantic import BaseModel, ConfigDict
 from starlette.concurrency import run_in_threadpool
 
 from app.config import settings
-from app.exceptions.custom_exceptions import UnauthorizedAccess
+from app.exceptions.local_exceptions import UnauthorizedAccess
 from app.exceptions.exception_constants import (
     CLERK_AUTH_FAILED,
     CLERK_AUTH_FAILED_LOG_MESSAGE,

@@ -4,7 +4,7 @@ import pytest
 from types import SimpleNamespace
 from fastapi import status
 
-from app.exceptions.custom_exceptions import ValidationFailed
+from app.exceptions.local_exceptions import ValidationFailed
 from app.main import app
 from app.schemas.api_key import APIKeyPublicResponse
 from app.services.api_keys import GetApiKeyService, RevokeApiKeyService

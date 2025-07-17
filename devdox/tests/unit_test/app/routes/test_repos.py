@@ -8,7 +8,7 @@ from clerk_backend_api import Requestish
 from fastapi.testclient import TestClient
 
 from app.config import GitHosting
-from app.exceptions.custom_exceptions import ValidationFailed
+from app.exceptions.local_exceptions import ValidationFailed
 from app.main import app
 from app.schemas.repo import RepoResponse
 from app.services.repository import RepoManipulationService, RepoQueryService

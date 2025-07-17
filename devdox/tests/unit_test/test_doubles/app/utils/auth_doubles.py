@@ -1,4 +1,4 @@
-from app.exceptions.custom_exceptions import UnauthorizedAccess
+from app.exceptions.local_exceptions import UnauthorizedAccess
 from app.utils.auth import IUserAuthenticator, UserClaims
 
 
