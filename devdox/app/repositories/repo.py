@@ -74,8 +74,8 @@ class TortoiseRepoStore(IRepoStore):
 
     async def get_by_id(self, repo_id: str) -> Repo:
         try:
-            return await Repo.get(id=repo_id)  # Raises DoesNotExist if not found
-        except DoesNotExist:
+            return await Repo.get(id=repo_id)
+        except DoesNotExist as e:
             raise internal_error(
                 **self.InternalExceptions.REPOSITORY_DOESNT_EXIST.value
-            )
+            ) from e

@@ -14,7 +14,7 @@ from app.exceptions.exception_constants import (
     REPOSITORY_TOKEN_RESOURCE_NOT_FOUND,
 )
 from models import Repo
-from app.config import supbase_queue
+from app.config import supabase_queue
 from app.repositories.git_label import TortoiseGitLabelStore as GitLabelStore
 from app.repositories.repo import TortoiseRepoStore as RepoStore
 from app.repositories.user import TortoiseUserStore as UserStore
@@ -134,7 +134,7 @@ async def retrieve_git_label_by_id_and_user_or_die(store, id, user_id):
     return retrieved_git_label
 
 
-async def retrive_repo_by_id(store: RepoStore, id):
+async def retrieve_repo_by_id(store: RepoStore, id):
     repo_info = await store.get_by_id(id)
     if repo_info is None:
         raise ResourceNotFound(reason=REPOSITORY_TOKEN_RESOURCE_NOT_FOUND)
@@ -207,10 +207,11 @@ class RepoManipulationService:
             raise BadRequest(reason=REPOSITORY_ALREADY_EXISTS)
 
     async def analyze_repo(self, user_claims: UserClaims, id: str | UUID) -> None:
-        repo_info = await retrive_repo_by_id(self.repo_store, id)
+        repo_info = await retrieve_repo_by_id(self.repo_store, id)
         token_info = await retrieve_git_label_by_id_and_user_or_die(
             self.label_store, repo_info.token_id, user_claims.sub
         )
+
         payload = {
             "job_type": "analyze",
             "payload": {
@@ -227,7 +228,7 @@ class RepoManipulationService:
             },
         }
 
-        job_id = await supbase_queue.enqueue(
+        _ = await supabase_queue.enqueue(
             "processing",
             payload=payload,
             priority=1,

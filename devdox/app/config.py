@@ -154,9 +154,9 @@ def get_tortoise_config():
 
 TORTOISE_ORM = get_tortoise_config()
 
-supbase_queue = SupabaseQueue(
+supabase_queue = SupabaseQueue(
     host=settings.SUPABASE_HOST,
-    port=settings.SUPABASE_PORT,
+    port=str(settings.SUPABASE_PORT),
     user=settings.SUPABASE_USER,
     password=settings.SUPABASE_PASSWORD,
     db_name=settings.SUPABASE_DB_NAME,
