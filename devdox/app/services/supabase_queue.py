@@ -1,9 +1,7 @@
-import json
 import logging
 from datetime import datetime, timedelta, timezone
-from typing import Any, Dict, List, Optional
+from typing import Any, Dict
 from tembo_pgmq_python.async_queue import PGMQueue
-from tembo_pgmq_python.messages import Message
 
 logger = logging.getLogger(__name__)
 
@@ -156,94 +154,6 @@ class SupabaseQueue:
 
         except Exception as e:
             logger.error(f"Failed to complete job {job_data.get('id')}: {str(e)}")
-            return False
-
-    async def fail_job(
-        self,
-        job_data: Dict[str, Any],
-        error: str,
-        error_trace: str = None,
-        retry: bool = True,
-    ) -> bool:
-        """
-        Mark a job as failed
-
-        Args:
-            job_data: Job data returned from dequeue
-            error: Error message
-            error_trace: Full error traceback
-            retry: Whether to retry the job if attempts remain
-
-        Returns:
-            bool: True if job was successfully handled
-        """
-        try:
-            await self._ensure_initialized()
-
-            msg_id = job_data.get("pgmq_msg_id")
-            queue_name = job_data.get("queue_name", self.table_name)
-            attempts = job_data.get("attempts", 1)
-            max_attempts = job_data.get("max_attempts", self.max_retries)
-
-            if not msg_id:
-                logger.error("No pgmq_msg_id found in job data")
-                return False
-
-            # Determine if job should be retried
-            if retry and attempts < max_attempts:
-                # Calculate retry delay with exponential backoff
-                retry_delay = min(300, 2 ** (attempts - 1) * 10)  # Max 5 minutes
-
-                # Update job data for retry
-                payload = job_data.get("payload", {})
-                if isinstance(payload, str):
-                    try:
-                        updated_job_data = json.loads(payload)
-                    except json.JSONDecodeError:
-                        updated_job_data = {}
-                elif isinstance(payload, dict):
-                    updated_job_data = payload
-                else:
-                    updated_job_data = {}
-
-                # Add retry information
-                retry_job_data = {
-                    **updated_job_data,
-                    "attempts": attempts,
-                    "error_message": error,
-                    "last_error_trace": error_trace,
-                    "retry_count": attempts,
-                }
-
-                # Remove PGMQueue specific fields before re-queuing
-                retry_job_data.pop("pgmq_msg_id", None)
-                retry_job_data.pop("id", None)
-
-                # Delete current message and re-queue with delay
-                await self.queue.delete(queue_name, msg_id)
-                await self.queue.send_delay(queue_name, retry_job_data, retry_delay)
-
-                logger.info(
-                    f"Job {job_data.get('id')} scheduled for retry {attempts}/{max_attempts} in {retry_delay}s"
-                )
-                return True
-            else:
-                # Archive the job as permanently failed
-                success = await self.queue.archive(queue_name, msg_id)
-
-                if success:
-                    logger.error(
-                        f"Job {job_data.get('id')} permanently failed after {attempts} attempts"
-                    )
-                    return True
-                else:
-                    logger.error(
-                        f"Failed to archive permanently failed job {job_data.get('id')}"
-                    )
-                    return False
-
-        except Exception as e:
-            logger.error(f"Failed to fail job {job_data.get('id')}: {str(e)}")
             return False
 
     async def get_queue_stats(self, queue_name: str = None) -> Dict[str, int]:
