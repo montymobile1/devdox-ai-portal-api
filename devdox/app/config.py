@@ -4,7 +4,7 @@ Configuration settings for the DevDox AI Portal API.
 
 from enum import Enum
 from typing import Any, Dict, List, Literal, Optional
-
+from app.services.supabase_queue import SupabaseQueue
 from pydantic_settings import BaseSettings
 
 
@@ -153,3 +153,11 @@ def get_tortoise_config():
 
 
 TORTOISE_ORM = get_tortoise_config()
+
+supbase_queue = SupabaseQueue(
+    host=settings.SUPABASE_HOST,
+    port=settings.SUPABASE_PORT,
+    user=settings.SUPABASE_USER,
+    password=settings.SUPABASE_PASSWORD,
+    db_name=settings.SUPABASE_DB_NAME,
+)

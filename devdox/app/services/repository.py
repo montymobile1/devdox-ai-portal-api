@@ -1,5 +1,5 @@
 from typing import List, Tuple
-
+from uuid import UUID, uuid4
 from fastapi import Depends
 from tortoise.exceptions import IntegrityError
 
@@ -11,8 +11,10 @@ from app.exceptions.exception_constants import (
     GIT_LABEL_TOKEN_RESOURCE_NOT_FOUND,
     REPOSITORY_ALREADY_EXISTS,
     USER_RESOURCE_NOT_FOUND,
+    REPOSITORY_TOKEN_RESOURCE_NOT_FOUND,
 )
 from models import Repo
+from app.config import supbase_queue
 from app.repositories.git_label import TortoiseGitLabelStore as GitLabelStore
 from app.repositories.repo import TortoiseRepoStore as RepoStore
 from app.repositories.user import TortoiseUserStore as UserStore
@@ -93,7 +95,8 @@ class RepoProviderService:
             raise ResourceNotFound(reason="Token not found")
 
         decrypted_label_token = self.encryption.decrypt_for_user(
-            label.token_value, salt_b64=self.encryption.decrypt(retrieved_user_data.encryption_salt)
+            label.token_value,
+            salt_b64=self.encryption.decrypt(retrieved_user_data.encryption_salt),
         )
 
         fetcher, response_mapper = retrieve_git_fetcher_or_die(
@@ -129,6 +132,14 @@ async def retrieve_git_label_by_id_and_user_or_die(store, id, user_id):
         raise ResourceNotFound(reason=GIT_LABEL_TOKEN_RESOURCE_NOT_FOUND)
 
     return retrieved_git_label
+
+
+async def retrive_repo_by_id(store: RepoStore, id):
+    repo_info = await store.get_by_id(id)
+    if repo_info is None:
+        raise ResourceNotFound(reason=REPOSITORY_TOKEN_RESOURCE_NOT_FOUND)
+
+    return repo_info
 
 
 class RepoManipulationService:
@@ -194,3 +205,32 @@ class RepoManipulationService:
 
         except IntegrityError:
             raise BadRequest(reason=REPOSITORY_ALREADY_EXISTS)
+
+    async def analyze_repo(self, user_claims: UserClaims, id: str | UUID) -> None:
+        repo_info = await retrive_repo_by_id(self.repo_store, id)
+        token_info = await retrieve_git_label_by_id_and_user_or_die(
+            self.label_store, repo_info.token_id, user_claims.sub
+        )
+        payload = {
+            "job_type": "analyze",
+            "payload": {
+                "branch": repo_info.default_branch,
+                "repo_id": str(repo_info.repo_id),
+                "token_id": str(token_info.id),
+                "config": {},
+                "user_id": str(user_claims.sub),
+                "priority": 1,
+                "git_token": str(token_info.id),
+                "token_value": token_info.token_value,
+                "git_provider": token_info.git_hosting,
+                "context_id": uuid4().hex,
+            },
+        }
+
+        job_id = await supbase_queue.enqueue(
+            "processing",
+            payload=payload,
+            priority=1,
+            job_type="analyze",
+            user_id=user_claims.sub,
+        )

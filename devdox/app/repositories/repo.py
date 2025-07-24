@@ -1,7 +1,23 @@
 from abc import abstractmethod
 from typing import Any, List, Protocol
-
+from enum import Enum
+from tortoise.exceptions import DoesNotExist
+from app.exceptions.custom_exceptions import DevDoxAPIException
+from app.exceptions.exception_constants import (
+    REPOSITORY_DOESNT_EXIST_TITLE,
+    SERVICE_UNAVAILABLE,
+)
 from models import Repo
+
+
+def internal_error(log_message: str, error_type: str, **kwargs):
+    return DevDoxAPIException(
+        user_message=SERVICE_UNAVAILABLE,
+        log_message=log_message,
+        error_type=error_type,
+        log_level="exception",
+        **kwargs
+    )
 
 
 class IRepoStore(Protocol):
@@ -31,6 +47,12 @@ class TortoiseRepoStore(IRepoStore):
         """
         pass
 
+    class InternalExceptions(Enum):
+        REPOSITORY_DOESNT_EXIST = {
+            "error_type": REPOSITORY_DOESNT_EXIST_TITLE,
+            "log_message": REPOSITORY_DOESNT_EXIST_TITLE,
+        }
+
     async def get_all_by_user(
         self, user_id: str, offset: int, limit: int
     ) -> List[Repo]:
@@ -49,3 +71,11 @@ class TortoiseRepoStore(IRepoStore):
         await repo_model.save(force_create=True)
         await repo_model.refresh_from_db()
         return repo_model
+
+    async def get_by_id(self, repo_id: str) -> Repo:
+        try:
+            return await Repo.get(id=repo_id)  # Raises DoesNotExist if not found
+        except DoesNotExist:
+            raise internal_error(
+                **self.InternalExceptions.REPOSITORY_DOESNT_EXIST.value
+            )

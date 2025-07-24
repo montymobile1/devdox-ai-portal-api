@@ -25,7 +25,9 @@ dependencies = [
     "starlette==0.46.2",
     "uvicorn==0.34.2",
     "uvloop==0.21.0",
-    
+
+    #queue
+    "tembo-pgmq-python==0.10.0",
     # HTTP and networking
     "charset-normalizer==3.4.2",
     "h11==0.16.0",
