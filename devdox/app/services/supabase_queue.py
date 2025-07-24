@@ -195,20 +195,20 @@ class SupabaseQueue:
                 retry_delay = min(300, 2 ** (attempts - 1) * 10)  # Max 5 minutes
 
                 # Update job data for retry
-                updated_job_data = (
-                    job_data["payload"]
-                    if isinstance(job_data.get("payload"), dict)
-                    else {}
-                )
-                if isinstance(updated_job_data, str):
+                payload = job_data.get("payload", {})
+                if isinstance(payload, str):
                     try:
-                        updated_job_data = json.loads(updated_job_data)
+                        updated_job_data = json.loads(payload)
                     except json.JSONDecodeError:
                         updated_job_data = {}
+                elif isinstance(payload, dict):
+                    updated_job_data = payload
+                else:
+                    updated_job_data = {}
 
                 # Add retry information
                 retry_job_data = {
-                    **job_data,
+                    **updated_job_data,
                     "attempts": attempts,
                     "error_message": error,
                     "last_error_trace": error_trace,
