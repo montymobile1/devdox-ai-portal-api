@@ -1,5 +1,8 @@
 FROM python:3.12-alpine
 
+# Update package index and upgrade sqlite-libs to fix CVE-2025-6965
+RUN apk update && apk upgrade sqlite-libs
+
 # Install bash and required packages
 RUN apk add --no-cache \
     bash \

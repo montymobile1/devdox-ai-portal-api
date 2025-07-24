@@ -196,14 +196,14 @@ class GitLabRepoResponseTransformer:
 
 
 class GitHubRepoResponseTransformer:
-    
+
     @classmethod
     def resolve_git_size_from_kb_to_byte(cls, size: int):
         if not size:
             return 0
-        
+
         return size * 1024
-    
+
     @classmethod
     def transform_repository_to_dict(
         cls, repository: Repository | SimpleNamespace
@@ -290,6 +290,14 @@ class GitHubRepoResponseTransformer:
             avatar_url=dict_data.get("avatar_url"),
             html_url=dict_data.get("html_url"),
         )
+
+
+class AnalyzeRepositoryRequest(BaseModel):
+    id: str = Field(
+        ...,
+        title="Repository ID",
+        description=("ID of repository in our database"),
+    )
 
 
 class AddRepositoryRequest(BaseModel):

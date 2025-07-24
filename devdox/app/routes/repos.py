@@ -10,7 +10,11 @@ from fastapi import APIRouter, Depends, Path, status
 from starlette.responses import JSONResponse
 
 from app.schemas.basic import RequiredPaginationParams
-from app.schemas.repo import AddRepositoryRequest, RepoListResponse
+from app.schemas.repo import (
+    AddRepositoryRequest,
+    RepoListResponse,
+    AnalyzeRepositoryRequest,
+)
 from app.services.repository import (
     RepoProviderService,
     RepoManipulationService,
@@ -81,3 +85,18 @@ async def add_repo_from_git(
 ):
     await repo_service.add_repo_from_provider(user, token_id, payload.relative_path)
     return APIResponse.success("Repository added successfully")
+
+
+@router.post(
+    "/analyze",
+    status_code=status.HTTP_201_CREATED,
+    summary="Analyze a repository by ID",
+    description="Analyze a repository by ID",
+)
+async def analyze_repo(
+    payload: AnalyzeRepositoryRequest,
+    user: UserClaims = Depends(get_authenticated_user),
+    repo_service: RepoManipulationService = Depends(RepoManipulationService),
+):
+    await repo_service.analyze_repo(user, payload.id)
+    return APIResponse.success("Start analyzing successfully")
