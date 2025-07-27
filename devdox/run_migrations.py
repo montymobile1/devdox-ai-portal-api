@@ -109,14 +109,23 @@ def get_default_schema_config():
     }
 
 
+def validate_identifier(name):
+    """Validate SQL identifier to prevent injection."""
+    if not re.match(r"^[a-zA-Z_][a-zA-Z0-9_]*$", name):
+        raise ValueError(f"Invalid identifier: {name}")
+    return name
+
+
 def generate_dynamic_migration_sql(config):
     """Generate SQL from configuration."""
     sql_parts = []
 
     # 1. Create tables
     for table_name, table_info in config["tables"].items():
+        table_name = validate_identifier(table_name)
         columns_sql = []
         for col_name, col_def in table_info["columns"]:
+            col_name = validate_identifier(col_name)
             columns_sql.append(f'            "{col_name}" {col_def}')
 
         sql_parts.append(
@@ -143,7 +152,18 @@ def generate_dynamic_migration_sql(config):
             default_clause = ""
 
             if default is not None:
-                if data_type.startswith(("INT", "BIGINT", "DECIMAL", "NUMERIC")):
+                if data_type.upper().startswith(
+                    (
+                        "INT",
+                        "BIGINT",
+                        "DECIMAL",
+                        "NUMERIC",
+                        "SMALLINT",
+                        "REAL",
+                        "FLOAT",
+                        "DOUBLE",
+                    )
+                ):
                     default_clause = f" DEFAULT {default}"
                 else:
                     default_clause = f" DEFAULT '{default}'"
@@ -383,13 +403,13 @@ async def run_ultimate_migrations():
     # Extract new migration filename
     new_migration = None
     if "Success creating migration file" in stdout:
-        match = re.search(r"Success creating migration file (\S+\.py)", stdout)
+        match = re.search(r"Success creating migration file (\S\.py)", stdout)
         if match:
             new_migration = match.group(1)
             print(f"📝 Created migration: {new_migration}")
 
     # Force create if needed
-    if not success and "No changes detected" not in (stdout + stderr):
+    if not success and "No changes detected" not in (stdout, stderr):
         timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
         print(f"🔧 Force creating migration: ultimate_{timestamp}")
         success, stdout, stderr = auto_run_command(
@@ -418,6 +438,8 @@ async def run_ultimate_migrations():
     max_attempts = 3
 
     for attempt in range(1, max_attempts + 1):
+        if attempt > 1:
+            await asyncio.sleep(2 ** (attempt - 1))  # Exponential backoff
         print(f"📤 Attempt {attempt}/{max_attempts}...")
         success, stdout, stderr = auto_run_command("aerich upgrade")
 
