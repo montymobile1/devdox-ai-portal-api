@@ -1,9 +1,11 @@
 import uuid
 import datetime
-from typing import Optional
+from typing import Annotated, Optional
 
-from fastapi.params import Path
+from fastapi.params import Depends, Path
 from pydantic import BaseModel, Field
+
+from app.schemas.basic import RequiredPaginationParams
 
 API_KEY_FIELD_DESCRIPTION = "Hashed API key"
 USER_ID_FIELD_DESCRIPTION = "User identifier (owner of the API key)"
@@ -36,9 +38,14 @@ class APIKeyRevokeRequest:
     ):
         self.api_key_id = api_key_id
 
+class APIKeyGetAllRequest:
+    def __init__(
+        self,
+        pagination: Annotated[RequiredPaginationParams, Depends()],
+    ):
+        self.pagination = pagination
 
 class APIKeyPublicResponse(BaseModel):
-    user_id: str = Field(..., description=USER_ID_FIELD_DESCRIPTION)
     masked_api_key: str = Field(..., description=MASKED_API_KEY_FIELD_DESCRIPTION)
     created_at: datetime.datetime = Field(..., description=CREATED_AT_FIELD_DESCRIPTION)
     last_used_at: Optional[datetime.datetime] = Field(
