@@ -160,7 +160,7 @@ class RepoManipulationService:
 
     async def add_repo_from_provider(
         self, user_claims: UserClaims, token_id: str, relative_path: str
-    ) -> None:
+    ) -> str:
 
         retrieved_user_data = await retrieve_user_by_id_or_die(
             self.user_store, user_claims.sub
@@ -184,7 +184,7 @@ class RepoManipulationService:
         transformed_data: GitRepoResponse = fetcher_data_mapper.from_git(repo_data)
 
         try:
-            _ = await self.repo_store.create_new_repo(
+            saved_repo = await self.repo_store.create_new_repo(
                 Repo(
                     user_id=user_claims.sub,
                     token_id=token_id,
@@ -203,6 +203,8 @@ class RepoManipulationService:
                     language=languages,
                 )
             )
+            
+            return str(saved_repo.id)
 
         except IntegrityError:
             raise BadRequest(reason=REPOSITORY_ALREADY_EXISTS)

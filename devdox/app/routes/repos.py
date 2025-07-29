@@ -46,9 +46,7 @@ async def get_repos(
     )
     return APIResponse.success(
         message=RESOURCE_RETRIEVED_SUCCESSFULLY,
-        data=RepoListResponse(total_count=total_count, repos=repo_responses).model_dump(
-            mode="json"
-        ),
+        data=RepoListResponse(total_count=total_count, repos=repo_responses)
     )
 
 
@@ -83,8 +81,11 @@ async def add_repo_from_git(
     user: UserClaims = Depends(get_authenticated_user),
     repo_service: RepoManipulationService = Depends(RepoManipulationService),
 ):
-    await repo_service.add_repo_from_provider(user, token_id, payload.relative_path)
-    return APIResponse.success("Repository added successfully")
+    repo_db_id = await repo_service.add_repo_from_provider(user, token_id, payload.relative_path)
+    return APIResponse.success(
+        "Repository added successfully",
+        data={"id": repo_db_id}
+    )
 
 
 @router.post(
