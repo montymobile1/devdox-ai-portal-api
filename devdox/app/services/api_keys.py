@@ -15,6 +15,7 @@ from app.exceptions.exception_constants import (
 )
 from app.repositories.api_key import TortoiseApiKeyStore as ApiKeyStore
 from app.schemas.api_key import APIKeyCreate, APIKeyPublicResponse
+from app.schemas.basic import RequiredPaginationParams
 from app.services.git_tokens import mask_token
 from app.utils.auth import UserClaims
 
@@ -174,9 +175,21 @@ class GetApiKeyService:
             api_key_store=api_key_store,
         )
 
-    async def get_api_keys_by_user(self, user_claims: UserClaims):
+    async def get_api_keys_by_user(self, user_claims: UserClaims, pagination: RequiredPaginationParams):
+
+        api_keys_count = await self.api_key_store.count_all_api_keys(user_id=user_claims.sub)
+
+        if api_keys_count == 0:
+            return {
+                "items": [],
+                "total": api_keys_count,
+                "page": pagination.offset + 1,
+                "size": pagination.limit,
+            }
 
         api_keys_list = await self.api_key_store.get_all_api_keys(
+            offset=pagination.offset,
+            limit=pagination.limit,
             user_id=user_claims.sub
         )
 
@@ -184,4 +197,9 @@ class GetApiKeyService:
             APIKeyPublicResponse.model_validate(api_key) for api_key in api_keys_list
         ]
 
-        return api_keys_response
+        return {
+            "items": api_keys_response,
+            "total": api_keys_count,
+            "page": pagination.offset + 1,
+            "size": pagination.limit,
+        }
