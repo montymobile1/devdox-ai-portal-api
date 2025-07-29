@@ -389,5 +389,5 @@ class TestAnalyzeRepo:
         headers = {"Authorization": "Bearer faketoken"}
         response = test_client.post("/api/v1/repos/analyze", json={}, headers=headers)
         assert (
-            response.status_code == 422
+            response.status_code == 400
         )  # Unprocessable Entity for missing 'payload id'
