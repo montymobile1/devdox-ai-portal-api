@@ -3,6 +3,7 @@ from unittest.mock import patch
 
 import pytest
 
+from app.exceptions.custom_exceptions import DevDoxAPIException
 from app.repositories.api_key import TortoiseApiKeyStore
 from app.schemas.api_key import APIKeyCreate
 
@@ -49,9 +50,24 @@ class TestTortoiseApiKeyStore:
             result = await store.set_inactive_by_user_id_and_api_key_id(user_id, key_id)
             assert result == -1
 
-    async def test_get_all_api_keys_returns_empty_on_blank_user_id(self):
+    @pytest.mark.parametrize(
+        "input_user_id",
+        [
+            None,
+            "",
+            " "
+        ],
+        ids=[
+            "None user_id",
+            "Empty user_id",
+            "Whitespace user_id",
+        ],
+    )
+    async def test_get_all_api_keys_returns_empty_on_blank_user_id(self, input_user_id):
         store = TortoiseApiKeyStore()
 
-        assert await store.get_all_api_keys(None) == []
-        assert await store.get_all_api_keys("") == []
-        assert await store.get_all_api_keys("  ") == []
+        with pytest.raises(DevDoxAPIException) as exp:
+            await store.get_all_api_keys(0, 20, input_user_id)
+        
+        assert exp.value.error_type == store.InternalExceptions.MISSING_USER_ID.value.get("error_type")
+        

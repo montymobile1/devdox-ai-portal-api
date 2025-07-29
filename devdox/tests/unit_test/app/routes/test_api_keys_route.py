@@ -7,6 +7,7 @@ from fastapi import status
 from app.exceptions.local_exceptions import ValidationFailed
 from app.main import app
 from app.schemas.api_key import APIKeyPublicResponse
+from app.schemas.basic import RequiredPaginationParams
 from app.services.api_keys import GetApiKeyService, RevokeApiKeyService
 from app.utils.auth import UserClaims
 from app.utils.constants import API_KEY_REVOKED_SUCCESSFULLY, GENERIC_SUCCESS
@@ -92,7 +93,7 @@ class FakeGetApiKeyService:
     def set_exception(self):
         self.should_raise = True
 
-    async def get_api_keys_by_user(self, user_claims: UserClaims):
+    async def get_api_keys_by_user(self, user_claims: UserClaims, pagination:RequiredPaginationParams):
         self.received_calls.append(user_claims.sub)
         if self.should_raise:
             raise RuntimeError("Service failure")
@@ -161,7 +162,6 @@ class TestGetApiKeyRouter:
         assert body["message"] == GENERIC_SUCCESS
         assert "data" in body
         assert isinstance(body["data"], list)
-        assert body["data"][0]["user_id"] == "user123"
 
     def test_empty_keys_list(
         self, test_client, override_auth_user, override_get_service_empty

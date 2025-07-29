@@ -13,6 +13,7 @@ from app.exceptions.exception_constants import (
     UNIQUE_API_KEY_GENERATION_FAILED,
 )
 from app.schemas.api_key import APIKeyPublicResponse
+from app.schemas.basic import RequiredPaginationParams
 from app.services.api_keys import (
     APIKeyManager,
     GetApiKeyService,
@@ -182,13 +183,11 @@ class TestAPIKeyPublicResponse:
     def test_valid_instantiation(self):
         now = datetime.datetime.utcnow()
         response = APIKeyPublicResponse(
-            user_id="user123",
             masked_api_key="****abcd",
             created_at=now,
             last_used_at=now,
         )
 
-        assert response.user_id == "user123"
         assert response.masked_api_key == "****abcd"
         assert response.created_at == now
         assert response.last_used_at == now
@@ -202,11 +201,6 @@ class TestAPIKeyPublicResponse:
         )
 
         assert response.last_used_at is None
-
-    def test_missing_required_field_raises(self):
-        now = datetime.datetime.utcnow()
-        with pytest.raises(ValidationError):
-            APIKeyPublicResponse(masked_api_key="****abcd", created_at=now)
 
 
 @pytest.mark.asyncio
@@ -229,26 +223,36 @@ class TestGetApiKeyService:
         service = GetApiKeyService(api_key_store=store)
         claims = UserClaims(sub="user123")
 
-        result = await service.get_api_keys_by_user(user_claims=claims)
+        result = await service.get_api_keys_by_user(user_claims=claims, pagination=RequiredPaginationParams(
+            offset=0, limit=20
+        ))
 
-        assert len(result) == 1
-        assert isinstance(result[0], APIKeyPublicResponse)
-        assert result[0].user_id == "user123"
+        assert len(result["items"]) == 1
+        assert isinstance(result["items"][0], APIKeyPublicResponse)
 
     async def test_returns_empty_list_when_no_keys(self):
         store = FakeApiKeyStore()
         service = GetApiKeyService(api_key_store=store)
         claims = UserClaims(sub="user123")
 
-        result = await service.get_api_keys_by_user(user_claims=claims)
+        result = await service.get_api_keys_by_user(user_claims=claims, pagination=RequiredPaginationParams(
+            offset=0, limit=20
+        ))
 
-        assert result == []
+        assert result == {
+                "items": [],
+                "total": 0,
+                "page": 1,
+                "size": 20,
+            }
 
     async def test_get_api_keys_by_user_propagates_exception(self):
         store = FakeApiKeyStore()
-        store.set_exception("get_all_api_keys", RuntimeError("store error"))
+        store.set_exception("count_all_api_keys", RuntimeError("store error"))
         service = GetApiKeyService(api_key_store=store)
         claims = UserClaims(sub="user123")
 
         with pytest.raises(RuntimeError, match="store error"):
-            await service.get_api_keys_by_user(user_claims=claims)
+            await service.get_api_keys_by_user(user_claims=claims, pagination=RequiredPaginationParams(
+            offset=0, limit=20
+        ))
