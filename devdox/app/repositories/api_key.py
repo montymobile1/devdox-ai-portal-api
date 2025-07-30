@@ -5,7 +5,7 @@ from typing import Any, List, Protocol
 
 from models import APIKEY
 
-from app.exceptions.custom_exceptions import DevDoxAPIException
+from app.exceptions.base_exceptions import DevDoxAPIException
 from app.exceptions.exception_constants import MISSING_USER_ID_LOG_MESSAGE_API_KEY, \
     MISSING_USER_ID_TITLE, SERVICE_UNAVAILABLE
 from app.schemas.api_key import APIKeyCreate
