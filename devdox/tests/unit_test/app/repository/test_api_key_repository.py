@@ -3,7 +3,7 @@ from unittest.mock import patch
 
 import pytest
 
-from app.exceptions.custom_exceptions import DevDoxAPIException
+from app.exceptions.base_exceptions import DevDoxAPIException
 from app.repositories.api_key import TortoiseApiKeyStore
 from app.schemas.api_key import APIKeyCreate
 
