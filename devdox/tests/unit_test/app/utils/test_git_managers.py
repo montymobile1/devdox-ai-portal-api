@@ -3,7 +3,8 @@ import requests
 from github import GithubException
 from gitlab import GitlabError
 
-from app.exceptions.custom_exceptions import DevDoxAPIException
+from app.exceptions import exception_constants
+from app.exceptions.base_exceptions import DevDoxAPIException
 from app.utils.git_managers import (
     AuthenticatedGitHubManager,
     AuthenticatedGitLabManager,
@@ -77,7 +78,7 @@ class TestGitHubManager:
         manager = GitHubManager()
         with pytest.raises(DevDoxAPIException) as exc_info:
             manager.authenticate("bad-token")
-        assert "GitHub authentication failed" in str(exc_info.value)
+        assert exception_constants.GIT_AUTH_FAILED in str(exc_info.value)
 
     def test_get_user_repositories_raises(self, monkeypatch):
         class FailingUser:
@@ -99,7 +100,7 @@ class TestGitHubManager:
 
         with pytest.raises(DevDoxAPIException) as exc_info:
             manager.get_user_repositories()
-        assert "Unable to fetch GitHub repositories" in str(exc_info.value)
+        assert exception_constants.GIT_REPOS_FETCH_FAILED in str(exc_info.value)
 
 
 class TestAuthenticatedGitHubManager:
@@ -178,6 +179,9 @@ class DummyGitLabRepo:
         return self._data
 
     def raise_for_status(self):
+        """
+        For Testing, should remain empty
+        """
         pass
 
     @property
@@ -207,7 +211,7 @@ class TestGitLabManager:
         manager = GitLabManager()
         with pytest.raises(DevDoxAPIException) as exc_info:
             manager.authenticate("bad-token")
-        assert "GitLab authentication failed" in str(exc_info.value)
+        assert exception_constants.GIT_AUTH_FAILED in str(exc_info.value)
 
 
 class TestAuthenticatedGitLabManager:
@@ -216,6 +220,9 @@ class TestAuthenticatedGitLabManager:
             def get(self, url, headers=None, *args, **kwargs):
                 class Response:
                     def raise_for_status(self):
+                        """
+                        For Testing, should remain empty
+                        """
                         pass
 
                     def json(self):
@@ -251,13 +258,16 @@ class TestAuthenticatedGitLabManager:
         )
         with pytest.raises(DevDoxAPIException) as exc_info:
             manager.get_user()
-        assert "Unable to fetch GitLab user" in str(exc_info.value)
+        assert exception_constants.GIT_USER_FETCH_FAILED in str(exc_info.value)
 
     def test_get_user_repositories_success(self):
         class DummyRequests:
             def get(self, url, headers=None, *args, **kwargs):
                 class Response:
                     def raise_for_status(self):
+                        """
+                        For Testing, should remain empty
+                        """
                         pass
 
                     def json(self):
@@ -300,13 +310,16 @@ class TestAuthenticatedGitLabManager:
         )
         with pytest.raises(DevDoxAPIException) as exc_info:
             manager.get_user_repositories()
-        assert "Unable to fetch GitLab repositories" in str(exc_info.value)
+        assert exception_constants.GIT_REPOS_FETCH_FAILED in str(exc_info.value)
 
     def test_get_user_repositories_missing_headers(self):
         class DummyRequests:
             def get(self, url, headers=None, *args, **kwargs):
                 class Response:
                     def raise_for_status(self):
+                        """
+                        For Testing, should remain empty
+                        """
                         pass
 
                     def json(self):

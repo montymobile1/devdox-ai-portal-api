@@ -2,7 +2,8 @@ from abc import abstractmethod
 from typing import Any, List, Protocol
 from enum import Enum
 from tortoise.exceptions import DoesNotExist
-from app.exceptions.custom_exceptions import DevDoxAPIException
+
+from app.exceptions.base_exceptions import DevDoxAPIException
 from app.exceptions.exception_constants import (
     REPOSITORY_DOESNT_EXIST_TITLE,
     SERVICE_UNAVAILABLE,

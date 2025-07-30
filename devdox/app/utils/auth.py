@@ -3,8 +3,7 @@ Clerk authentication utility for the DevDox AI Portal API.
 """
 
 import logging
-from dataclasses import dataclass, fields
-from typing import Any, ClassVar, Dict, Optional, Protocol
+from typing import Optional, Protocol
 
 from clerk_backend_api import (
     authenticate_request,
@@ -17,8 +16,13 @@ from pydantic import BaseModel, ConfigDict
 from starlette.concurrency import run_in_threadpool
 
 from app.config import settings
-from app.exceptions.custom_exceptions import UnauthorizedAccess
-from app.exceptions.exception_constants import INVALID_BEARER_TOKEN_SCHEMA
+from app.exceptions.local_exceptions import UnauthorizedAccess
+from app.exceptions.exception_constants import (
+    CLERK_AUTH_FAILED,
+    CLERK_AUTH_FAILED_LOG_MESSAGE,
+    INVALID_BEARER_TOKEN_SCHEMA,
+    UNKNOWN_REASON,
+)
 
 http_bearer_security_schema = HTTPBearer(auto_error=False)
 
@@ -46,13 +50,13 @@ class ClerkUserAuthenticator(IUserAuthenticator):
         )
 
         if not auth_result.is_signed_in:
-            reason = auth_result.reason.name if auth_result.reason else "UNKNOWN"
+            reason = auth_result.reason.name if auth_result.reason else UNKNOWN_REASON
             message = (
-                auth_result.message or "Authentication failed for unknown reasons."
+                auth_result.message or CLERK_AUTH_FAILED
             )
 
             raise UnauthorizedAccess(
-                log_message=f"Clerk failed to authenticate | Reason: {reason} | Message: {message}"
+                log_message=CLERK_AUTH_FAILED_LOG_MESSAGE.format(reason=reason, message=message)
             )
 
         payload = auth_result.payload

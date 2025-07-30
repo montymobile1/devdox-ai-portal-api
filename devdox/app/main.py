@@ -9,7 +9,7 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
 from app.config import settings, TORTOISE_ORM
-from app.exceptions.register import register_exception_handlers
+from app.exceptions.exception_manager import register_exception_handlers
 from app.logging_config import setup_logging
 from app.routes import router as api_router
 

@@ -8,6 +8,7 @@ from clerk_backend_api import Requestish
 from fastapi.testclient import TestClient
 
 from app.config import GitHosting
+from app.exceptions.local_exceptions import ValidationFailed
 from app.main import app
 from app.schemas.repo import RepoResponse
 from app.services.repository import RepoManipulationService, RepoQueryService
@@ -167,7 +168,7 @@ class TestAddRepoFromGit:
             "/api/v1/repos/git_repos/users/token_abc", json={}, headers=headers
         )
         assert (
-            response.status_code == 422
+            response.status_code == ValidationFailed.http_status
         )  # Unprocessable Entity for missing 'relative_path'
 
 
@@ -388,5 +389,5 @@ class TestAnalyzeRepo:
         headers = {"Authorization": "Bearer faketoken"}
         response = test_client.post("/api/v1/repos/analyze", json={}, headers=headers)
         assert (
-            response.status_code == 422
+            response.status_code == 400
         )  # Unprocessable Entity for missing 'payload id'

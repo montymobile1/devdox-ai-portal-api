@@ -7,7 +7,7 @@ from typing import Annotated, Optional
 
 from fastapi import Depends
 
-from app.exceptions.custom_exceptions import BadRequest, ResourceNotFound
+from app.exceptions.local_exceptions import BadRequest, ResourceNotFound
 from app.exceptions.exception_constants import (
     FAILED_GENERATE_API_KEY_RETRIES_LOG_MESSAGE,
     INVALID_APIKEY,

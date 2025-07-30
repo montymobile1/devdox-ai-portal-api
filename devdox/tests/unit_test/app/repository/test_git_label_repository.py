@@ -3,7 +3,7 @@ from unittest.mock import AsyncMock, patch
 
 import pytest
 
-from app.exceptions.custom_exceptions import DevDoxAPIException
+from app.exceptions.base_exceptions import DevDoxAPIException
 import app.repositories.git_label as actual_module_path
 
 PATH_TO_ACTUAL_MODULE = actual_module_path.__name__
