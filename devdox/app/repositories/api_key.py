@@ -96,7 +96,7 @@ class TortoiseApiKeyStore(IApiKeyStore):
         query = self.__get_all_api_keys_query(user_id)
 
         git_labels = (
-            await query.order_by("-created_at").offset(offset).limit(limit).all()
+            await query.order_by("-created_at").offset(offset * limit).limit(limit).all()
         )
 
         return git_labels

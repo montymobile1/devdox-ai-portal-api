@@ -60,7 +60,7 @@ class TortoiseRepoStore(IRepoStore):
         return (
             await Repo.filter(user_id=user_id)
             .order_by("-created_at")
-            .offset(offset)
+            .offset(offset * limit)
             .limit(limit)
             .all()
         )
