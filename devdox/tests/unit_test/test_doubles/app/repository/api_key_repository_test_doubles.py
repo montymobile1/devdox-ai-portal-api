@@ -9,6 +9,7 @@ from app.schemas.api_key import APIKeyCreate
 
 
 class FakeApiKeyStore(IApiKeyStore):
+
     def __init__(self):
         self.stored_keys = []
         self.received_calls = []
@@ -69,7 +70,7 @@ class FakeApiKeyStore(IApiKeyStore):
                 updated += 1
         return updated
 
-    async def get_all_api_keys(self, user_id) -> List[Any]:
+    async def get_all_api_keys(self, offset, limit, user_id) -> List[Any]:
         if "get_all_api_keys" in self.exceptions:
             raise self.exceptions["get_all_api_keys"]
 
@@ -87,3 +88,9 @@ class FakeApiKeyStore(IApiKeyStore):
             key=lambda k: k.created_at,
             reverse=True,
         )
+
+    async def count_all_api_keys(self, user_id: str) -> int:
+        if "count_all_api_keys" in self.exceptions:
+            raise self.exceptions["count_all_api_keys"]
+        self.received_calls.append(("count_all_api_keys", user_id))
+        return len(self.stored_keys)
