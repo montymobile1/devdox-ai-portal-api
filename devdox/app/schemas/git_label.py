@@ -21,7 +21,7 @@ class GitLabelBase(BaseModel):
     #     ..., description="Username for the git hosting service", max_length=100
     # )
     git_hosting: GitHosting = Field(..., description=GIT_HOSTING_FIELD_DESCRIPTION)
-    token_value: str = Field(..., description=TOKEN_VALUE_FIELD_DESCRIPTION, max_length=100)
+    token_value: str = Field(..., description=TOKEN_VALUE_FIELD_DESCRIPTION)
 
 
 class GitLabelUpdate(BaseModel):
