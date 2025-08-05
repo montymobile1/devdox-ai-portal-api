@@ -347,14 +347,14 @@ class AddRepositoryRequest(BaseModel):
         ),
     )
 
-    repo_alias_name: Optional[str] = Field(
-        default=None,
+    repo_alias_name: str = Field(
+        ...,
         title=REPO_ALIAS_NAME_FIELD_TITLE,
         description=REPO_ALIAS_NAME_FIELD_DESCRIPTION,
         min_length=1,
         max_length=100,
     )
-
+    
     repo_user_reference: Optional[str] = Field(
         default=None,
         title=REPO_USER_REFERENCE_FIELD_TITLE,
