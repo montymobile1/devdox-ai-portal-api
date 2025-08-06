@@ -20,7 +20,7 @@ from app.repositories.git_label import TortoiseGitLabelStore as GitLabelStore
 from app.repositories.repo import TortoiseRepoStore as RepoStore
 from app.repositories.user import TortoiseUserStore as UserStore
 from app.schemas.basic import RequiredPaginationParams
-from app.schemas.repo import GitRepoResponse, RepoResponse
+from app.schemas.repo import AddRepositoryRequest, GitRepoResponse, RepoResponse
 from app.utils.auth import UserClaims
 from app.utils.encryption import get_encryption_helper, FernetEncryptionHelper
 from app.utils.git_managers import retrieve_git_fetcher_or_die
@@ -159,7 +159,7 @@ class RepoManipulationService:
         self.repo_store = repo_store
 
     async def add_repo_from_provider(
-        self, user_claims: UserClaims, token_id: str, relative_path: str
+        self, user_claims: UserClaims, token_id: str, payload: AddRepositoryRequest
     ) -> str:
 
         retrieved_user_data = await retrieve_user_by_id_or_die(
@@ -178,7 +178,7 @@ class RepoManipulationService:
         )
 
         repo_data, languages = fetcher.fetch_single_repo(
-            decrypted_label_token, relative_path
+            decrypted_label_token, payload.relative_path
         )
 
         transformed_data: GitRepoResponse = fetcher_data_mapper.from_git(repo_data)
@@ -201,6 +201,8 @@ class RepoManipulationService:
                     size=transformed_data.size,
                     repo_created_at=transformed_data.repo_created_at,
                     language=languages,
+                    repo_alias_name=payload.repo_alias_name,
+                    repo_user_reference=payload.repo_user_reference
                 )
             )
             
