@@ -46,7 +46,7 @@ dependencies = [
     "email_validator==2.2.0",
 
     #models
-    "models @ git+https://github.com/montymobile1/devdox-ai-models.git@d5b4024e30c8acd370957635d0e4e8480c424054",
+    "models @ git+https://github.com/montymobile1/devdox-ai-models.git@dde563aa",
 
     # Encryption package
     "devdox-ai-encryption @ git+https://github.com/montymobile1/devdox-ai-encryption.git@4eefae1",
