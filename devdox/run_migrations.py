@@ -332,11 +332,6 @@ def create_ultimate_migration(migration_path):
         shutil.copy2(migration_path, backup)
         print(f"📦 Backed up to: {backup}")
 
-    # Generate the ultimate migration content
-    migration_content = get_ultimate_safe_migration_content()
-
-    with open(migration_path, "w") as f:
-        f.write(migration_content)
 
     print(f"🤖 Created ultimate safe migration: {migration_path}")
 
