@@ -235,54 +235,6 @@ def generate_dynamic_migration_sql(config):
     return "\n".join(sql_parts)
 
 
-def get_ultimate_safe_migration_content():
-    """🤖 Generate the ultimate safe migration using configuration."""
-
-    config = get_schema_config()
-    migration_sql = generate_dynamic_migration_sql(config)
-
-    return f'''from tortoise import BaseDBAsyncClient
-
-
-async def upgrade(db: BaseDBAsyncClient) -> str:
-    """
-    🤖 ULTIMATE AUTOMATED MIGRATION
-
-    Generated dynamically from schema configuration.
-    Handles any conflicts automatically and adapts to future changes.
-
-    Generated on: {datetime.now().strftime("%Y-%m-%d %H:%M:%S")}
-    Tables: {len(config['tables'])}
-    Columns: {len(config['columns'])} 
-    Indexes: {len(config['indexes'])}
-    Type changes: {len(config['type_changes'])}
-    """
-    return """
-        -- 🚀 ULTIMATE SAFE MIGRATION - Handles everything automatically
-        {migration_sql}
-        """
-
-
-async def downgrade(db: BaseDBAsyncClient) -> str:
-    """🔄 Safe rollback"""
-    return """
-        -- Safe rollback - generated from configuration
-        DO $$
-        BEGIN
-            -- Drop indexes safely
-            {generate_drop_indexes_sql(config)}
-
-            -- Drop added columns safely  
-            {generate_drop_columns_sql(config)}
-
-            -- Drop created tables safely
-            {generate_drop_tables_sql(config)}
-
-        EXCEPTION WHEN OTHERS THEN
-            RAISE NOTICE 'Rollback completed with some warnings: %', SQLERRM;
-        END $$;
-        """
-'''
 
 
 def generate_drop_indexes_sql(config):
@@ -332,11 +284,6 @@ def create_ultimate_migration(migration_path):
         shutil.copy2(migration_path, backup)
         print(f"📦 Backed up to: {backup}")
 
-    # Generate the ultimate migration content
-    migration_content = get_ultimate_safe_migration_content()
-
-    with open(migration_path, "w") as f:
-        f.write(migration_content)
 
     print(f"🤖 Created ultimate safe migration: {migration_path}")
 
