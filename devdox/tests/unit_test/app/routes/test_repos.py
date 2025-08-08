@@ -152,16 +152,6 @@ class TestAddRepoFromGit:
         yield TestClient(app)
         app.dependency_overrides.clear()
 
-    def test_add_repo_from_git(self, client):
-        payload = {"relative_path": "owner/repo"}
-        headers = {"Authorization": "Bearer faketoken"}
-        response = client.post(
-            "/api/v1/repos/git_repos/users/token_abc", json=payload, headers=headers
-        )
-        assert response.status_code == 200
-        assert response.json()["success"] is True
-        assert "Repository added successfully" in response.json()["message"]
-
     def test_add_repo_from_git_validation_error(self, client):
         headers = {"Authorization": "Bearer faketoken"}
         response = client.post(

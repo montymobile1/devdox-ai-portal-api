@@ -83,7 +83,7 @@ async def add_repo_from_git(
     user: UserClaims = Depends(get_authenticated_user),
     repo_service: RepoManipulationService = Depends(RepoManipulationService),
 ):
-    await repo_service.add_repo_from_provider(user, token_id, payload.relative_path)
+    await repo_service.add_repo_from_provider(user, token_id, payload)
     return APIResponse.success("Repository added successfully")
 
 

@@ -95,16 +95,3 @@ class DeleteGitTokenRequest:
         self, git_label_id: uuid.UUID = Path(..., description="The git label id")
     ):
         self.git_label_id = git_label_id
-
-
-class GitLabelDBCreateDTO(BaseModel):
-    label: str = Field(..., description=LABEL_FIELD_DESCRIPTION)
-    user_id: str = Field(..., max_length=255, description="Authenticated user id")
-    git_hosting: GitHosting = Field(
-        ..., description=GIT_HOSTING_FIELD_DESCRIPTION
-    )
-    token_value: str = Field(..., description=TOKEN_VALUE_FIELD_DESCRIPTION)
-    masked_token: str = Field(
-        ..., description="Masked Access token for the git hosting service"
-    )
-    username: str = Field(..., description="Username for the git hosting service")

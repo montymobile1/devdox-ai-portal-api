@@ -307,7 +307,10 @@ class AddRepositoryRequest(BaseModel):
             "This value should match the exact path you see after the domain in the web URL."
         ),
     )
-
+    
+    repo_alias_name:str
+    repo_user_reference: Optional[str] = None
+    
     model_config = {
         "json_schema_extra": {
             "examples": [
