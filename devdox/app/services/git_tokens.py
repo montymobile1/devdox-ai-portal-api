@@ -3,7 +3,6 @@ import uuid
 from typing import Annotated, Optional
 
 from fastapi import Depends
-from tortoise.exceptions import IntegrityError
 
 from app.exceptions.local_exceptions import BadRequest, ResourceNotFound
 from app.exceptions.exception_constants import (
@@ -12,10 +11,11 @@ from app.exceptions.exception_constants import (
     TOKEN_NOT_FOUND,
     USER_RESOURCE_NOT_FOUND,
 )
-from app.repositories.git_label import TortoiseGitLabelStore as GitLabelStore
-from app.repositories.user import TortoiseUserStore as UserStore
+from models_src.dto.git_label import GitLabelRequestDTO
+from models_src.exceptions.base_exceptions import DevDoxModelsException
+from models_src.exceptions.exception_constants import LABEL_ALREADY_EXISTS_TITLE
 from app.schemas.basic import PaginationParams, RequiredPaginationParams
-from app.schemas.git_label import GitLabelBase, GitLabelDBCreateDTO, GitLabelResponse
+from app.schemas.git_label import GitLabelBase, GitLabelResponse
 from app.schemas.repo import GitUserResponse
 from app.utils.auth import UserClaims
 from app.utils.encryption import (
@@ -24,6 +24,9 @@ from app.utils.encryption import (
 )
 from app.utils.git_managers import retrieve_git_fetcher_or_die
 from app.utils.repo_fetcher import RepoFetcher
+
+from models_src.repositories.user import TortoiseUserStore as UserRepository
+from models_src.repositories.git_label import TortoiseGitLabelStore as GitLabelRepository
 
 logger = logging.getLogger(__name__)
 
@@ -51,13 +54,13 @@ def format_git_label_data(raw_git_labels):
 
 class GetGitLabelService:
 
-    def __init__(self, label_store: GitLabelStore):
-        self.label_store = label_store
+    def __init__(self, label_repository: GitLabelRepository):
+        self.label_repository = label_repository
 
     @classmethod
     def with_dependency(
         cls,
-        label_store: Annotated[GitLabelStore, Depends()],
+        label_store: Annotated[GitLabelRepository, Depends()],
     ) -> "GetGitLabelService":
         return cls(label_store)
 
@@ -69,7 +72,7 @@ class GetGitLabelService:
     ):
 
         # Get total count
-        total = await self.label_store.count_by_user_id(
+        total = await self.label_repository.count_by_user_id(
             user_id=user_claims.sub, git_hosting=git_hosting
         )
 
@@ -81,7 +84,7 @@ class GetGitLabelService:
                 "size": pagination.limit,
             }
 
-        git_labels = await self.label_store.get_by_user_id(
+        git_labels = await self.label_repository.get_all_by_user_id(
             offset=pagination.offset,
             limit=pagination.limit,
             user_id=user_claims.sub,
@@ -102,7 +105,7 @@ class GetGitLabelService:
         self, pagination: PaginationParams, user_claims: UserClaims, label: str
     ):
 
-        total = await self.label_store.count_by_user_id_and_label(
+        total = await self.label_repository.count_by_user_id_and_label(
             user_id=user_claims.sub,
             label=label,
         )
@@ -115,7 +118,7 @@ class GetGitLabelService:
                 "size": pagination.limit,
             }
 
-        git_labels = await self.label_store.get_by_user_id_and_label(
+        git_labels = await self.label_repository.get_all_by_user_id_and_label(
             offset=pagination.offset,
             limit=pagination.limit,
             user_id=user_claims.sub,
@@ -158,27 +161,27 @@ class PostGitLabelService:
 
     def __init__(
         self,
-        user_store: UserStore,
-        label_store: GitLabelStore,
+        user_repository: UserRepository,
+        label_repository: GitLabelRepository,
         crypto_store: FernetEncryptionHelper,
         git_manager: RepoFetcher,
     ):
-        self.user_store = user_store
-        self.label_store = label_store
+        self.user_repository = user_repository
+        self.label_repository = label_repository
         self.crypto_store = crypto_store
         self.git_manager = git_manager
 
     @classmethod
     def with_dependency(
         cls,
-        user_store: Annotated[UserStore, Depends()],
-        label_store: Annotated[GitLabelStore, Depends()],
+        user_store: Annotated[UserRepository, Depends()],
+        label_store: Annotated[GitLabelRepository, Depends()],
         crypto_store: Annotated[FernetEncryptionHelper, Depends(get_encryption_helper)],
         git_manager: Annotated[RepoFetcher, Depends()],
     ) -> "PostGitLabelService":
         return cls(
-            user_store=user_store,
-            label_store=label_store,
+            user_repository=user_store,
+            label_repository=label_store,
             crypto_store=crypto_store,
             git_manager=git_manager,
         )
@@ -189,7 +192,7 @@ class PostGitLabelService:
         if not token:
             raise BadRequest(reason=TOKEN_MISSING)
 
-        user = await self.user_store.get_by_user_id(user_id=user_claims.sub)
+        user = await self.user_repository.find_by_user_id(user_id=user_claims.sub)
 
         if not user:
             raise ResourceNotFound(reason=USER_RESOURCE_NOT_FOUND)
@@ -214,8 +217,8 @@ class PostGitLabelService:
         )
 
         try:
-            created_label = await self.label_store.create_new(
-                GitLabelDBCreateDTO(
+            created_label = await self.label_repository.save(
+                GitLabelRequestDTO(
                     label=json_payload.label,
                     user_id=user_claims.sub,
                     git_hosting=json_payload.git_hosting,
@@ -224,9 +227,12 @@ class PostGitLabelService:
                     username=transformed_data.username,
                 )
             )
-        except IntegrityError as e:
-            raise BadRequest(reason=GENERIC_ALREADY_EXIST) from e
-
+        except DevDoxModelsException as e:
+            if e.error_type == LABEL_ALREADY_EXISTS_TITLE:
+                raise BadRequest(reason=GENERIC_ALREADY_EXIST) from e
+            
+            raise
+        
         return created_label
 
 
@@ -234,23 +240,23 @@ class DeleteGitLabelService:
 
     def __init__(
         self,
-        label_store: GitLabelStore,
+        label_repository: GitLabelRepository,
     ):
-        self.label_store = label_store
+        self.label_repository = label_repository
 
     @classmethod
     def with_dependency(
         cls,
-        label_store: Annotated[GitLabelStore, Depends()],
+        label_store: Annotated[GitLabelRepository, Depends()],
     ) -> "DeleteGitLabelService":
         return cls(
-            label_store=label_store,
+            label_repository=label_store,
         )
 
     async def delete_by_git_label_id(
         self, user_claims: UserClaims, git_label_id: uuid.UUID
     ) -> int:
-        deleted_label = await self.label_store.delete_by_id_and_user_id(
+        deleted_label = await self.label_repository.delete_by_id_and_user_id(
             label_id=git_label_id, user_id=user_claims.sub
         )
 

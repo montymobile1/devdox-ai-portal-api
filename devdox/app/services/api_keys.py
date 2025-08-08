@@ -3,21 +3,22 @@ import hashlib
 import secrets
 import string
 import uuid
-from typing import Annotated, Optional
+from abc import abstractmethod
+from typing import Annotated, Optional, Protocol
 
-from fastapi import Depends
-
-from app.exceptions.local_exceptions import BadRequest, ResourceNotFound
 from app.exceptions.exception_constants import (
     FAILED_GENERATE_API_KEY_RETRIES_LOG_MESSAGE,
     INVALID_APIKEY,
     UNIQUE_API_KEY_GENERATION_FAILED,
 )
-from app.repositories.api_key import TortoiseApiKeyStore as ApiKeyStore
-from app.schemas.api_key import APIKeyCreate, APIKeyPublicResponse
+from app.exceptions.local_exceptions import BadRequest, ResourceNotFound
+from app.schemas.api_key import APIKeyPublicResponse
 from app.services.git_tokens import mask_token
 from app.utils.auth import UserClaims
+from fastapi import Depends
 
+from models_src.dto.api_key import APIKeyRequestDTO
+from models_src.repositories.api_key import TortoiseApiKeyStore as ApiKeyRepository
 
 @dataclasses.dataclass
 class APIKeyManagerReturn:
@@ -26,13 +27,23 @@ class APIKeyManagerReturn:
     masked: str
 
 
-class APIKeyManager:
+class IAPIKeyManager(Protocol):
+
+    @abstractmethod
+    async def generate_unique_api_key(
+            self,
+            prefix: str,
+            length: int
+    ) -> Optional[APIKeyManagerReturn]: ...
+
+
+class APIKeyManager(IAPIKeyManager):
 
     DEFAULT_MAX_KEY_LENGTH = 32
     DEFAULT_PREFIX = "dvd_"
 
-    def __init__(self, api_key_store: ApiKeyStore):
-        self.api_key_store = api_key_store
+    def __init__(self, api_key_repository: ApiKeyRepository):
+        self.api_key_repository = api_key_repository
 
     @staticmethod
     def hash_key(unhashed_api_key: str) -> str:
@@ -51,15 +62,15 @@ class APIKeyManager:
     async def generate_unique_api_key(
         self,
         prefix: str = DEFAULT_PREFIX,
-        length: int = DEFAULT_MAX_KEY_LENGTH,
+        length: int = DEFAULT_MAX_KEY_LENGTH
     ) -> Optional[APIKeyManagerReturn]:
 
         plain_key = self.__generate_plain_key(prefix=prefix, length=length)
 
         hashed_key = self.hash_key(plain_key)
-
+        
         # Query existing hashes in DB
-        key_exists = await self.api_key_store.query_for_existing_hashes(hashed_key)
+        key_exists = await self.api_key_repository.exists_by_hash_key(hashed_key)
 
         if key_exists:
             return None
@@ -75,22 +86,22 @@ class PostApiKeyService:
 
     def __init__(
         self,
-        api_key_store: ApiKeyStore,
+        api_key_repository: ApiKeyRepository,
         api_key_manager: APIKeyManager,
     ):
-        self.api_key_store = api_key_store
+        self.api_key_repository = api_key_repository
         self.api_key_manager = api_key_manager
 
     @classmethod
     def with_dependency(
         cls,
-        api_key_store: Annotated[ApiKeyStore, Depends()],
+        api_key_store: Annotated[ApiKeyRepository, Depends()],
     ) -> "PostApiKeyService":
 
-        api_key_manager = APIKeyManager(api_key_store=api_key_store)
+        api_key_manager = APIKeyManager(api_key_repository=api_key_store)
 
         return cls(
-            api_key_store=api_key_store,
+            api_key_repository=api_key_store,
             api_key_manager=api_key_manager,
         )
 
@@ -113,8 +124,8 @@ class PostApiKeyService:
                 ),
             )
 
-        saved_api_key = await self.api_key_store.save_api_key(
-            APIKeyCreate(
+        saved_api_key = await self.api_key_repository.save(
+            APIKeyRequestDTO(
                 user_id=user_claims.sub,
                 api_key=result.hashed,
                 masked_api_key=result.masked,
@@ -128,25 +139,25 @@ class RevokeApiKeyService:
 
     def __init__(
         self,
-        api_key_store: ApiKeyStore,
+        api_key_repository: ApiKeyRepository,
     ):
-        self.api_key_store = api_key_store
+        self.api_key_repository = api_key_repository
 
     @classmethod
     def with_dependency(
         cls,
-        api_key_store: Annotated[ApiKeyStore, Depends()],
+        api_key_store: Annotated[ApiKeyRepository, Depends()],
     ) -> "RevokeApiKeyService":
 
         return cls(
-            api_key_store=api_key_store,
+            api_key_repository=api_key_store,
         )
 
     async def revoke_api_key(self, user_claims: UserClaims, api_key_id: uuid.UUID):
 
         deleted_api_key = (
-            await self.api_key_store.set_inactive_by_user_id_and_api_key_id(
-                user_id=user_claims.sub, api_key_id=api_key_id
+            await self.api_key_repository.update_is_active_by_user_id_and_api_key_id(
+                user_id=user_claims.sub, api_key_id=api_key_id, is_active=False
             )
         )
 
@@ -160,23 +171,23 @@ class GetApiKeyService:
 
     def __init__(
         self,
-        api_key_store: ApiKeyStore,
+        api_key_repository: ApiKeyRepository,
     ):
-        self.api_key_store = api_key_store
+        self.api_key_repository = api_key_repository
 
     @classmethod
     def with_dependency(
         cls,
-        api_key_store: Annotated[ApiKeyStore, Depends()],
+        api_key_store: Annotated[ApiKeyRepository, Depends()],
     ) -> "GetApiKeyService":
 
         return cls(
-            api_key_store=api_key_store,
+            api_key_repository=api_key_store,
         )
 
     async def get_api_keys_by_user(self, user_claims: UserClaims):
 
-        api_keys_list = await self.api_key_store.get_all_api_keys(
+        api_keys_list = await self.api_key_repository.get_all_by_user_id(
             user_id=user_claims.sub
         )
 
