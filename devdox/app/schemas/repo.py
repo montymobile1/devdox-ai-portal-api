@@ -11,6 +11,24 @@ from datetime import datetime
 from enum import Enum
 
 
+
+REPO_ALIAS_NAME_FIELD_TITLE="Repository Alias Name"
+REPO_ALIAS_NAME_FIELD_DESCRIPTION="A user-defined alias for this repository, used locally within this system as an alternative to the official GitHub or GitLab repository name."
+
+REPO_USER_REFERENCE_FIELD_TITLE = "Repository User Reference Note"
+REPO_USER_REFERENCE_FIELD_DESCRIPTION = "An optional free-form description or note for this repository. Use this to explain its purpose, provide internal context, or document team-specific information."
+
+REPO_SYSTEM_REFERENCE_FIELD_TITLE= "Repository System generated Reference Note"
+REPO_SYSTEM_REFERENCE_FIELD_DESCRIPTION= "An optional description or note for this repository. System generates this to explain its purpose, provide internal context, or document specific information."
+
+
+class GitHostingProvider(str, Enum):
+    """Supported Git hosting providers"""
+
+    GITHUB = "github"
+    GITLAB = "gitlab"
+
+
 class RepoBase(BaseModel):
     """Base repository schema with common fields"""
 
@@ -44,6 +62,27 @@ class RepoBase(BaseModel):
         default=None,
         description="The path to the repository relative to its hosting platform domain",
         max_length=255,
+    )
+
+    repo_alias_name: Optional[str] = Field(
+        None,
+        title=REPO_ALIAS_NAME_FIELD_TITLE,
+        description=REPO_ALIAS_NAME_FIELD_DESCRIPTION,
+        min_length=1,
+        max_length=100,
+    )
+
+    repo_user_reference: Optional[str] = Field(
+        None,
+        title=REPO_USER_REFERENCE_FIELD_TITLE,
+        description=REPO_USER_REFERENCE_FIELD_DESCRIPTION,
+        max_length=2000,
+    )
+
+    repo_system_reference: Optional[str] = Field(
+        None,
+        title=REPO_SYSTEM_REFERENCE_FIELD_TITLE,
+        description=REPO_SYSTEM_REFERENCE_FIELD_DESCRIPTION
     )
 
 
@@ -308,11 +347,26 @@ class AddRepositoryRequest(BaseModel):
         ),
     )
 
+    repo_alias_name: str = Field(
+        ...,
+        title=REPO_ALIAS_NAME_FIELD_TITLE,
+        description=REPO_ALIAS_NAME_FIELD_DESCRIPTION,
+        min_length=1,
+        max_length=100,
+    )
+    
+    repo_user_reference: Optional[str] = Field(
+        default=None,
+        title=REPO_USER_REFERENCE_FIELD_TITLE,
+        description=REPO_USER_REFERENCE_FIELD_DESCRIPTION,
+        max_length=2000,
+    )
+
     model_config = {
         "json_schema_extra": {
             "examples": [
-                {"relative_path": "openai/gpt-4"},  # GitHub-style
-                {"relative_path": "mygroup/dev/backend-api"},  # GitLab-style
+                {"relative_path": "openai/gpt-4", "repo_alias_name": "My Custom Github Repo", "repo_user_reference": "My custom description"},  # GitHub-style
+                {"relative_path": "mygroup/dev/backend-api", "repo_alias_name": "My Custom Gitlab Repo", "repo_user_reference": "My custom description"},  # GitLab-style
             ]
         }
     }

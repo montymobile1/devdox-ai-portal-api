@@ -3,7 +3,7 @@ from tortoise.exceptions import IntegrityError
 
 from models import Repo
 from app.services.repository import RepoManipulationService
-from app.schemas.repo import GitRepoResponse
+from app.schemas.repo import AddRepositoryRequest, GitRepoResponse
 from app.utils.auth import UserClaims
 from app.exceptions.local_exceptions import (
     BadRequest,
@@ -92,7 +92,10 @@ class TestRepoManipulationService:
             git_fetcher=StubFetcher(),
         )
         claims = UserClaims(sub="u1")
-        await service.add_repo_from_provider(claims, "t1", "owner/repo")
+        await service.add_repo_from_provider(
+            claims,
+            "t1",
+            payload=AddRepositoryRequest(relative_path="owner/repo", repo_alias_name="some random alias"))
         assert service.repo_store.saved  # should have one saved repo
 
     @pytest.mark.asyncio
@@ -106,7 +109,9 @@ class TestRepoManipulationService:
         )
         with pytest.raises(ResourceNotFound):
             await service.add_repo_from_provider(
-                UserClaims(sub="missing_user"), "t1", "p"
+                UserClaims(sub="missing_user"), "t1", payload=AddRepositoryRequest(
+                    relative_path="p", repo_alias_name="some random alias"
+                )
             )
 
     @pytest.mark.asyncio
@@ -120,7 +125,7 @@ class TestRepoManipulationService:
         )
         with pytest.raises(ResourceNotFound):
             await service.add_repo_from_provider(
-                UserClaims(sub="u1"), "missing_token", "p"
+                UserClaims(sub="u1"), "missing_token", AddRepositoryRequest(relative_path="p", repo_alias_name="some random alias")
             )
 
     @pytest.mark.asyncio
@@ -153,4 +158,8 @@ class TestRepoManipulationService:
             git_fetcher=StubFetcher(),
         )
         with pytest.raises(BadRequest):
-            await service.add_repo_from_provider(UserClaims(sub="u1"), "t1", "p")
+            await service.add_repo_from_provider(
+                UserClaims(sub="u1"),
+                "t1",
+                payload=AddRepositoryRequest(relative_path="p", repo_alias_name="some random alias")
+            )

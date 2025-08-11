@@ -153,7 +153,7 @@ class TestAddRepoFromGit:
         app.dependency_overrides.clear()
 
     def test_add_repo_from_git(self, client):
-        payload = {"relative_path": "owner/repo"}
+        payload = {"relative_path": "owner/repo", "repo_alias_name": "some random alias"}
         headers = {"Authorization": "Bearer faketoken"}
         response = client.post(
             "/api/v1/repos/git_repos/users/token_abc", json=payload, headers=headers
