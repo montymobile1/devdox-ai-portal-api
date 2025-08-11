@@ -95,7 +95,7 @@ class TestRepoManipulationService:
         await service.add_repo_from_provider(
             claims,
             "t1",
-            payload=AddRepositoryRequest(relative_path="owner/repo"))
+            payload=AddRepositoryRequest(relative_path="owner/repo", repo_alias_name="some random alias"))
         assert service.repo_store.saved  # should have one saved repo
 
     @pytest.mark.asyncio
@@ -110,7 +110,7 @@ class TestRepoManipulationService:
         with pytest.raises(ResourceNotFound):
             await service.add_repo_from_provider(
                 UserClaims(sub="missing_user"), "t1", payload=AddRepositoryRequest(
-                    relative_path="p"
+                    relative_path="p", repo_alias_name="some random alias"
                 )
             )
 
@@ -125,7 +125,7 @@ class TestRepoManipulationService:
         )
         with pytest.raises(ResourceNotFound):
             await service.add_repo_from_provider(
-                UserClaims(sub="u1"), "missing_token", "p"
+                UserClaims(sub="u1"), "missing_token", AddRepositoryRequest(relative_path="p", repo_alias_name="some random alias")
             )
 
     @pytest.mark.asyncio
@@ -161,5 +161,5 @@ class TestRepoManipulationService:
             await service.add_repo_from_provider(
                 UserClaims(sub="u1"),
                 "t1",
-                payload=AddRepositoryRequest(relative_path="p")
+                payload=AddRepositoryRequest(relative_path="p", repo_alias_name="some random alias")
             )
