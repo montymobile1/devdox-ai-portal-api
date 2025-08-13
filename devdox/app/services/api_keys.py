@@ -13,6 +13,7 @@ from app.exceptions.exception_constants import (
 )
 from app.exceptions.local_exceptions import BadRequest, ResourceNotFound
 from app.schemas.api_key import APIKeyPublicResponse
+from app.schemas.basic import RequiredPaginationParams
 from app.services.git_tokens import mask_token
 from app.utils.auth import UserClaims
 from fastapi import Depends
@@ -185,14 +186,32 @@ class GetApiKeyService:
             api_key_repository=api_key_store,
         )
 
-    async def get_api_keys_by_user(self, user_claims: UserClaims):
-
+    async def get_api_keys_by_user(self, user_claims: UserClaims, pagination: RequiredPaginationParams):
+        
+        
+        api_keys_count = await self.api_key_repository.count_by_user_id(user_id=user_claims.sub)
+        
+        if api_keys_count == 0:
+            return {
+                "items": [],
+                "total": api_keys_count,
+                "page": pagination.offset + 1,
+                "size": pagination.limit,
+            }
+        
         api_keys_list = await self.api_key_repository.get_all_by_user_id(
+            offset=pagination.offset,
+            limit=pagination.limit,
             user_id=user_claims.sub
         )
-
+        
         api_keys_response = [
             APIKeyPublicResponse.model_validate(api_key) for api_key in api_keys_list
         ]
-
-        return api_keys_response
+        
+        return {
+            "items": api_keys_response,
+            "total": api_keys_count,
+            "page": pagination.offset + 1,
+            "size": pagination.limit,
+        }

@@ -8,7 +8,6 @@ from app.exceptions.exception_constants import (
 from models_src.dto.git_label import GitLabelResponseDTO
 from models_src.dto.user import UserResponseDTO
 from models_src.exceptions.utils import internal_error, RepoErrors
-from models_src.models import Repo
 from app.services.repository import RepoManipulationService
 from app.schemas.repo import AddRepositoryRequest, GitRepoResponse
 from app.utils.auth import UserClaims

@@ -4,7 +4,7 @@ from fastapi import APIRouter, Depends
 from starlette import status
 from starlette.responses import JSONResponse
 
-from app.schemas.api_key import APIKeyRevokeRequest
+from app.schemas.api_key import APIKeyGetAllRequest, APIKeyRevokeRequest
 from app.services.api_keys import (
     GetApiKeyService,
     PostApiKeyService,
@@ -64,10 +64,11 @@ async def revoke_api_key(
 )
 async def get_all_api_keys_for_user(
     user_claims: Annotated[UserClaims, Depends(get_authenticated_user)],
+    request: Annotated[APIKeyGetAllRequest, Depends()],
     service: Annotated[GetApiKeyService, Depends(GetApiKeyService.with_dependency)],
 ) -> JSONResponse:
 
-    results = await service.get_api_keys_by_user(user_claims=user_claims)
+    results = await service.get_api_keys_by_user(user_claims=user_claims, pagination=request.pagination)
 
     return APIResponse.success(
         message=constants.GENERIC_SUCCESS, data=results
