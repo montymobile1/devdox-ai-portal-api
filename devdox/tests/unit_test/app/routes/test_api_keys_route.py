@@ -118,7 +118,6 @@ class TestGetApiKeyRouter:
             service.set_keys(
                 [
                     APIKeyPublicResponse(
-                        user_id="user123",
                         masked_api_key="****abcd",
                         created_at=datetime.datetime.now(datetime.UTC),
                         last_used_at=datetime.datetime.now(datetime.UTC),
@@ -169,7 +168,6 @@ class TestGetApiKeyRouter:
         assert body["message"] == GENERIC_SUCCESS
         assert "data" in body
         assert isinstance(body["data"], list)
-        assert body["data"][0]["user_id"] == "user123"
 
     def test_empty_keys_list(
         self, test_client, override_auth_user, override_get_service_empty

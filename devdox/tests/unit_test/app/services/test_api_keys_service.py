@@ -188,13 +188,11 @@ class TestAPIKeyPublicResponse:
     def test_valid_instantiation(self):
         now = datetime.datetime.now(datetime.timezone.utc)
         response = APIKeyPublicResponse(
-            user_id="user123",
             masked_api_key="****abcd",
             created_at=now,
             last_used_at=now,
         )
 
-        assert response.user_id == "user123"
         assert response.masked_api_key == "****abcd"
         assert response.created_at == now
         assert response.last_used_at == now
@@ -202,7 +200,6 @@ class TestAPIKeyPublicResponse:
     def test_optional_last_used_at_none(self):
         now = datetime.datetime.now(datetime.timezone.utc)
         response = APIKeyPublicResponse(
-            user_id="user123",
             masked_api_key="****abcd",
             created_at=now,
         )
