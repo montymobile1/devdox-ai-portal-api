@@ -54,7 +54,7 @@ class RepoQueryService:
         )
 
         token_ids = {repo.token_id for repo in repos if repo.token_id}
-        labels = await self.git_label_repository.find_all_git_hostings_by_ids(token_ids)
+        labels = await self.git_label_repository.find_git_hostings_by_ids(token_ids)
         label_map = {str(label["id"]): label["git_hosting"] for label in labels}
 
         repo_responses = []
