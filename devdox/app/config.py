@@ -1,20 +1,15 @@
 """
 Configuration settings for the DevDox AI Portal API.
 """
-
-from enum import Enum
 from typing import Any, Dict, List, Literal, Optional
+
+from models_src.dto.repo import GitHosting
+
 from app.services.supabase_queue import SupabaseQueue
 from pydantic_settings import BaseSettings
 
 
 search_path = "vault,public"
-
-
-class GitHosting(str, Enum):
-    GITLAB = "gitlab"
-    GITHUB = "github"
-
 
 class Settings(BaseSettings):
     """Application settings."""

@@ -10,7 +10,6 @@ from app.exceptions.local_exceptions import (
     ResourceNotFound,
 )
 from app.exceptions.exception_constants import (
-    GENERIC_ALREADY_EXIST,
     GIT_LABEL_TOKEN_RESOURCE_NOT_FOUND,
     REPOSITORY_ALREADY_EXISTS,
     TOKEN_NOT_FOUND,
@@ -55,7 +54,7 @@ class RepoQueryService:
         )
 
         token_ids = {repo.token_id for repo in repos if repo.token_id}
-        labels = await self.git_label_repository.get_all_git_hosting_only_by_token_id_list(token_ids)
+        labels = await self.git_label_repository.get_all_git_hostings_by_ids(token_ids)
         label_map = {str(label["id"]): label["git_hosting"] for label in labels}
 
         repo_responses = []
@@ -225,8 +224,6 @@ class RepoManipulationService:
         except DevDoxModelsException as e:
             if e.error_type == RepoErrors.REPOSITORY_ALREADY_EXIST.value["error_type"]:
                 raise BadRequest(reason=REPOSITORY_ALREADY_EXISTS) from e
-            raise
-        except Exception as e:
             raise
 
 

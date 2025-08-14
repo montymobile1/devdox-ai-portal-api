@@ -62,7 +62,7 @@ class GetGitLabelService:
         cls,
         label_store: Annotated[GitLabelRepository, Depends()],
     ) -> "GetGitLabelService":
-        return cls(label_store)
+        return cls(label_repository=label_store)
 
     async def get_git_labels_by_user(
         self,

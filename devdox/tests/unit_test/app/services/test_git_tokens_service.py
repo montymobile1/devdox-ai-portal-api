@@ -2,7 +2,6 @@ import uuid
 
 import pytest
 from encryption_src.test_doubles import FakeEncryptionHelper
-from tortoise.exceptions import IntegrityError
 
 from app.exceptions.local_exceptions import BadRequest, ResourceNotFound
 from app.exceptions.exception_constants import (
@@ -19,7 +18,7 @@ from app.services.git_tokens import (
     PostGitLabelService,
 )
 from app.utils.auth import UserClaims
-from models_src.dto.git_label import GitLabelRequestDTO, GitLabelResponseDTO
+from models_src.dto.git_label import GitLabelResponseDTO
 from models_src.dto.repo import GitHosting
 from models_src.exceptions.utils import GitLabelErrors, internal_error
 from models_src.test_doubles.repositories.git_label import (

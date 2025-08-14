@@ -1,5 +1,4 @@
 import pytest
-from tortoise.exceptions import IntegrityError
 
 from app.exceptions.exception_constants import (
     GIT_LABEL_TOKEN_RESOURCE_NOT_FOUND,
@@ -57,19 +56,6 @@ class StubFetcher:
 
     def fetch_single_repo(self, token, relative_path):
         return object(), ["Python"]
-
-
-# class FakeRepoStoreOLD:
-#     def __init__(self):
-#         self.saved = []
-#         self.raise_integrity_error = False
-#
-#     async def save(self, repo_model: Repo):
-#         if self.raise_integrity_error:
-#             raise IntegrityError("Duplicate")
-#         self.saved.append(repo_model)
-#         return repo_model
-
 
 class TestRepoManipulationService:
 

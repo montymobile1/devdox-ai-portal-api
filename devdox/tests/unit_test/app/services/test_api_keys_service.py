@@ -6,8 +6,6 @@ from typing import Optional
 from uuid import uuid4
 
 import pytest
-from pydantic import ValidationError
-
 from app.exceptions.local_exceptions import BadRequest, ResourceNotFound
 from app.exceptions.exception_constants import (
     FAILED_GENERATE_API_KEY_RETRIES_LOG_MESSAGE,
