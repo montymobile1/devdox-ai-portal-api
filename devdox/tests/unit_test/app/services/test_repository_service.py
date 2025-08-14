@@ -68,7 +68,7 @@ class TestRepoManipulationService:
         stub_git_label_store = StubGitLabelStore()
 
         stub_git_label_store.set_output(
-            stub_git_label_store.get_by_token_id_and_user,
+            stub_git_label_store.find_by_token_id_and_user,
             output=GitLabelResponseDTO(
                 token_value= "encrypted_token",
                 git_hosting="github"
@@ -101,7 +101,7 @@ class TestRepoManipulationService:
         stub_git_label_store = StubGitLabelStore()
 
         stub_git_label_store.set_output(
-            stub_git_label_store.get_by_token_id_and_user,
+            stub_git_label_store.find_by_token_id_and_user,
             output=GitLabelResponseDTO(
                 token_value="encrypted_token", git_hosting="github"
             ),
@@ -132,7 +132,7 @@ class TestRepoManipulationService:
         stub_git_label_store = StubGitLabelStore()
 
         stub_git_label_store.set_exception(
-            stub_git_label_store.get_by_token_id_and_user,
+            stub_git_label_store.find_by_token_id_and_user,
             ResourceNotFound(reason=GIT_LABEL_TOKEN_RESOURCE_NOT_FOUND)
         )
 
@@ -166,7 +166,7 @@ class TestRepoManipulationService:
         stub_git_label_store = StubGitLabelStore()
 
         stub_git_label_store.set_output(
-            stub_git_label_store.get_by_token_id_and_user,
+            stub_git_label_store.find_by_token_id_and_user,
             output=GitLabelResponseDTO(
                 token_value="encrypted_token", git_hosting="github"
             ),
@@ -200,7 +200,7 @@ class TestRepoManipulationService:
         stub_git_label_store = StubGitLabelStore()
 
         stub_git_label_store.set_output(
-            stub_git_label_store.get_by_token_id_and_user,
+            stub_git_label_store.find_by_token_id_and_user,
             output=GitLabelResponseDTO(
                 token_value="encrypted_token", git_hosting="github"
             ),

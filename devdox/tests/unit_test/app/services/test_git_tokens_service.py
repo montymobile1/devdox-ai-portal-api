@@ -76,7 +76,7 @@ class TestGetGitLabelService__GetGitLabelsByUser:
         ) in self.fake_store.received_calls
         
         assert (
-            self.fake_store.get_all_by_user_id.__name__,
+            self.fake_store.find_all_by_user_id.__name__,
             (),
             {'git_hosting': 'github', 'limit': 10, 'offset': 0, 'user_id': 'user123'}
         ) in self.fake_store.received_calls
@@ -163,7 +163,7 @@ class TestGetGitLabelService__GetGitLabelsByLabel:
         )
 
         assert (
-            self.store.get_all_by_user_id_and_label.__name__,
+            self.store.find_all_by_user_id_and_label.__name__,
             (),
             {'label': 'feature', 'limit': 10, 'offset': 0, 'user_id': 'user123'}
         ) in self.store.received_calls

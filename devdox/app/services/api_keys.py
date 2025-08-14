@@ -199,7 +199,7 @@ class GetApiKeyService:
                 "size": pagination.limit,
             }
         
-        api_keys_list = await self.api_key_repository.get_all_by_user_id(
+        api_keys_list = await self.api_key_repository.find_all_by_user_id(
             offset=pagination.offset,
             limit=pagination.limit,
             user_id=user_claims.sub

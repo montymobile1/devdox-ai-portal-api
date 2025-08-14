@@ -34,8 +34,8 @@ from models_src.repositories.user import TortoiseUserStore as UserRepository
 class RepoQueryService:
     def __init__(
         self,
-        repo_repository=Depends(RepoRepository),
-        git_label_repository=Depends(GitLabelRepository),
+        repo_repository:RepoRepository=Depends(RepoRepository),
+        git_label_repository:GitLabelRepository=Depends(GitLabelRepository),
     ):
         self.repo_repository = repo_repository
         self.git_label_repository = git_label_repository
@@ -49,12 +49,12 @@ class RepoQueryService:
         if total_count == 0:
             return total_count, []
 
-        repos = await self.repo_repository.get_all_by_user_id(
+        repos = await self.repo_repository.find_all_by_user_id(
             user.sub, pagination.offset, pagination.limit
         )
 
         token_ids = {repo.token_id for repo in repos if repo.token_id}
-        labels = await self.git_label_repository.get_all_git_hostings_by_ids(token_ids)
+        labels = await self.git_label_repository.find_all_git_hostings_by_ids(token_ids)
         label_map = {str(label["id"]): label["git_hosting"] for label in labels}
 
         repo_responses = []
@@ -93,7 +93,7 @@ class RepoProviderService:
         if retrieved_user_data is None:
             raise ResourceNotFound(reason=USER_RESOURCE_NOT_FOUND)
 
-        label = await self.git_label_repository.get_by_token_id_and_user(
+        label = await self.git_label_repository.find_by_token_id_and_user(
             token_id, user_claims.sub
         )
         if label is None:
@@ -132,7 +132,7 @@ async def retrieve_user_by_id_or_die(user_repository_instance: UserRepository, u
 
 
 async def retrieve_git_label_by_id_and_user_or_die(git_label_repository_instance:GitLabelRepository, id, user_id):
-    retrieved_git_label = await git_label_repository_instance.get_by_token_id_and_user(id, user_id)
+    retrieved_git_label = await git_label_repository_instance.find_by_token_id_and_user(id, user_id)
     if retrieved_git_label is None:
         raise ResourceNotFound(reason=GIT_LABEL_TOKEN_RESOURCE_NOT_FOUND)
 

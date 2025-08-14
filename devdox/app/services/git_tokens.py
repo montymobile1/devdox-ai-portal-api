@@ -84,7 +84,7 @@ class GetGitLabelService:
                 "size": pagination.limit,
             }
 
-        git_labels = await self.label_repository.get_all_by_user_id(
+        git_labels = await self.label_repository.find_all_by_user_id(
             offset=pagination.offset,
             limit=pagination.limit,
             user_id=user_claims.sub,
@@ -118,7 +118,7 @@ class GetGitLabelService:
                 "size": pagination.limit,
             }
 
-        git_labels = await self.label_repository.get_all_by_user_id_and_label(
+        git_labels = await self.label_repository.find_all_by_user_id_and_label(
             offset=pagination.offset,
             limit=pagination.limit,
             user_id=user_claims.sub,
