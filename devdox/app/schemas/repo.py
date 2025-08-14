@@ -1,10 +1,10 @@
 import uuid
 from types import SimpleNamespace
 
-from app.config import GitHosting
 from github.AuthenticatedUser import AuthenticatedUser
 from github.Repository import Repository
 from gitlab.v4.objects import Project
+from models_src.dto.repo import GitHosting
 from pydantic import BaseModel, Field, ConfigDict
 from typing import Optional, List
 from datetime import datetime
@@ -20,13 +20,6 @@ REPO_USER_REFERENCE_FIELD_DESCRIPTION = "An optional free-form description or no
 
 REPO_SYSTEM_REFERENCE_FIELD_TITLE= "Repository System generated Reference Note"
 REPO_SYSTEM_REFERENCE_FIELD_DESCRIPTION= "An optional description or note for this repository. System generates this to explain its purpose, provide internal context, or document specific information."
-
-
-class GitHostingProvider(str, Enum):
-    """Supported Git hosting providers"""
-
-    GITHUB = "github"
-    GITLAB = "gitlab"
 
 
 class RepoBase(BaseModel):

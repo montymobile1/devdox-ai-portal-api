@@ -6,8 +6,7 @@ Tests cover all CRUD operations and new functionality.
 from unittest.mock import MagicMock, Mock
 
 import pytest
-
-from app.config import GitHosting
+from models_src.dto.repo import GitHosting
 
 
 @pytest.fixture

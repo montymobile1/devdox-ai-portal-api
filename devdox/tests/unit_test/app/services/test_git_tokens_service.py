@@ -2,7 +2,6 @@ import uuid
 
 import pytest
 from encryption_src.test_doubles import FakeEncryptionHelper
-from tortoise.exceptions import IntegrityError
 
 from app.exceptions.local_exceptions import BadRequest, ResourceNotFound
 from app.exceptions.exception_constants import (
@@ -19,14 +18,14 @@ from app.services.git_tokens import (
     PostGitLabelService,
 )
 from app.utils.auth import UserClaims
-from tests.unit_test.test_doubles.app.repository.get_label_repository_doubles import (
+from models_src.dto.git_label import GitLabelResponseDTO
+from models_src.dto.repo import GitHosting
+from models_src.exceptions.utils import GitLabelErrors, internal_error
+from models_src.test_doubles.repositories.git_label import (
     FakeGitLabelStore,
     make_fake_git_label,
 )
-from tests.unit_test.test_doubles.app.repository.user_repository_doubles import (
-    FakeUserStore,
-    make_fake_user,
-)
+from models_src.test_doubles.repositories.user import FakeUserStore, make_fake_user
 
 from tests.unit_test.test_doubles.app.utils.repo_fetcher_doubles import FakeRepoFetcher
 
@@ -35,11 +34,11 @@ from tests.unit_test.test_doubles.app.utils.repo_fetcher_doubles import FakeRepo
 class TestGetGitLabelService__GetGitLabelsByUser:
     def setup_method(self):
         self.fake_store = FakeGitLabelStore()
-        self.service = GetGitLabelService(label_store=self.fake_store)
+        self.service = GetGitLabelService(label_repository=self.fake_store)
         self.user_claims = UserClaims(sub="user123")
 
     async def test_returns_empty_if_store_count_is_zero(self):
-        self.fake_store.set_fake_data([], total_count=0)
+        self.fake_store.set_fake_data([])
         pagination = RequiredPaginationParams(limit=10, offset=0)
 
         result = await self.service.get_git_labels_by_user(
@@ -54,11 +53,11 @@ class TestGetGitLabelService__GetGitLabelsByUser:
             "page": 1,
             "size": 10,
         }
-        assert ("count_by_user_id", "user123", None) in self.fake_store.received_calls
+        assert (self.fake_store.count_by_user_id.__name__, (), {'git_hosting': None, 'user_id': 'user123'}) in self.fake_store.received_calls
 
     async def test_returns_formatted_git_labels(self):
         fake_label = make_fake_git_label(user_id="user123", label="bugfix")
-        self.fake_store.set_fake_data([fake_label], total_count=1)
+        self.fake_store.set_fake_data([fake_label])
         pagination = RequiredPaginationParams(limit=10, offset=0)
 
         result = await self.service.get_git_labels_by_user(
@@ -71,20 +70,19 @@ class TestGetGitLabelService__GetGitLabelsByUser:
         assert result["items"][0]["label"] == "bugfix"
         assert result["items"][0]["masked_token"] == "****1234"
         assert (
-            "count_by_user_id",
-            "user123",
-            "github",
+            self.fake_store.count_by_user_id.__name__,
+            (),
+            {'git_hosting': 'github', 'user_id': 'user123'}
         ) in self.fake_store.received_calls
+        
         assert (
-            "get_by_user_id",
-            0,
-            10,
-            "user123",
-            "github",
+            self.fake_store.find_all_by_user_id.__name__,
+            (),
+            {'git_hosting': 'github', 'limit': 10, 'offset': 0, 'user_id': 'user123'}
         ) in self.fake_store.received_calls
 
     async def test_bubbles_up_store_exception(self):
-        self.fake_store.set_exception("count_by_user_id", ValueError("Boom"))
+        self.fake_store.set_exception(self.fake_store.count_by_user_id, ValueError("Boom"))
         pagination = RequiredPaginationParams(limit=10, offset=0)
 
         with pytest.raises(ValueError) as exc:
@@ -102,7 +100,7 @@ class TestGetGitLabelService__GetGitLabelsByLabel:
 
     def setup_method(self):
         self.store = FakeGitLabelStore()
-        self.service = GetGitLabelService(label_store=self.store)
+        self.service = GetGitLabelService(label_repository=self.store)
         self.user_claims = UserClaims(sub="user123")
         self.pagination = PaginationParams(limit=10, offset=0)
 
@@ -122,7 +120,7 @@ class TestGetGitLabelService__GetGitLabelsByLabel:
 
     async def test_get_git_labels_by_label_handles_store_exception(self):
         self.store.set_exception(
-            "count_by_user_id_and_label", ValueError("Simulated error")
+            self.store.count_by_user_id_and_label, ValueError("Simulated error")
         )
 
         with pytest.raises(ValueError, match="Simulated error"):
@@ -165,11 +163,9 @@ class TestGetGitLabelService__GetGitLabelsByLabel:
         )
 
         assert (
-            "get_by_user_id_and_label",
-            0,
-            10,
-            "user123",
-            "feature",
+            self.store.find_all_by_user_id_and_label.__name__,
+            (),
+            {'label': 'feature', 'limit': 10, 'offset': 0, 'user_id': 'user123'}
         ) in self.store.received_calls
 
 
@@ -182,17 +178,17 @@ class TestPostGitLabelService__AddGitToken:
         self.fake_fetcher = FakeRepoFetcher()
 
         self.service = PostGitLabelService(
-            user_store=self.fake_user_store,
-            label_store=self.fake_label_store,
+            user_repository=self.fake_user_store,
+            label_repository=self.fake_label_store,
             crypto_store=self.fake_crypto,
             git_manager=self.fake_fetcher,
         )
 
         self.valid_user = make_fake_user(user_id="user123")
-        self.fake_user_store.set_fake_user(self.valid_user)
+        self.fake_user_store.set_fake_data(fake_data=[self.valid_user])
 
         self.valid_payload = GitLabelBase(
-            label="label1", token_value="mytoken", git_hosting="github"
+            label="label1", token_value="mytoken", git_hosting=GitHosting.GITHUB
         )
 
     @pytest.mark.asyncio
@@ -217,11 +213,9 @@ class TestPostGitLabelService__AddGitToken:
 
     @pytest.mark.asyncio
     async def test_raises_if_user_not_found(self):
-        self.fake_user_store.set_fake_user(None)
-
         with pytest.raises(ResourceNotFound) as exc:
             await self.service.add_git_token(
-                UserClaims(sub="user123"), self.valid_payload
+                UserClaims(sub="user_not_found"), self.valid_payload
             )
 
         assert exc.value.user_message == USER_RESOURCE_NOT_FOUND
@@ -239,7 +233,10 @@ class TestPostGitLabelService__AddGitToken:
 
     @pytest.mark.asyncio
     async def test_raises_if_integrity_error(self):
-        self.fake_label_store.set_exception("create_new", IntegrityError("fail"))
+        self.fake_label_store.set_exception(
+            self.fake_label_store.save,
+            internal_error(**GitLabelErrors.GIT_LABEL_ALREADY_EXISTS.value)
+        )
 
         with pytest.raises(BadRequest) as exc:
             await self.service.add_git_token(
@@ -258,16 +255,20 @@ class TestDeleteGitLabelService__DeleteByGitLabelId:
 
     def setup_method(self):
         self.fake_store = FakeGitLabelStore()
-        self.service = DeleteGitLabelService(label_store=self.fake_store)
+        self.service = DeleteGitLabelService(label_repository=self.fake_store)
         self.user_claims = make_fake_user_claims()
         self.existing_label_id = uuid.uuid4()
 
     async def test_returns_label_when_found(self):
         # Arrange
-        self.fake_store.git_labels = [
-            type("GitLabel", (), {"id": self.existing_label_id, "user_id": "user123"})()
-        ]
-
+        self.fake_store.set_fake_data(fake_data=[
+            GitLabelResponseDTO(
+                id=self.existing_label_id,
+                user_id="user123",
+                label="GitLabel"
+            )
+        ])
+        
         # Act
         result = await self.service.delete_by_git_label_id(
             user_claims=self.user_claims, git_label_id=self.existing_label_id
@@ -276,14 +277,14 @@ class TestDeleteGitLabelService__DeleteByGitLabelId:
         # Assert
         assert result == 1
         assert (
-            "delete_by_id_and_user_id",
-            self.existing_label_id,
-            "user123",
+            'delete_by_id_and_user_id',
+            (),
+            {'label_id': self.existing_label_id, 'user_id': 'user123'}
         ) in self.fake_store.received_calls
 
     async def test_raises_when_label_not_found(self):
         # Arrange: empty store
-        self.fake_store.git_labels = []
+        self.fake_store.set_fake_data([])
 
         # Act & Assert
         with pytest.raises(ResourceNotFound) as exc:
@@ -293,7 +294,7 @@ class TestDeleteGitLabelService__DeleteByGitLabelId:
 
         assert exc.value.user_message == TOKEN_NOT_FOUND
         assert (
-            "delete_by_id_and_user_id",
-            self.existing_label_id,
-            "user123",
+            self.fake_store.delete_by_id_and_user_id.__name__,
+            (),
+            {'label_id': self.existing_label_id, 'user_id': 'user123'}
         ) in self.fake_store.received_calls

@@ -1,6 +1,7 @@
 from types import SimpleNamespace
 
-from app.config import GitHosting
+from models_src.dto.repo import GitHosting
+
 from app.schemas.repo import (
     GitHubRepoResponseTransformer,
     GitLabRepoResponseTransformer,
