@@ -22,13 +22,6 @@ REPO_SYSTEM_REFERENCE_FIELD_TITLE= "Repository System generated Reference Note"
 REPO_SYSTEM_REFERENCE_FIELD_DESCRIPTION= "An optional description or note for this repository. System generates this to explain its purpose, provide internal context, or document specific information."
 
 
-class GitHostingProvider(str, Enum):
-    """Supported Git hosting providers"""
-
-    GITHUB = "github"
-    GITLAB = "gitlab"
-
-
 class RepoBase(BaseModel):
     """Base repository schema with common fields"""
 

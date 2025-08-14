@@ -50,7 +50,7 @@ class RepoQueryService:
             return total_count, []
 
         repos = await self.repo_repository.find_all_by_user_id(
-            user.sub, pagination.offset, pagination.limit
+            user_id=user.sub, offset=pagination.offset, limit=pagination.limit
         )
 
         token_ids = {repo.token_id for repo in repos if repo.token_id}
@@ -142,13 +142,16 @@ async def retrieve_git_label_by_id_and_user_or_die(git_label_repository_instance
 async def retrieve_repo_by_id(repo_repository_instance: RepoRepository, id):
     try:
         repo_info = await repo_repository_instance.get_by_id(id)
-    except DoesNotExist as e:
-        raise DevDoxAPIException(
-            user_message=exception_constants.SERVICE_UNAVAILABLE,
-            log_message=exception_constants.REPOSITORY_DOESNT_EXIST_TITLE,
-            error_type=exception_constants.REPOSITORY_DOESNT_EXIST_TITLE,
-            log_level="exception"
-        ) from e
+    except DevDoxModelsException as e:
+        if e.error_type == RepoErrors.REPOSITORY_DOESNT_EXIST.value["error_type"]:
+            raise DevDoxAPIException(
+                user_message=exception_constants.SERVICE_UNAVAILABLE,
+                log_message=exception_constants.REPOSITORY_DOESNT_EXIST_TITLE,
+                error_type=exception_constants.REPOSITORY_DOESNT_EXIST_TITLE,
+                log_level="exception"
+            ) from e
+        
+        raise
     
     if repo_info is None:
         raise ResourceNotFound(reason=REPOSITORY_TOKEN_RESOURCE_NOT_FOUND)
