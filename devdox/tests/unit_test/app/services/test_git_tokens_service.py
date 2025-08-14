@@ -54,7 +54,7 @@ class TestGetGitLabelService__GetGitLabelsByUser:
             "page": 1,
             "size": 10,
         }
-        assert ("count_by_user_id", "user123", None) in self.fake_store.received_calls
+        assert (self.fake_store.count_by_user_id.__name__, (), {'git_hosting': None, 'user_id': 'user123'}) in self.fake_store.received_calls
 
     async def test_returns_formatted_git_labels(self):
         fake_label = make_fake_git_label(user_id="user123", label="bugfix")
@@ -71,16 +71,15 @@ class TestGetGitLabelService__GetGitLabelsByUser:
         assert result["items"][0]["label"] == "bugfix"
         assert result["items"][0]["masked_token"] == "****1234"
         assert (
-            "count_by_user_id",
-            "user123",
-            "github",
+            self.fake_store.count_by_user_id.__name__,
+            (),
+            {'git_hosting': 'github', 'user_id': 'user123'}
         ) in self.fake_store.received_calls
+        
         assert (
             self.fake_store.get_all_by_user_id.__name__,
-            0,
-            10,
-            "user123",
-            "github",
+            (),
+            {'git_hosting': 'github', 'limit': 10, 'offset': 0, 'user_id': 'user123'}
         ) in self.fake_store.received_calls
 
     async def test_bubbles_up_store_exception(self):
@@ -166,10 +165,8 @@ class TestGetGitLabelService__GetGitLabelsByLabel:
 
         assert (
             self.store.get_all_by_user_id_and_label.__name__,
-            0,
-            10,
-            "user123",
-            "feature",
+            (),
+            {'label': 'feature', 'limit': 10, 'offset': 0, 'user_id': 'user123'}
         ) in self.store.received_calls
 
 
@@ -281,9 +278,9 @@ class TestDeleteGitLabelService__DeleteByGitLabelId:
         # Assert
         assert result == 1
         assert (
-            "delete_by_id_and_user_id",
-            self.existing_label_id,
-            "user123",
+            'delete_by_id_and_user_id',
+            (),
+            {'label_id': self.existing_label_id, 'user_id': 'user123'}
         ) in self.fake_store.received_calls
 
     async def test_raises_when_label_not_found(self):
@@ -298,7 +295,7 @@ class TestDeleteGitLabelService__DeleteByGitLabelId:
 
         assert exc.value.user_message == TOKEN_NOT_FOUND
         assert (
-            "delete_by_id_and_user_id",
-            self.existing_label_id,
-            "user123",
+            self.fake_store.delete_by_id_and_user_id.__name__,
+            (),
+            {'label_id': self.existing_label_id, 'user_id': 'user123'}
         ) in self.fake_store.received_calls
