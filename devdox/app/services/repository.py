@@ -1,7 +1,6 @@
-from typing import List, Tuple
+from typing import Annotated, List, Tuple
 from uuid import UUID, uuid4
 from fastapi import Depends
-from tortoise.exceptions import DoesNotExist, IntegrityError
 
 from app.exceptions import exception_constants
 from app.exceptions.base_exceptions import DevDoxAPIException
@@ -34,8 +33,8 @@ from models_src.repositories.user import TortoiseUserStore as UserRepository
 class RepoQueryService:
     def __init__(
         self,
-        repo_repository:RepoRepository=Depends(RepoRepository),
-        git_label_repository:GitLabelRepository=Depends(GitLabelRepository),
+        repo_repository: Annotated[RepoRepository, Depends()],
+        git_label_repository: Annotated[GitLabelRepository, Depends()],
     ):
         self.repo_repository = repo_repository
         self.git_label_repository = git_label_repository
@@ -71,10 +70,10 @@ class RepoQueryService:
 class RepoProviderService:
     def __init__(
         self,
-        git_label_repository: GitLabelRepository = Depends(),
-        user_repository: UserRepository = Depends(),
-        encryption: FernetEncryptionHelper = Depends(get_encryption_helper),
-        git_fetcher: RepoFetcher = Depends(),
+        git_label_repository: Annotated[GitLabelRepository, Depends()],
+        user_repository: Annotated[UserRepository, Depends()],
+        encryption: Annotated[FernetEncryptionHelper, Depends(get_encryption_helper)],
+        git_fetcher: Annotated[RepoFetcher, Depends()]
     ):
         self.git_label_repository = git_label_repository
         self.user_repository = user_repository
@@ -94,7 +93,7 @@ class RepoProviderService:
             raise ResourceNotFound(reason=USER_RESOURCE_NOT_FOUND)
 
         label = await self.git_label_repository.find_by_token_id_and_user(
-            token_id, user_claims.sub
+            token_id=token_id, user_id=user_claims.sub
         )
         if label is None:
             raise ResourceNotFound(reason=TOKEN_NOT_FOUND)
@@ -162,11 +161,11 @@ async def retrieve_repo_by_id(repo_repository_instance: RepoRepository, id):
 class RepoManipulationService:
     def __init__(
         self,
-        git_label_repository: GitLabelRepository = Depends(),
-        repo_repository: RepoRepository = Depends(),
-        user_repository: UserRepository = Depends(),
-        encryption: FernetEncryptionHelper = Depends(get_encryption_helper),
-        git_fetcher: RepoFetcher = Depends(),
+        git_label_repository: Annotated[GitLabelRepository, Depends()],
+        repo_repository: Annotated[RepoRepository, Depends()],
+        user_repository: Annotated[UserRepository, Depends()],
+        encryption: Annotated[FernetEncryptionHelper, Depends(get_encryption_helper)],
+        git_fetcher: Annotated[RepoFetcher, Depends()]
     ):
         self.git_label_repository = git_label_repository
         self.user_store = user_repository
