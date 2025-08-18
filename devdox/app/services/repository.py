@@ -130,7 +130,7 @@ async def retrieve_user_by_id_or_die(user_repository_instance: UserRepository, u
     return retrieved_user_data
 
 
-async def retrieve_git_label_by_id_and_user_or_die(git_label_repository_instance:GitLabelRepository, id, user_id):
+async def retrieve_git_label_or_die(git_label_repository_instance:GitLabelRepository, id, user_id):
     retrieved_git_label = await git_label_repository_instance.find_by_token_id_and_user(id, user_id)
     if retrieved_git_label is None:
         raise ResourceNotFound(reason=GIT_LABEL_TOKEN_RESOURCE_NOT_FOUND)
@@ -180,7 +180,7 @@ class RepoManipulationService:
         retrieved_user_data = await retrieve_user_by_id_or_die(
             self.user_store, user_claims.sub
         )
-        retrieved_git_label = await retrieve_git_label_by_id_and_user_or_die(
+        retrieved_git_label = await retrieve_git_label_or_die(
             self.git_label_repository, token_id, user_claims.sub
         )
         fetcher, fetcher_data_mapper = retrieve_git_fetcher_or_die(
@@ -231,7 +231,7 @@ class RepoManipulationService:
 
     async def analyze_repo(self, user_claims: UserClaims, id: str | UUID) -> None:
         repo_info = await retrieve_repo_by_id(self.repo_repository, id)
-        token_info = await retrieve_git_label_by_id_and_user_or_die(
+        token_info = await retrieve_git_label_or_die(
             self.git_label_repository, repo_info.token_id, user_claims.sub
         )
 
