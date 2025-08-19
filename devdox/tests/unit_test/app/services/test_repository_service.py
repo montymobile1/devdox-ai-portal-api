@@ -252,7 +252,6 @@ class TestRepoQueryService__GetAllUserRepositories:
         
         current_datetime = datetime.datetime.now(datetime.timezone.utc).replace(hour=0, minute=0, second=0, microsecond=0)
         
-        git_label_fakes = []
         repo_fakes = []
         
         MAX_USER = 2
@@ -278,8 +277,6 @@ class TestRepoQueryService__GetAllUserRepositories:
                     masked_token=f"Masked {clerk_id}-{git_label} actual token",
                     created_at=current_datetime + datetime.timedelta(hours=git_label),
                 )
-                
-                git_label_fakes.append(git_label_record)
                 
                 for repo in range(MAX_REPOS):
                     
