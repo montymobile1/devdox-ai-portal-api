@@ -130,8 +130,8 @@ async def retrieve_user_by_id_or_die(user_repository_instance: UserRepository, u
     return retrieved_user_data
 
 
-async def retrieve_git_label_or_die(git_label_repository_instance:GitLabelRepository, id, user_id):
-    retrieved_git_label = await git_label_repository_instance.find_by_token_id_and_user(id, user_id)
+async def retrieve_git_label_or_die(repository:GitLabelRepository, id, user_id):
+    retrieved_git_label = await repository.find_by_token_id_and_user(id, user_id)
     if retrieved_git_label is None:
         raise ResourceNotFound(reason=GIT_LABEL_TOKEN_RESOURCE_NOT_FOUND)
 
