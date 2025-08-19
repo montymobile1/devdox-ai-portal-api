@@ -34,7 +34,7 @@ class TestGitLabRepoResponseTransformer:
         )
 
     def test_transform_project_to_dict_basic(self):
-        now = datetime.datetime.now(datetime.UTC)
+        now = datetime.datetime.now(datetime.timezone.utc)
         project = SimpleNamespace(
             id=1,
             name="project",
@@ -66,7 +66,7 @@ class TestGitLabRepoResponseTransformer:
             "http_url_to_repo": "http://example.com",
             "path_with_namespace": "repo",
             "visibility": "internal",
-            "created_at": datetime.datetime.now(datetime.UTC),
+            "created_at": datetime.datetime.now(datetime.timezone.utc),
             "statistics": {"storage_size": 512, "repository_size": 512},
         }
         response = GitLabRepoResponseTransformer.from_git(data)
@@ -97,7 +97,7 @@ class TestGitLabRepoResponseTransformer:
 
 class TestGitHubRepoResponseTransformer:
     def test_transform_repository_to_dict(self):
-        now = datetime.datetime.now(datetime.UTC)
+        now = datetime.datetime.now(datetime.timezone.utc)
         repo = SimpleNamespace(
             id=1,
             name="repo",
@@ -120,7 +120,7 @@ class TestGitHubRepoResponseTransformer:
         assert GitHubRepoResponseTransformer.from_git(None) is None
 
     def test_from_github_dict_returns_expected_schema(self):
-        now = datetime.datetime.now(datetime.UTC)
+        now = datetime.datetime.now(datetime.timezone.utc)
         data = {
             "id": 99,
             "name": "gh-repo",

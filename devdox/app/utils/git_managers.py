@@ -8,8 +8,8 @@ from github.AuthenticatedUser import AuthenticatedUser
 from github.Repository import Repository
 from gitlab import Gitlab, GitlabError
 from gitlab.v4.objects import Project
+from models_src.dto.repo import GitHosting
 
-from app.config import GitHosting
 from app.exceptions.base_exceptions import DevDoxAPIException
 from app.exceptions.exception_constants import (
     GIT_AUTH_FAILED,

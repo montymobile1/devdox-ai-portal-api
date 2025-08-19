@@ -19,11 +19,12 @@ from app.exceptions.local_exceptions import (
     ValidationFailed,
 )
 from app.utils.constants import TOKEN_DELETED_SUCCESSFULLY, TOKEN_SAVED_SUCCESSFULLY
-from tests.unit_test.test_doubles.app.repository.get_label_repository_doubles import (
+from models_src.dto.git_label import GitLabelResponseDTO
+from models_src.test_doubles.repositories.git_label import (
     FakeGitLabelStore,
     make_fake_git_label,
 )
-from tests.unit_test.test_doubles.app.repository.user_repository_doubles import (
+from models_src.test_doubles.repositories.user import (
     FakeUserStore,
     make_fake_user,
 )
@@ -42,8 +43,8 @@ class TestGetGitLabelsRouter:
         def _override():
             store = FakeGitLabelStore()
             label = make_fake_git_label(user_id="user123", label="feature")
-            store.set_fake_data([label], total_count=1)
-            return GetGitLabelService(label_store=store)
+            store.set_fake_data([label])
+            return GetGitLabelService(label_repository=store)
 
         app.dependency_overrides[GetGitLabelService.with_dependency] = _override
         try:
@@ -55,8 +56,8 @@ class TestGetGitLabelsRouter:
     def override_git_label_service_empty(self):
         def _override():
             store = FakeGitLabelStore()
-            store.set_fake_data([], total_count=0)
-            return GetGitLabelService(label_store=store)
+            store.set_fake_data([])
+            return GetGitLabelService(label_repository=store)
 
         app.dependency_overrides[GetGitLabelService.with_dependency] = _override
         try:
@@ -68,8 +69,8 @@ class TestGetGitLabelsRouter:
     def override_git_label_service_exception(self):
         def _override():
             store = FakeGitLabelStore()
-            store.set_exception("count_by_user_id", ValueError("Simulated error"))
-            return GetGitLabelService(label_store=store)
+            store.set_exception(store.count_by_user_id, ValueError("Simulated error"))
+            return GetGitLabelService(label_repository=store)
 
         app.dependency_overrides[GetGitLabelService.with_dependency] = _override
         try:
@@ -126,7 +127,7 @@ class TestGetGitLabelByLabelRouter:
             store = FakeGitLabelStore()
             label = make_fake_git_label(user_id="user123", label="feature")
             store.set_fake_data([label])
-            return GetGitLabelService(label_store=store)
+            return GetGitLabelService(label_repository=store)
 
         app.dependency_overrides[GetGitLabelService.with_dependency] = _override
         try:
@@ -139,7 +140,7 @@ class TestGetGitLabelByLabelRouter:
         def _override():
             store = FakeGitLabelStore()
             store.set_fake_data([])
-            return GetGitLabelService(label_store=store)
+            return GetGitLabelService(label_repository=store)
 
         app.dependency_overrides[GetGitLabelService.with_dependency] = _override
         try:
@@ -153,9 +154,9 @@ class TestGetGitLabelByLabelRouter:
             store = FakeGitLabelStore()
             store.total_count = 1
             store.set_exception(
-                "get_by_user_id_and_label", ValueError("Simulated error")
+                store.count_by_user_id_and_label, ValueError("Simulated error")
             )
-            return GetGitLabelService(label_store=store)
+            return GetGitLabelService(label_repository=store)
 
         app.dependency_overrides[GetGitLabelService.with_dependency] = _override
         try:
@@ -202,11 +203,11 @@ class TestPostGitLabelRouter__AddGitToken:
             fake_label_store = FakeGitLabelStore()
             user = make_fake_user(user_id="user123")
             label = make_fake_git_label(label="label1", user_id="user123")
-            fake_user_store.set_fake_user(user)
+            fake_user_store.set_fake_data([user])
             fake_label_store.set_fake_data([label])
             return PostGitLabelService(
-                user_store=fake_user_store,
-                label_store=fake_label_store,
+                user_repository=fake_user_store,
+                label_repository=fake_label_store,
                 crypto_store=fake_crypto,
                 git_manager=fake_git_manager,
             )
@@ -224,10 +225,12 @@ class TestPostGitLabelRouter__AddGitToken:
             fake_crypto = FakeEncryptionHelper()
             fake_git_manager = FakeRepoFetcher()
             fake_label_store = FakeGitLabelStore()
-            fake_user_store.set_fake_user(None)
+            
+            fake_user_store.set_fake_data(fake_data=[])
+            
             return PostGitLabelService(
-                user_store=fake_user_store,
-                label_store=fake_label_store,
+                user_repository=fake_user_store,
+                label_repository=fake_label_store,
                 crypto_store=fake_crypto,
                 git_manager=fake_git_manager,
             )
@@ -246,13 +249,13 @@ class TestPostGitLabelRouter__AddGitToken:
             fake_git_manager = FakeRepoFetcher()
             fake_label_store = FakeGitLabelStore()
             user = make_fake_user(user_id="user123")
-            fake_user_store.set_fake_user(user)
+            fake_user_store.set_fake_data(fake_data=[user])
             fake_label_store.set_exception(
-                "create_new", BadRequest(reason=GENERIC_ALREADY_EXIST)
+                fake_label_store.save, BadRequest(reason=GENERIC_ALREADY_EXIST)
             )
             return PostGitLabelService(
-                user_store=fake_user_store,
-                label_store=fake_label_store,
+                user_repository=fake_user_store,
+                label_repository=fake_label_store,
                 crypto_store=fake_crypto,
                 git_manager=fake_git_manager,
             )
@@ -341,18 +344,16 @@ class TestDeleteGitLabel:
     def override_delete_service_success(self):
         def _override():
             store = FakeGitLabelStore()
-            store.set_fake_data([])  # only the behavior matters here
-            store.git_labels.append(
-                type(
-                    "GitLabel",
-                    (),
-                    {
-                        "id": uuid.UUID("fb3e5e80-88ae-4b59-9e6f-088fb6e7c8e0"),
-                        "user_id": "user123",
-                    },
-                )()
-            )
-            return DeleteGitLabelService(label_store=store)
+            store.set_fake_data([
+                GitLabelResponseDTO(
+                    id = uuid.UUID("fb3e5e80-88ae-4b59-9e6f-088fb6e7c8e0"),
+                    user_id="user123",
+                    label="Some git label",
+                    git_hosting="github",
+                )
+            ])  # only the behavior matters here
+            
+            return DeleteGitLabelService(label_repository=store)
 
         app.dependency_overrides[DeleteGitLabelService.with_dependency] = _override
         try:
@@ -365,7 +366,7 @@ class TestDeleteGitLabel:
         def _override():
             store = FakeGitLabelStore()
             store.set_fake_data([])
-            return DeleteGitLabelService(label_store=store)
+            return DeleteGitLabelService(label_repository=store)
 
         app.dependency_overrides[DeleteGitLabelService.with_dependency] = _override
         try:

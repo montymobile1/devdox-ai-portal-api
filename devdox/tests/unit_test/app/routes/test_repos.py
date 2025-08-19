@@ -1,13 +1,12 @@
 import datetime
 from http import HTTPStatus
-import uuid
 from uuid import uuid4
 
 import pytest
 from clerk_backend_api import Requestish
 from fastapi.testclient import TestClient
+from models_src.dto.repo import GitHosting
 
-from app.config import GitHosting
 from app.exceptions.local_exceptions import ValidationFailed
 from app.main import app
 from app.schemas.repo import RepoResponse
