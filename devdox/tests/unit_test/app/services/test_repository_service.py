@@ -313,7 +313,7 @@ class TestRepoQueryService__GetAllUserRepositories:
         
         assert result[0] == MAX_GIT_LABEL * MAX_REPOS
         assert len(result[1]) == LIMIT
-        assert set([(str(res.id), res.git_hosting) for res in result[1]]).issubset(set([(str(res.id), None) for res in repo_fakes]))
+        assert {(str(res.id), res.git_hosting) for res in result[1]} <= {(str(res.id), None) for res in repo_fakes}
     
     @pytest.mark.asyncio
     async def test_with_all_data(self):
@@ -390,6 +390,7 @@ class TestRepoQueryService__GetAllUserRepositories:
         assert result[0] == MAX_GIT_LABEL * MAX_REPOS
         assert len(result[1]) == LIMIT
         
-        assert set([str(res.id) for res in result[1]]).issubset(set([str(res.id) for res in repo_fakes]))
+        assert {str(res.id) for res in result[1]} <= {str(res.id) for res in repo_fakes}
+        assert all(res.git_hosting is not None for res in result[1])
     
     
