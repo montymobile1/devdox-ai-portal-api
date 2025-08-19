@@ -1,4 +1,9 @@
+import datetime
+import random
+import uuid
+
 import pytest
+from models_src.dto.repo import GitHosting, RepoResponseDTO
 
 from app.exceptions.exception_constants import (
     GIT_LABEL_TOKEN_RESOURCE_NOT_FOUND,
@@ -7,7 +12,9 @@ from app.exceptions.exception_constants import (
 from models_src.dto.git_label import GitLabelResponseDTO
 from models_src.dto.user import UserResponseDTO
 from models_src.exceptions.utils import internal_error, RepoErrors
-from app.services.repository import RepoManipulationService
+
+from app.schemas.basic import RequiredPaginationParams
+from app.services.repository import RepoManipulationService, RepoQueryService
 from app.schemas.repo import AddRepositoryRequest, GitRepoResponse
 from app.utils.auth import UserClaims
 from app.exceptions.local_exceptions import (
@@ -15,7 +22,7 @@ from app.exceptions.local_exceptions import (
     ResourceNotFound,
 )
 from app.exceptions.base_exceptions import DevDoxAPIException
-from models_src.test_doubles.repositories.git_label import StubGitLabelStore
+from models_src.test_doubles.repositories.git_label import FakeGitLabelStore, StubGitLabelStore
 from models_src.test_doubles.repositories.repo import FakeRepoStore
 from models_src.test_doubles.repositories.user import StubUserStore
 
@@ -48,9 +55,7 @@ class StubTransformer:
 
 class StubFetcher:
     def get_components(self, provider):
-        if provider == "github":
-            return self, StubTransformer()
-        elif provider == "gitlab":
+        if provider in [GitHosting.GITLAB.value, GitHosting.GITHUB.value]:
             return self, StubTransformer()
         return None, None
 
@@ -221,3 +226,173 @@ class TestRepoManipulationService:
         )
         with pytest.raises(BadRequest):
             await service.add_repo_from_provider(UserClaims(sub="u1"), "t1", AddRepositoryRequest(relative_path="p", repo_alias_name="xyz"))
+
+class TestRepoQueryService__GetAllUserRepositories:
+    
+    @pytest.mark.asyncio
+    async def test_with_no_repo(self):
+        repo_store = FakeRepoStore()
+        fake_git_label_store = FakeGitLabelStore()
+        
+        service = RepoQueryService(
+            git_label_repository=fake_git_label_store,
+            repo_repository=repo_store
+        )
+        
+        result = await service.get_all_user_repositories(UserClaims(sub="u1"), RequiredPaginationParams(limit=10, offset=0))
+        
+        assert result == (0, [])
+    
+    @pytest.mark.asyncio
+    async def test_with_no_git_label_data(self):
+        user_claim = UserClaims(sub="1")
+        
+        repo_store = FakeRepoStore()
+        fake_git_label_store = FakeGitLabelStore()
+        
+        current_datetime = datetime.datetime.now(datetime.UTC).replace(hour=0, minute=0, second=0, microsecond=0)
+        
+        git_label_fakes = []
+        repo_fakes = []
+        
+        MAX_USER = 2
+        MAX_GIT_LABEL = 4
+        MAX_REPOS = 3
+        
+        for user_id in range(MAX_USER):
+            
+            clerk_id = user_id + 1
+            
+            for git_label in range(MAX_GIT_LABEL):
+                
+                random_git_hosting = random.choice(list(GitHosting))
+                random_git_hosting_value = random_git_hosting.value
+                
+                git_label_record = GitLabelResponseDTO(
+                    id=uuid.uuid4(),
+                    user_id=f"{clerk_id}",
+                    label=f"Label {clerk_id}-{git_label}",
+                    git_hosting=random_git_hosting_value,
+                    username=f"{random_git_hosting_value} username",
+                    token_value=f"Hashed {clerk_id}-{git_label} actual token",
+                    masked_token=f"Masked {clerk_id}-{git_label} actual token",
+                    created_at=current_datetime + datetime.timedelta(hours=git_label),
+                )
+                
+                git_label_fakes.append(git_label_record)
+                
+                for repo in range(MAX_REPOS):
+                    
+                    repo_record = RepoResponseDTO(
+                        id=uuid.uuid4(),
+                        user_id=f"{clerk_id}",
+                        repo_id=f"{clerk_id}-{git_label}-{repo}",
+                        repo_name=f"repo_name_{clerk_id}-{git_label}-{repo}",
+                        token_id=str(git_label_record.id),
+                        html_url=f"html_url_{clerk_id}-{git_label}-{repo}",
+                        default_branch=f"default_branch_{clerk_id}-{git_label}-{repo}",
+                        forks_count=1,
+                        stargazers_count=1,
+                        is_private=True,
+                        created_at=current_datetime + datetime.timedelta(hours=git_label),
+                        updated_at=current_datetime + datetime.timedelta(hours=git_label),
+                    )
+                    
+                    repo_fakes.append(repo_record)
+        
+        repo_store.set_fake_data(repo_fakes)
+        
+        service = RepoQueryService(
+            git_label_repository=fake_git_label_store,
+            repo_repository=repo_store
+        )
+        
+        LIMIT = 10
+        OFFSET = 0
+        
+        pagination = RequiredPaginationParams(limit=LIMIT, offset=OFFSET)
+        
+        result = await service.get_all_user_repositories(user_claim, pagination)
+        
+        assert result[0] == MAX_GIT_LABEL * MAX_REPOS
+        assert len(result[1]) == LIMIT
+        assert set([(str(res.id), res.git_hosting) for res in result[1]]).issubset(set([(str(res.id), None) for res in repo_fakes]))
+    
+    @pytest.mark.asyncio
+    async def test_with_all_data(self):
+        user_claim = UserClaims(sub="1")
+        
+        repo_store = FakeRepoStore()
+        fake_git_label_store = FakeGitLabelStore()
+        
+        current_datetime = datetime.datetime.now(datetime.UTC).replace(hour=0, minute=0, second=0, microsecond=0)
+        
+        git_label_fakes = []
+        repo_fakes = []
+        
+        MAX_USER = 2
+        MAX_GIT_LABEL = 4
+        MAX_REPOS = 3
+        
+        for user_id in range(MAX_USER):
+            
+            clerk_id = user_id + 1
+            
+            for git_label in range(MAX_GIT_LABEL):
+                
+                random_git_hosting = random.choice(list(GitHosting))
+                random_git_hosting_value = random_git_hosting.value
+                
+                git_label_record = GitLabelResponseDTO(
+                    id=uuid.uuid4(),
+                    user_id=f"{clerk_id}",
+                    label=f"Label {clerk_id}-{git_label}",
+                    git_hosting=random_git_hosting_value,
+                    username=f"{random_git_hosting_value} username",
+                    token_value=f"Hashed {clerk_id}-{git_label} actual token",
+                    masked_token=f"Masked {clerk_id}-{git_label} actual token",
+                    created_at=current_datetime + datetime.timedelta(hours=git_label),
+                )
+                
+                git_label_fakes.append(git_label_record)
+                
+                for repo in range(MAX_REPOS):
+                    
+                    repo_record = RepoResponseDTO(
+                        id=uuid.uuid4(),
+                        user_id=f"{clerk_id}",
+                        repo_id=f"{clerk_id}-{git_label}-{repo}",
+                        repo_name=f"repo_name_{clerk_id}-{git_label}-{repo}",
+                        token_id=str(git_label_record.id),
+                        html_url=f"html_url_{clerk_id}-{git_label}-{repo}",
+                        default_branch=f"default_branch_{clerk_id}-{git_label}-{repo}",
+                        forks_count=1,
+                        stargazers_count=1,
+                        is_private=True,
+                        created_at=current_datetime + datetime.timedelta(hours=git_label),
+                        updated_at=current_datetime + datetime.timedelta(hours=git_label),
+                    )
+                    
+                    repo_fakes.append(repo_record)
+        
+        fake_git_label_store.set_fake_data(git_label_fakes)
+        repo_store.set_fake_data(repo_fakes)
+        
+        service = RepoQueryService(
+            git_label_repository=fake_git_label_store,
+            repo_repository=repo_store
+        )
+        
+        LIMIT = 10
+        OFFSET = 0
+        
+        pagination = RequiredPaginationParams(limit=LIMIT, offset=OFFSET)
+        
+        result = await service.get_all_user_repositories(user_claim, pagination)
+        
+        assert result[0] == MAX_GIT_LABEL * MAX_REPOS
+        assert len(result[1]) == LIMIT
+        
+        assert set([str(res.id) for res in result[1]]).issubset(set([str(res.id) for res in repo_fakes]))
+    
+    
