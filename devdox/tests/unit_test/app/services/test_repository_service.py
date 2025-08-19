@@ -76,7 +76,7 @@ class TestRepoManipulationService:
             stub_git_label_store.find_by_token_id_and_user,
             output=GitLabelResponseDTO(
                 token_value= "encrypted_token",
-                git_hosting="github"
+                git_hosting=GitHosting.GITHUB.value
             )
         )
 
@@ -108,7 +108,7 @@ class TestRepoManipulationService:
         stub_git_label_store.set_output(
             stub_git_label_store.find_by_token_id_and_user,
             output=GitLabelResponseDTO(
-                token_value="encrypted_token", git_hosting="github"
+                token_value="encrypted_token", git_hosting=GitHosting.GITHUB.value
             ),
         )
 
@@ -173,7 +173,7 @@ class TestRepoManipulationService:
         stub_git_label_store.set_output(
             stub_git_label_store.find_by_token_id_and_user,
             output=GitLabelResponseDTO(
-                token_value="encrypted_token", git_hosting="github"
+                token_value="encrypted_token", git_hosting=GitHosting.GITHUB.value
             ),
         )
 
@@ -207,7 +207,7 @@ class TestRepoManipulationService:
         stub_git_label_store.set_output(
             stub_git_label_store.find_by_token_id_and_user,
             output=GitLabelResponseDTO(
-                token_value="encrypted_token", git_hosting="github"
+                token_value="encrypted_token", git_hosting=GitHosting.GITHUB.value
             ),
         )
 
@@ -250,7 +250,7 @@ class TestRepoQueryService__GetAllUserRepositories:
         repo_store = FakeRepoStore()
         fake_git_label_store = FakeGitLabelStore()
         
-        current_datetime = datetime.datetime.now(datetime.UTC).replace(hour=0, minute=0, second=0, microsecond=0)
+        current_datetime = datetime.datetime.now(datetime.timezone.utc).replace(hour=0, minute=0, second=0, microsecond=0)
         
         git_label_fakes = []
         repo_fakes = []
@@ -325,7 +325,7 @@ class TestRepoQueryService__GetAllUserRepositories:
         repo_store = FakeRepoStore()
         fake_git_label_store = FakeGitLabelStore()
         
-        current_datetime = datetime.datetime.now(datetime.UTC).replace(hour=0, minute=0, second=0, microsecond=0)
+        current_datetime = datetime.datetime.now(datetime.timezone.utc).replace(hour=0, minute=0, second=0, microsecond=0)
         
         git_label_fakes = []
         repo_fakes = []
