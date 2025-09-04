@@ -83,26 +83,18 @@ async def ensure_pgvector_extension():
             DO $$
             BEGIN
                 IF NOT EXISTS (SELECT 1 FROM pg_extension WHERE extname = 'vector') THEN
-                    CREATE EXTENSION vector
-                    with
-                      schema extensions;
+                    CREATE EXTENSION vector;
                 END IF;
             END $$;
             """)
     finally:
         await Tortoise.close_connections()
 
-
 async def apply_custom_indexes():
-    await Tortoise.init(config=TORTOISE_ORM)
-    try:
-        conn = Tortoise.get_connection("default")
+    async with in_transaction() as conn:
         for _table, statements in CUSTOM_INDEXES.items():
             for sql in statements:
                 await conn.execute_script(sql)
-    finally:
-        await Tortoise.close_connections()
-
 
 def auto_run_command(cmd):
     """Run any command with automatic 'yes' responses."""
@@ -484,7 +476,7 @@ async def run_ultimate_migrations():
             await asyncio.sleep(2 ** (attempt - 1))  # Exponential backoff
         print(f"📤 Attempt {attempt}/{max_attempts}...")
         success, stdout, stderr = auto_run_command("aerich upgrade")
-        
+
         if success:
             print(f"✅ Upgrade successful on attempt {attempt}!")
             
