@@ -83,7 +83,9 @@ async def ensure_pgvector_extension():
             DO $$
             BEGIN
                 IF NOT EXISTS (SELECT 1 FROM pg_extension WHERE extname = 'vector') THEN
-                    CREATE EXTENSION vector;
+                    CREATE EXTENSION vector
+                    with
+                      schema extensions;
                 END IF;
             END $$;
             """)
