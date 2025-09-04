@@ -92,11 +92,17 @@ async def ensure_pgvector_extension():
     finally:
         await Tortoise.close_connections()
 
+
 async def apply_custom_indexes():
-    async with in_transaction() as conn:
+    await Tortoise.init(config=TORTOISE_ORM)
+    try:
+        conn = Tortoise.get_connection("default")
         for _table, statements in CUSTOM_INDEXES.items():
             for sql in statements:
                 await conn.execute_script(sql)
+    finally:
+        await Tortoise.close_connections()
+
 
 def auto_run_command(cmd):
     """Run any command with automatic 'yes' responses."""
