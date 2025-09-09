@@ -6,10 +6,102 @@ import re
 import shutil
 import glob
 from datetime import datetime
+
+from models_src.models import CUSTOM_INDEXES
 from tortoise import Tortoise
+from tortoise.transactions import in_transaction
+
 from app.config import TORTOISE_ORM
 
 logger = logging.getLogger(__name__)
+
+async def apply_pgvector_migration():
+    
+    PGVECTOR_MIGRATION_SQL = """
+    -- 1) Ensure pgvector extension
+    DO $$
+    BEGIN
+      IF NOT EXISTS (SELECT 1 FROM pg_extension WHERE extname = 'vector') THEN
+        CREATE EXTENSION vector
+        with
+          schema extensions;
+      END IF;
+    END $$;
+
+    -- 2) If old JSONB column still named "embedding", rename -> embedding_json (only once)
+    DO $$
+    BEGIN
+      IF EXISTS (
+        SELECT 1 FROM information_schema.columns
+        WHERE table_schema='public' AND table_name='code_chunks'
+          AND column_name='embedding' AND data_type='jsonb'
+      ) AND NOT EXISTS (
+        SELECT 1 FROM information_schema.columns
+        WHERE table_schema='public' AND table_name='code_chunks'
+          AND column_name='embedding_json'
+      ) THEN
+        ALTER TABLE "code_chunks" RENAME COLUMN "embedding" TO "embedding_json";
+      END IF;
+    END $$;
+
+    -- 3) Add vector(768) column if missing
+    DO $$
+    BEGIN
+      IF NOT EXISTS (
+        SELECT 1 FROM information_schema.columns
+        WHERE table_schema='public' AND table_name='code_chunks'
+          AND column_name='embedding'
+      ) THEN
+        ALTER TABLE "code_chunks" ADD COLUMN "embedding" vector(768);
+      END IF;
+    END $$;
+
+    -- 4) Backfill vector values from JSONB array when present (and exactly 768 dims)
+    UPDATE "code_chunks"
+    SET "embedding" = (
+      SELECT (ARRAY(
+        SELECT jsonb_array_elements_text("embedding_json")::float8
+      ))::vector
+    )
+    WHERE "embedding" IS NULL
+      AND "embedding_json" IS NOT NULL
+      AND jsonb_typeof("embedding_json") = 'array'
+      AND jsonb_array_length("embedding_json") = 768;
+    """
+    await Tortoise.init(config=TORTOISE_ORM)
+    try:
+        async with in_transaction() as conn:
+            await conn.execute_script(PGVECTOR_MIGRATION_SQL)
+    finally:
+        await Tortoise.close_connections()
+
+async def ensure_pgvector_extension():
+    await Tortoise.init(config=TORTOISE_ORM)
+    try:
+        async with in_transaction() as conn:
+            await conn.execute_script("""
+            DO $$
+            BEGIN
+                IF NOT EXISTS (SELECT 1 FROM pg_extension WHERE extname = 'vector') THEN
+                    CREATE EXTENSION vector
+                    with
+                      schema extensions;
+                END IF;
+            END $$;
+            """)
+    finally:
+        await Tortoise.close_connections()
+
+
+async def apply_custom_indexes():
+    await Tortoise.init(config=TORTOISE_ORM)
+    try:
+        conn = Tortoise.get_connection("default")
+        for _table, statements in CUSTOM_INDEXES.items():
+            for sql in statements:
+                await conn.execute_script(sql)
+    finally:
+        await Tortoise.close_connections()
 
 
 def auto_run_command(cmd):
@@ -379,7 +471,10 @@ async def run_ultimate_migrations():
                 f"\n5️⃣ Making latest migration ultimate safe: {os.path.basename(latest)}"
             )
             create_ultimate_migration(latest)
-
+    
+    print("🧩 Ensuring pgvector extension exists...")
+    await ensure_pgvector_extension()
+    
     # Step 6: Apply migration (guaranteed to work)
     print("\n6️⃣ Applying ultimate safe migration...")
     max_attempts = 3
@@ -389,9 +484,17 @@ async def run_ultimate_migrations():
             await asyncio.sleep(2 ** (attempt - 1))  # Exponential backoff
         print(f"📤 Attempt {attempt}/{max_attempts}...")
         success, stdout, stderr = auto_run_command("aerich upgrade")
-
+        
         if success:
             print(f"✅ Upgrade successful on attempt {attempt}!")
+            
+            # Now do the rename/add/backfill/index work
+            print("🧠 Applying pgvector data migration (rename/backfill/index)…")
+            await apply_pgvector_migration()
+            
+            print("🧩 Creating partial/conditional indexes…")
+            await apply_custom_indexes()
+            
             break
 
         if attempt < max_attempts:
