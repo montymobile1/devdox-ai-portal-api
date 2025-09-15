@@ -9,6 +9,7 @@ instances with different log levels, and UnauthorizedAccess handling.
 import logging
 
 import pytest
+from devdox_ai_git.exceptions.base_exceptions import DevDoxGitException
 from fastapi import FastAPI
 from fastapi.exceptions import RequestValidationError
 from starlette.testclient import TestClient
@@ -20,7 +21,7 @@ from app.exceptions.exception_handlers import (
 )
 from app.exceptions.exception_manager import (
     manage_dev_dox_base_exception,
-    manage_generic_exception,
+    manage_dev_dox_git_exception, manage_generic_exception,
     manage_validation_exception,
 )
 
@@ -40,6 +41,7 @@ def exception_test_app() -> FastAPI:
     app.add_exception_handler(Exception, manage_generic_exception)
     app.add_exception_handler(DevDoxAPIException, manage_dev_dox_base_exception)
     app.add_exception_handler(RequestValidationError, manage_validation_exception)
+    app.add_exception_handler(DevDoxGitException, manage_dev_dox_git_exception)
 
     @app.get("/boom/generic")
     def _generic():
@@ -66,7 +68,17 @@ def exception_test_app() -> FastAPI:
             public_context={"retry": False},
             http_status_override=418,
         )
-
+    
+    @app.get("/boom/devdox-ai-git-exception")
+    def _devdox_ai_git_custom_exception():
+        raise DevDoxGitException(
+            user_message="teapot",
+            error_type="E418",
+            log_message="I am a teapot",
+            internal_context={"brew": "coffee"},
+            public_context={"retry": False},
+        )
+    
     @app.get("/boom/unauth")
     def _unauth():
         raise UnauthorizedAccess()
@@ -204,6 +216,29 @@ class TestDevDoxAPIExceptionHandlerAdvanced:
         assert_log_message_contains(caplog, "Path: /boom/custom-exception")
         assert_log_message_contains(caplog, "Status: 418")
 
+class TestDevDoxGitExceptionHandlerAdvanced:
+    """
+    Tests for a DevDoxGit with advanced configuration (custom status, context, and log level),
+    triggered via /boom/devdox-ai-git-exception.
+    """
+
+    def test_response_with_context_and_override(self, fastapi_permissive_client):
+        """Asserts correct 418 status, response body fields, and public context inclusion."""
+        resp = fastapi_permissive_client.get("/boom/devdox-ai-git-exception")
+        body = resp.json()
+        assert resp.status_code == DevDoxAPIException.http_status
+        assert body["message"] == "teapot"
+        assert body["details"] == {"retry": False}
+        assert body["debug"]["exception"] == "DevDoxGitException"
+    
+    def test_log_message_parts_and_context(self, fastapi_permissive_client, caplog):
+        """Checks that logs include all expected fields, internal context, and are logged at exception level."""
+        caplog.set_level(logging.DEBUG)
+        fastapi_permissive_client.get("/boom/devdox-ai-git-exception")
+        assert_log_message_contains(caplog, "E418")
+        assert_log_message_contains(caplog, "I am a teapot")
+        assert_log_message_contains(caplog, "Path: /boom/devdox-ai-git-exception")
+        assert_log_message_contains(caplog, "Status: 500")
 
 
 class TestUnauthorizedAccessHandler:
