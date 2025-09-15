@@ -1,6 +1,7 @@
 import uuid
 
 import pytest
+from devdox_ai_git.test_doubles.repo_fetcher_doubles import FakeRepoFetcher
 from encryption_src.test_doubles import FakeEncryptionHelper
 
 from app.exceptions.local_exceptions import BadRequest, ResourceNotFound
@@ -26,8 +27,6 @@ from models_src.test_doubles.repositories.git_label import (
     make_fake_git_label,
 )
 from models_src.test_doubles.repositories.user import FakeUserStore, make_fake_user
-
-from tests.unit_test.test_doubles.app.utils.repo_fetcher_doubles import FakeRepoFetcher
 
 
 @pytest.mark.asyncio

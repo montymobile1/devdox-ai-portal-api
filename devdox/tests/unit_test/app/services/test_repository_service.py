@@ -3,6 +3,7 @@ import random
 import uuid
 
 import pytest
+from devdox_ai_git.schema.repo import NormalizedGitRepo
 from models_src.dto.repo import GitHosting, RepoResponseDTO
 
 from app.exceptions.exception_constants import (
@@ -15,7 +16,7 @@ from models_src.exceptions.utils import internal_error, RepoErrors
 
 from app.schemas.basic import RequiredPaginationParams
 from app.services.repository import RepoManipulationService, RepoQueryService
-from app.schemas.repo import AddRepositoryRequest, GitRepoResponse
+from app.schemas.repo import AddRepositoryRequest
 from app.utils.auth import UserClaims
 from app.exceptions.local_exceptions import (
     BadRequest,
@@ -37,7 +38,7 @@ class StubEncryption:
 
 class StubTransformer:
     def from_git(self, data):
-        return GitRepoResponse(
+        return NormalizedGitRepo(
             id="r1",
             repo_name="test",
             description=None,
