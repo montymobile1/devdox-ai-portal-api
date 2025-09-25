@@ -18,55 +18,96 @@ logger = logging.getLogger(__name__)
 async def apply_pgvector_migration():
     
     PGVECTOR_MIGRATION_SQL = """
-    -- 1) Ensure pgvector extension
-    DO $$
-    BEGIN
-      IF NOT EXISTS (SELECT 1 FROM pg_extension WHERE extname = 'vector') THEN
-        CREATE EXTENSION vector
-        with
-          schema extensions;
-      END IF;
-    END $$;
-
-    -- 2) If old JSONB column still named "embedding", rename -> embedding_json (only once)
-    DO $$
-    BEGIN
-      IF EXISTS (
-        SELECT 1 FROM information_schema.columns
-        WHERE table_schema='public' AND table_name='code_chunks'
-          AND column_name='embedding' AND data_type='jsonb'
-      ) AND NOT EXISTS (
-        SELECT 1 FROM information_schema.columns
-        WHERE table_schema='public' AND table_name='code_chunks'
-          AND column_name='embedding_json'
-      ) THEN
-        ALTER TABLE "code_chunks" RENAME COLUMN "embedding" TO "embedding_json";
-      END IF;
-    END $$;
-
-    -- 3) Add vector(768) column if missing
-    DO $$
-    BEGIN
-      IF NOT EXISTS (
-        SELECT 1 FROM information_schema.columns
-        WHERE table_schema='public' AND table_name='code_chunks'
-          AND column_name='embedding'
-      ) THEN
-        ALTER TABLE "code_chunks" ADD COLUMN "embedding" vector(768);
-      END IF;
-    END $$;
-
-    -- 4) Backfill vector values from JSONB array when present (and exactly 768 dims)
-    UPDATE "code_chunks"
-    SET "embedding" = (
-      SELECT (ARRAY(
-        SELECT jsonb_array_elements_text("embedding_json")::float8
-      ))::vector
-    )
-    WHERE "embedding" IS NULL
-      AND "embedding_json" IS NOT NULL
-      AND jsonb_typeof("embedding_json") = 'array'
-      AND jsonb_array_length("embedding_json") = 768;
+        -- 0) Ensure schema + pgvector extension (no-op if already installed elsewhere)
+        CREATE SCHEMA IF NOT EXISTS extensions;
+        CREATE EXTENSION IF NOT EXISTS vector WITH SCHEMA extensions;
+        
+        -- 1) Handle old JSONB 'embedding' -> 'embedding_json2' (including the "stuck rename" case)
+        DO $$
+        BEGIN
+          IF EXISTS (
+            SELECT 1 FROM information_schema.columns
+            WHERE table_schema='public' AND table_name='code_chunks'
+              AND column_name='embedding' AND data_type='jsonb'
+          ) THEN
+            IF EXISTS (
+              SELECT 1 FROM information_schema.columns
+              WHERE table_schema='public' AND table_name='code_chunks'
+                AND column_name='embedding_json2'
+            ) THEN
+              -- Merge JSONB into embedding_json2 where it's missing, then drop JSONB 'embedding'
+              UPDATE "public"."code_chunks"
+              SET "embedding_json2" = "embedding"
+              WHERE "embedding_json2" IS NULL;
+              ALTER TABLE "public"."code_chunks" DROP COLUMN "embedding";
+            ELSE
+              ALTER TABLE "public"."code_chunks" RENAME COLUMN "embedding" TO "embedding_json2";
+            END IF;
+          END IF;
+        END $$;
+        
+        -- 2) Discover the schema of the 'vector' type, ensure column type is correct or create it, then backfill
+        DO $$
+        DECLARE
+          v_ns text;       -- schema that owns the 'vector' type (e.g., 'public' or 'extensions')
+          v_coltype text;  -- current type of public.code_chunks.embedding if present
+        BEGIN
+          -- Find the namespace of the 'vector' type
+          SELECT n.nspname
+          INTO v_ns
+          FROM pg_type t
+          JOIN pg_namespace n ON n.oid = t.typnamespace
+          WHERE t.typname = 'vector'
+          LIMIT 1;
+        
+          IF v_ns IS NULL THEN
+            RAISE EXCEPTION 'pgvector type not found; ensure the extension is installed';
+          END IF;
+        
+          -- If embedding exists, verify it's vector(768); else create it as such
+          IF EXISTS (
+            SELECT 1 FROM information_schema.columns
+            WHERE table_schema='public' AND table_name='code_chunks'
+              AND column_name='embedding'
+          ) THEN
+            SELECT format_type(a.atttypid, a.atttypmod)
+            INTO v_coltype
+            FROM pg_attribute a
+            JOIN pg_class c ON c.oid = a.attrelid
+            JOIN pg_namespace n ON n.oid = c.relnamespace
+            WHERE n.nspname='public'
+              AND c.relname='code_chunks'
+              AND a.attname='embedding'
+              AND a.attnum > 0;
+        
+            IF v_coltype IS DISTINCT FROM 'vector(768)' THEN
+              RAISE EXCEPTION
+                'Existing column public.code_chunks.embedding is %, expected vector(768)', v_coltype;
+              -- (If you prefer auto-fix: ALTER COLUMN ... TYPE %I.vector(768) USING embedding)
+            END IF;
+          ELSE
+            -- Create embedding as vector(768), schema-qualifying the type
+            EXECUTE format(
+              'ALTER TABLE "public"."code_chunks" ADD COLUMN "embedding" %I.vector(768)',
+              v_ns
+            );
+          END IF;
+        
+          -- Backfill NULL vectors from 768-length JSONB array 'embedding_json2'
+          -- (schema-qualify the cast to avoid relying on search_path)
+          EXECUTE format($sql$
+            UPDATE "public"."code_chunks"
+            SET "embedding" = (
+              SELECT (ARRAY(
+                SELECT jsonb_array_elements_text("embedding_json2")::float8
+              ))::%I.vector
+            )
+            WHERE "embedding" IS NULL
+              AND "embedding_json2" IS NOT NULL
+              AND jsonb_typeof("embedding_json2") = 'array'
+              AND jsonb_array_length("embedding_json2") = 768
+          $sql$, v_ns);
+        END $$;
     """
     await Tortoise.init(config=TORTOISE_ORM)
     try:
