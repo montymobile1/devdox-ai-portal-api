@@ -541,15 +541,6 @@ def generate_drop_indexes_sql(config):
         drops.append(f'DROP INDEX IF EXISTS "{index_name}";')
     return "\n            ".join(drops)
 
-
-def generate_drop_columns_sql(config):
-    """Generate SQL to drop columns."""
-    drops = []
-    for table, column, _, _, _ in config["columns"]:
-        drops.append(f'ALTER TABLE "{table}" DROP COLUMN IF EXISTS "{column}";')
-    return "\n            ".join(drops)
-
-
 def find_migration_files():
     """Find migration files in any directory structure."""
     possible_dirs = ["migrations", "migrations/models", "db/migrations"]
