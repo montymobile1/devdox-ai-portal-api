@@ -335,65 +335,6 @@ def auto_run_command(cmd):
         print(f"❌ Command failed: {e}")
         return False, "", str(e)
 
-def get_default_schema_config():
-    """Default schema configuration for common scenarios."""
-    return {
-        "tables": {
-            "code_chunks": {
-                "columns": [
-                    ("id", "UUID NOT NULL PRIMARY KEY"),
-                    ("user_id", "VARCHAR(255) NOT NULL"),
-                    ("repo_id", "VARCHAR(255) NOT NULL"),
-                    ("content", "TEXT NOT NULL"),
-                    ("embedding", "JSONB"),
-                    ("metadata", "JSONB NOT NULL"),
-                    ("file_name", "VARCHAR(255) NOT NULL"),
-                    ("file_path", "VARCHAR(255) NOT NULL"),
-                    ("file_size", "INT NOT NULL"),
-                    ("commit_number", "VARCHAR(255) NOT NULL"),
-                    ("created_at", "TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP"),
-                ]
-            }
-        },
-        "columns": [
-            ("repo", "relative_path", "VARCHAR(1024)", True, None),
-            ("repo", "total_chunks", "INT", False, "0"),
-            ("repo", "processing_end_time", "TIMESTAMPTZ", True, None),
-            ("repo", "total_files", "INT", False, "0"),
-            ("repo", "processing_start_time", "TIMESTAMPTZ", True, None),
-            ("repo", "status", "VARCHAR(255)", False, "pending"),
-            ("repo", "last_commit", "VARCHAR(255)", False, ""),
-            ("repo", "error_message", "TEXT", True, None),
-        ],
-        "indexes": [
-            (
-                "uid_git_label_user_id_848e44",
-                "git_label",
-                '("user_id", "git_hosting", "masked_token")',
-                True,
-            ),
-            ("uid_repo_user_id_a03d4e", "repo", '("user_id", "repo_id")', True),
-            ("idx_repo_user_id_05a4f0", "repo", '("user_id", "created_at")', False),
-            ("idx_user_user_id_d610a5", "user", '("user_id", "created_at")', False),
-        ],
-        "type_changes": [
-            (
-                "repo",
-                "language",
-                "JSONB",
-                'CASE WHEN "language" IS NULL THEN NULL WHEN "language" = \'\' THEN NULL ELSE to_jsonb("language"::text) END',
-            ),
-        ],
-        "comments": {
-            "repo": {
-                "size": "Size of the Git repository in bytes. Represents only the .git directory contents, including commit history, branches, and git objects. Does not include release assets, LFS files, CI artifacts, or other non-Git storage",
-                "language": "Primary programming languages",
-            }
-        },
-        "custom_sql": [],
-    }
-
-
 def validate_identifier(name):
     """Validate SQL identifier to prevent injection."""
     if not re.match(r"^[a-zA-Z_][a-zA-Z0-9_]*$", name):
