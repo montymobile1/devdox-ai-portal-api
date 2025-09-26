@@ -550,14 +550,6 @@ def generate_drop_columns_sql(config):
     return "\n            ".join(drops)
 
 
-def generate_drop_tables_sql(config):
-    """Generate SQL to drop tables."""
-    drops = []
-    for table_name in config["tables"]:
-        drops.append(f'DROP TABLE IF EXISTS "{table_name}";')
-    return "\n            ".join(drops)
-
-
 def find_migration_files():
     """Find migration files in any directory structure."""
     possible_dirs = ["migrations", "migrations/models", "db/migrations"]
