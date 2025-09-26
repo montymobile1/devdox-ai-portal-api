@@ -18,10 +18,6 @@ logger = logging.getLogger(__name__)
 async def apply_pgvector_migration():
     
     PGVECTOR_MIGRATION_SQL = """
-        -- 0) Ensure schema + pgvector extension (no-op if already installed elsewhere)
-        CREATE SCHEMA IF NOT EXISTS extensions;
-        CREATE EXTENSION IF NOT EXISTS vector WITH SCHEMA extensions;
-        
         -- 1) Handle old JSONB 'embedding' -> 'embedding_json2' (including the "stuck rename" case)
         DO $$
         BEGIN
@@ -35,7 +31,6 @@ async def apply_pgvector_migration():
               WHERE table_schema='public' AND table_name='code_chunks'
                 AND column_name='embedding_json2'
             ) THEN
-              -- Merge JSONB into embedding_json2 where it's missing, then drop JSONB 'embedding'
               UPDATE "public"."code_chunks"
               SET "embedding_json2" = "embedding"
               WHERE "embedding_json2" IS NULL;
@@ -46,11 +41,12 @@ async def apply_pgvector_migration():
           END IF;
         END $$;
         
-        -- 2) Discover the schema of the 'vector' type, ensure column type is correct or create it, then backfill
+        -- 2) Discover 'vector' type schema, ensure embedding is vector(768), and (conditionally) backfill
         DO $$
         DECLARE
-          v_ns text;       -- schema that owns the 'vector' type (e.g., 'public' or 'extensions')
-          v_coltype text;  -- current type of public.code_chunks.embedding if present
+          v_ns        text;  -- schema that owns 'vector' type (e.g., 'public' or 'extensions')
+          v_coltype   text;  -- current type of public.code_chunks.embedding if present
+          v_has_json2 boolean; -- whether embedding_json2 column exists
         BEGIN
           -- Find the namespace of the 'vector' type
           SELECT n.nspname
@@ -83,30 +79,36 @@ async def apply_pgvector_migration():
             IF v_coltype IS DISTINCT FROM 'vector(768)' THEN
               RAISE EXCEPTION
                 'Existing column public.code_chunks.embedding is %, expected vector(768)', v_coltype;
-              -- (If you prefer auto-fix: ALTER COLUMN ... TYPE %I.vector(768) USING embedding)
+              -- Or ALTER to vector(768) if you prefer auto-fix.
             END IF;
           ELSE
-            -- Create embedding as vector(768), schema-qualifying the type
             EXECUTE format(
               'ALTER TABLE "public"."code_chunks" ADD COLUMN "embedding" %I.vector(768)',
               v_ns
             );
           END IF;
         
-          -- Backfill NULL vectors from 768-length JSONB array 'embedding_json2'
-          -- (schema-qualify the cast to avoid relying on search_path)
-          EXECUTE format($sql$
-            UPDATE "public"."code_chunks"
-            SET "embedding" = (
-              SELECT (ARRAY(
-                SELECT jsonb_array_elements_text("embedding_json2")::float8
-              ))::%I.vector
-            )
-            WHERE "embedding" IS NULL
-              AND "embedding_json2" IS NOT NULL
-              AND jsonb_typeof("embedding_json2") = 'array'
-              AND jsonb_array_length("embedding_json2") = 768
-          $sql$, v_ns);
+          -- Only backfill if the source column embedding_json2 actually exists
+          SELECT EXISTS (
+            SELECT 1 FROM information_schema.columns
+            WHERE table_schema='public' AND table_name='code_chunks'
+              AND column_name='embedding_json2'
+          ) INTO v_has_json2;
+        
+          IF v_has_json2 THEN
+            EXECUTE format($sql$
+              UPDATE "public"."code_chunks"
+              SET "embedding" = (
+                SELECT (ARRAY(
+                  SELECT jsonb_array_elements_text("embedding_json2")::float8
+                ))::%I.vector
+              )
+              WHERE "embedding" IS NULL
+                AND "embedding_json2" IS NOT NULL
+                AND jsonb_typeof("embedding_json2") = 'array'
+                AND jsonb_array_length("embedding_json2") = 768
+            $sql$, v_ns);
+          END IF;
         END $$;
     """
     await Tortoise.init(config=TORTOISE_ORM)
@@ -115,24 +117,6 @@ async def apply_pgvector_migration():
             await conn.execute_script(PGVECTOR_MIGRATION_SQL)
     finally:
         await Tortoise.close_connections()
-
-async def ensure_pgvector_extension():
-    await Tortoise.init(config=TORTOISE_ORM)
-    try:
-        async with in_transaction() as conn:
-            await conn.execute_script("""
-            DO $$
-            BEGIN
-                IF NOT EXISTS (SELECT 1 FROM pg_extension WHERE extname = 'vector') THEN
-                    CREATE EXTENSION vector
-                    with
-                      schema extensions;
-                END IF;
-            END $$;
-            """)
-    finally:
-        await Tortoise.close_connections()
-
 
 async def apply_custom_indexes():
     await Tortoise.init(config=TORTOISE_ORM)
@@ -512,9 +496,6 @@ async def run_ultimate_migrations():
                 f"\n5️⃣ Making latest migration ultimate safe: {os.path.basename(latest)}"
             )
             create_ultimate_migration(latest)
-    
-    print("🧩 Ensuring pgvector extension exists...")
-    await ensure_pgvector_extension()
     
     # Step 6: Apply migration (guaranteed to work)
     print("\n6️⃣ Applying ultimate safe migration...")
