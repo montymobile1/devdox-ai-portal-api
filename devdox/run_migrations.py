@@ -531,16 +531,6 @@ def generate_dynamic_migration_sql(config):
 
     return "\n".join(sql_parts)
 
-
-
-
-def generate_drop_indexes_sql(config):
-    """Generate SQL to drop indexes."""
-    drops = []
-    for index_name, _, _, _ in config["indexes"]:
-        drops.append(f'DROP INDEX IF EXISTS "{index_name}";')
-    return "\n            ".join(drops)
-
 def find_migration_files():
     """Find migration files in any directory structure."""
     possible_dirs = ["migrations", "migrations/models", "db/migrations"]
