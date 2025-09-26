@@ -6,6 +6,7 @@ import re
 import shutil
 import glob
 from datetime import datetime
+from typing import Any, Dict, List, Tuple
 
 from models_src.models import CUSTOM_INDEXES
 from tortoise import Tortoise
@@ -15,6 +16,181 @@ from app.config import TORTOISE_ORM
 
 logger = logging.getLogger(__name__)
 
+# =============================================================
+# --- Schema snapshot & diff helpers --------------------------
+# =============================================================
+async def _snapshot_with_conn(conn) -> Dict[str, List[Dict[str, Any]]]:
+    # Tables
+    tables = await conn.execute_query_dict("""
+        SELECT table_schema, table_name
+        FROM information_schema.tables
+        WHERE table_type='BASE TABLE'
+          AND table_schema NOT IN ('pg_catalog','information_schema')
+        ORDER BY table_schema, table_name
+    """)
+    # Columns
+    columns = await conn.execute_query_dict("""
+        SELECT table_schema, table_name, column_name,
+               data_type, udt_name,
+               is_nullable,
+               column_default,
+               character_maximum_length, numeric_precision, numeric_scale
+        FROM information_schema.columns
+        WHERE table_schema NOT IN ('pg_catalog','information_schema')
+        ORDER BY table_schema, table_name, ordinal_position
+    """)
+    # Indexes
+    indexes = await conn.execute_query_dict("""
+        SELECT schemaname AS table_schema, tablename AS table_name,
+               indexname, indexdef
+        FROM pg_indexes
+        WHERE schemaname NOT IN ('pg_catalog','information_schema')
+        ORDER BY schemaname, tablename, indexname
+    """)
+    # Constraints (PK/UK/FK/Check)
+    constraints = await conn.execute_query_dict("""
+        SELECT n.nspname AS table_schema,
+               c.relname  AS table_name,
+               con.conname AS constraint_name,
+               con.contype AS constraint_type,
+               pg_get_constraintdef(con.oid) AS constraint_def
+        FROM pg_constraint con
+        JOIN pg_class c ON c.oid = con.conrelid
+        JOIN pg_namespace n ON n.oid = c.relnamespace
+        WHERE n.nspname NOT IN ('pg_catalog','information_schema')
+        ORDER BY n.nspname, c.relname, con.conname
+    """)
+    # Column comments
+    comments = await conn.execute_query_dict("""
+        SELECT n.nspname AS table_schema,
+               c.relname  AS table_name,
+               a.attname  AS column_name,
+               d.description AS comment
+        FROM pg_class c
+        JOIN pg_namespace n ON n.oid = c.relnamespace
+        LEFT JOIN pg_attribute a
+               ON a.attrelid = c.oid AND a.attnum > 0
+        LEFT JOIN pg_description d
+               ON d.objoid = a.attrelid AND d.objsubid = a.attnum
+        WHERE n.nspname NOT IN ('pg_catalog','information_schema')
+          AND c.relkind = 'r'
+        ORDER BY n.nspname, c.relname, a.attnum
+    """)
+    # Extensions (handy to confirm pgvector availability/location)
+    extensions = await conn.execute_query_dict("""
+        SELECT extname,
+               extnamespace::regnamespace::text AS schema
+        FROM pg_extension
+        ORDER BY extname
+    """)
+    return {
+        "tables": tables,
+        "columns": columns,
+        "indexes": indexes,
+        "constraints": constraints,
+        "comments": comments,
+        "extensions": extensions,
+    }
+
+async def snapshot_schema() -> Dict[str, List[Dict[str, Any]]]:
+    """Open a short-lived connection and capture a schema snapshot."""
+    await Tortoise.init(config=TORTOISE_ORM)
+    try:
+        conn = Tortoise.get_connection("default")
+        return await _snapshot_with_conn(conn)
+    finally:
+        await Tortoise.close_connections()
+
+def _index_by(rows: List[Dict[str, Any]], keys: Tuple[str, ...]) -> Dict[Tuple[Any, ...], Dict[str, Any]]:
+    return {tuple(row[k] for k in keys): row for row in rows}
+
+def _diff_simple(before: List[Dict[str, Any]],
+                 after: List[Dict[str, Any]],
+                 keycols: Tuple[str, ...],
+                 comparable_cols: List[str]) -> Dict[str, Any]:
+    bmap = _index_by(before, keycols)
+    amap = _index_by(after, keycols)
+    added_keys   = list(amap.keys() - bmap.keys())
+    removed_keys = list(bmap.keys() - amap.keys())
+    common_keys  = list(amap.keys() & bmap.keys())
+
+    added   = [amap[k] for k in sorted(added_keys)]
+    removed = [bmap[k] for k in sorted(removed_keys)]
+    changed = []
+
+    for k in sorted(common_keys):
+        b = bmap[k]; a = amap[k]
+        diffs = {}
+        for col in comparable_cols:
+            if b.get(col) != a.get(col):
+                diffs[col] = {"before": b.get(col), "after": a.get(col)}
+        if diffs:
+            changed.append({"key": dict(zip(keycols, k)), "changes": diffs})
+
+    return {"added": added, "removed": removed, "changed": changed}
+
+def diff_snapshots(before: Dict[str, List[Dict[str, Any]]],
+                   after: Dict[str, List[Dict[str, Any]]]) -> Dict[str, Any]:
+    return {
+        "tables": _diff_simple(
+            before["tables"], after["tables"],
+            keycols=("table_schema", "table_name"),
+            comparable_cols=[]
+        ),
+        "columns": _diff_simple(
+            before["columns"], after["columns"],
+            keycols=("table_schema", "table_name", "column_name"),
+            comparable_cols=["data_type", "udt_name", "is_nullable", "column_default",
+                             "character_maximum_length", "numeric_precision", "numeric_scale"]
+        ),
+        "indexes": _diff_simple(
+            before["indexes"], after["indexes"],
+            keycols=("table_schema", "table_name", "indexname"),
+            comparable_cols=["indexdef"]
+        ),
+        "constraints": _diff_simple(
+            before["constraints"], after["constraints"],
+            keycols=("table_schema", "table_name", "constraint_name"),
+            comparable_cols=["constraint_type", "constraint_def"]
+        ),
+        "comments": _diff_simple(
+            before["comments"], after["comments"],
+            keycols=("table_schema", "table_name", "column_name"),
+            comparable_cols=["comment"]
+        ),
+        "extensions": _diff_simple(
+            before["extensions"], after["extensions"],
+            keycols=("extname",),
+            comparable_cols=["schema"]
+        ),
+    }
+
+def print_diff_summary(diff: Dict[str, Any], max_per_section: int = 25) -> None:
+    def _head(lst): return lst[:max_per_section]
+    print("\n📋 Schema change summary")
+    for section in ["extensions", "tables", "columns", "indexes", "constraints", "comments"]:
+        d = diff[section]
+        print(f"\n— {section.upper()} —")
+        print(f"  + added   : {len(d['added'])}")
+        print(f"  - removed : {len(d['removed'])}")
+        print(f"  ~ changed : {len(d['changed'])}")
+
+        if d["added"]:
+            print("   • Added (sample):")
+            for row in _head(d["added"]):
+                print(f"     - {row}")
+        if d["removed"]:
+            print("   • Removed (sample):")
+            for row in _head(d["removed"]):
+                print(f"     - {row}")
+        if d["changed"]:
+            print("   • Changed (sample):")
+            for ch in _head(d["changed"]):
+                print(f"     - key={ch['key']} changes={ch['changes']}")
+
+# =============================================================
+# --- PGVECTOR Migration Operations ---------------------------
+# =============================================================
 async def apply_pgvector_migration():
     
     PGVECTOR_MIGRATION_SQL = """
@@ -118,6 +294,10 @@ async def apply_pgvector_migration():
     finally:
         await Tortoise.close_connections()
 
+# =============================================================
+# --- OTHER ---------------------------------------------------
+# =============================================================
+
 async def apply_custom_indexes():
     await Tortoise.init(config=TORTOISE_ORM)
     try:
@@ -160,7 +340,7 @@ def get_schema_config():
     """Get schema configuration with fallback to defaults."""
     try:
         from migration_schema_config import get_schema_config
-
+        
         return get_schema_config()
     except ImportError:
         print("⚠️ Schema config not found, using built-in defaults...")
@@ -434,7 +614,11 @@ async def run_ultimate_migrations():
     if not await check_database():
         print("❌ Fix database connection first")
         return False
-
+        
+    # Take PRE snapshot of the database
+    print("\n📸 Taking PRE-migration snapshot...")
+    snapshot_before = await snapshot_schema()
+    
     # Step 2: Setup environment
     os.environ["PYTHONUNBUFFERED"] = "1"
     migrations_dir, existing_files = find_migration_files()
@@ -526,18 +710,16 @@ async def run_ultimate_migrations():
             print(f"❌ All attempts failed: {stderr}")
             return False
 
-    # Step 7: Final verification
+    # Step 7: Final verification + POST snapshot + diff
     print("\n7️⃣ Final verification...")
     if await check_database():
         print("✅ Database connection still working")
-
-        # Show schema configuration status
-        config = get_schema_config()
-        print(f"\n📊 Schema Configuration Applied:")
-        print(f"   ✅ Tables created: {len(config['tables'])}")
-        print(f"   ✅ Columns added: {len(config['columns'])}")
-        print(f"   ✅ Indexes created: {len(config['indexes'])}")
-        print(f"   ✅ Type conversions: {len(config['type_changes'])}")
+        
+        print("\n📸 Taking POST-migration snapshot...")
+        snapshot_after = await snapshot_schema()
+        
+        diff = diff_snapshots(snapshot_before, snapshot_after)
+        print_diff_summary(diff)
 
         return True
     else:
