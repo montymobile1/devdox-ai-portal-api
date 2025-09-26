@@ -335,18 +335,6 @@ def auto_run_command(cmd):
         print(f"❌ Command failed: {e}")
         return False, "", str(e)
 
-
-def get_schema_config():
-    """Get schema configuration with fallback to defaults."""
-    try:
-        from migration_schema_config import get_schema_config
-        
-        return get_schema_config()
-    except ImportError:
-        print("⚠️ Schema config not found, using built-in defaults...")
-        return get_default_schema_config()
-
-
 def get_default_schema_config():
     """Default schema configuration for common scenarios."""
     return {
