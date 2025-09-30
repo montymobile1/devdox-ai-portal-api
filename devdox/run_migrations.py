@@ -294,9 +294,9 @@ async def apply_pgvector_migration():
     finally:
         await Tortoise.close_connections()
 
-# =============================================================
-# --- OTHER ---------------------------------------------------
-# =============================================================
+# ======================================================================================================
+# --- Apply custom partial indexes defined in the `devdox-ai-models` package ---------------------------
+# ======================================================================================================
 
 async def apply_custom_indexes():
     await Tortoise.init(config=TORTOISE_ORM)
@@ -308,6 +308,9 @@ async def apply_custom_indexes():
     finally:
         await Tortoise.close_connections()
 
+# =============================================================
+# --- OTHER ---------------------------------------------------
+# =============================================================
 
 def auto_run_command(cmd):
     """Run any command with automatic 'yes' responses."""
