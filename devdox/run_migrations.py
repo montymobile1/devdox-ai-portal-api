@@ -8,7 +8,6 @@ import glob
 from datetime import datetime
 from typing import Any, Dict, List, Tuple
 
-from models_src.models import CUSTOM_INDEXES
 from tortoise import Tortoise
 from tortoise.transactions import in_transaction
 
@@ -298,13 +297,68 @@ async def apply_pgvector_migration():
 # --- Apply custom partial indexes defined in the `devdox-ai-models` package ---------------------------
 # ======================================================================================================
 
-async def apply_custom_indexes():
+async def apply_queue_processing_registry_one_claim_unique():
+    queue_partial_unique_sql = """
+    -- 0) Sanity checks
+    DO $$
+    BEGIN
+      IF NOT EXISTS (
+        SELECT 1 FROM information_schema.tables
+        WHERE table_schema = 'public' AND table_name = 'queue_processing_registry'
+      ) THEN
+        RAISE EXCEPTION 'Table public.queue_processing_registry does not exist';
+      END IF;
+
+      IF NOT EXISTS (
+        SELECT 1 FROM information_schema.columns
+        WHERE table_schema='public' AND table_name='queue_processing_registry' AND column_name='message_id'
+      ) THEN
+        RAISE EXCEPTION 'Column "message_id" missing on public.queue_processing_registry';
+      END IF;
+
+      IF NOT EXISTS (
+        SELECT 1 FROM information_schema.columns
+        WHERE table_schema='public' AND table_name='queue_processing_registry' AND column_name='status'
+      ) THEN
+        RAISE EXCEPTION 'Column "status" missing on public.queue_processing_registry';
+      END IF;
+    END $$ LANGUAGE plpgsql;
+
+    -- 1) Abort if duplicates would violate the unique partial index
+    DO $$
+    BEGIN
+      IF EXISTS (
+        SELECT 1
+        FROM (
+          SELECT message_id, COUNT(*) AS c
+          FROM public.queue_processing_registry
+          WHERE status IN ('pending','in_progress')
+          GROUP BY message_id
+          HAVING COUNT(*) > 1
+        ) d
+      ) THEN
+        RAISE EXCEPTION
+          'Cannot create unique partial index: duplicates exist for (message_id) with status in (pending,in_progress). Fix data and rerun.';
+      END IF;
+    END $$ LANGUAGE plpgsql;
+
+    -- 2) Replace any previous index to guarantee exact definition
+    DROP INDEX IF EXISTS public."queue_processing_registry_message_id_idx";
+    
+    -- 3) Create the index
+    
+    CREATE UNIQUE INDEX public."queue_processing_registry_message_id_idx"
+    ON public."queue_processing_registry" ("message_id")
+    WHERE "status" IN ('pending','in_progress');
+
+    COMMENT ON INDEX public."queue_processing_registry_message_id_idx"
+      IS 'Enforces at most one row per message_id while status is pending/in_progress.';
+    """
+    
     await Tortoise.init(config=TORTOISE_ORM)
     try:
-        conn = Tortoise.get_connection("default")
-        for _table, statements in CUSTOM_INDEXES.items():
-            for sql in statements:
-                await conn.execute_script(sql)
+        async with in_transaction() as conn:
+            await conn.execute_script(queue_partial_unique_sql)
     finally:
         await Tortoise.close_connections()
 
@@ -484,8 +538,8 @@ async def run_ultimate_migrations():
             print("🧠 Applying pgvector data migration (rename/backfill/index)…")
             await apply_pgvector_migration()
             
-            print("🧩 Creating partial/conditional indexes…")
-            await apply_custom_indexes()
+            print("🧩 Creating unique partial index `queue_processing_registry_message_id_idx` on queue_processing_registry…")
+            await apply_queue_processing_registry_one_claim_unique()
             
             break
 
