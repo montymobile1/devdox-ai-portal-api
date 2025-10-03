@@ -343,15 +343,15 @@ async def apply_queue_processing_registry_one_claim_unique():
     END $$ LANGUAGE plpgsql;
 
     -- 2) Replace any previous index to guarantee exact definition
-    DROP INDEX IF EXISTS public."queue_processing_registry_message_id_idx";
+    DROP INDEX IF EXISTS "queue_processing_registry_message_id_idx";
     
     -- 3) Create the index
     
-    CREATE UNIQUE INDEX public."queue_processing_registry_message_id_idx"
+    CREATE UNIQUE INDEX "queue_processing_registry_message_id_idx"
     ON public."queue_processing_registry" ("message_id")
     WHERE "status" IN ('pending','in_progress');
 
-    COMMENT ON INDEX public."queue_processing_registry_message_id_idx"
+    COMMENT ON INDEX "queue_processing_registry_message_id_idx"
       IS 'Enforces at most one row per message_id while status is pending/in_progress.';
     """
     
