@@ -2,6 +2,8 @@ import logging
 import uuid
 from typing import Annotated, Optional
 
+from devdox_ai_git.repo_fetcher import RepoFetcher
+from devdox_ai_git.schema.repo import GitUserResponse
 from fastapi import Depends
 
 from app.exceptions.local_exceptions import BadRequest, ResourceNotFound
@@ -16,14 +18,12 @@ from models_src.exceptions.base_exceptions import DevDoxModelsException
 from models_src.exceptions.exception_constants import LABEL_ALREADY_EXISTS_TITLE
 from app.schemas.basic import PaginationParams, RequiredPaginationParams
 from app.schemas.git_label import GitLabelBase, GitLabelResponse
-from app.schemas.repo import GitUserResponse
 from app.utils.auth import UserClaims
 from app.utils.encryption import (
     FernetEncryptionHelper,
     get_encryption_helper,
 )
 from app.utils.git_managers import retrieve_git_fetcher_or_die
-from app.utils.repo_fetcher import RepoFetcher
 
 from models_src.repositories.user import TortoiseUserStore as UserRepository
 from models_src.repositories.git_label import TortoiseGitLabelStore as GitLabelRepository

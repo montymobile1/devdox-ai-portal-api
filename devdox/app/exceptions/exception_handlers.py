@@ -20,6 +20,7 @@ import dataclasses
 import logging
 from typing import Any, Dict, Optional
 
+from devdox_ai_git.exceptions.base_exceptions import DevDoxGitException
 from fastapi.exceptions import RequestValidationError
 from starlette import status
 from starlette.requests import Request
@@ -125,6 +126,22 @@ def devdox_base_exception_handler(
         details=exc.public_context,
         error_type=exc_error_type,
     )
+
+def devdox_git_exception_handler(request: Request, exc: DevDoxGitException):
+    """
+    Adapt a DevDoxGitException (external package) into our unified payload,
+    reusing the base handler's logging and formatting.
+    """
+    api_exc  =  DevDoxAPIException(
+        user_message=exc.user_message,
+        log_message=exc.log_message,
+        error_type=exc.error_type,
+        public_context=exc.public_context,
+        internal_context=exc.internal_context,
+        log_level=exc.log_level
+    )
+    
+    return devdox_base_exception_handler(request, api_exc)
 
 def validation_exception_handler(request: Request, exc: RequestValidationError) -> ErrorPayload:
     """

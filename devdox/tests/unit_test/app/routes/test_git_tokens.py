@@ -1,6 +1,7 @@
 import uuid
 
 import pytest
+from devdox_ai_git.test_doubles.repo_fetcher_doubles import FakeRepoFetcher
 from encryption_src.test_doubles import FakeEncryptionHelper
 from fastapi import status
 from fastapi.testclient import TestClient
@@ -27,10 +28,6 @@ from models_src.test_doubles.repositories.git_label import (
 from models_src.test_doubles.repositories.user import (
     FakeUserStore,
     make_fake_user,
-)
-
-from tests.unit_test.test_doubles.app.utils.repo_fetcher_doubles import (
-    FakeRepoFetcher,
 )
 
 

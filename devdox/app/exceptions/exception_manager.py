@@ -12,6 +12,7 @@ and ensuring that all exceptions are processed through the defined logic in `han
 """
 from dataclasses import asdict
 
+from devdox_ai_git.exceptions.base_exceptions import DevDoxGitException
 from fastapi.exceptions import RequestValidationError
 from starlette.requests import Request
 
@@ -21,7 +22,7 @@ from fastapi import FastAPI
 from app.exceptions.base_exceptions import DevDoxAPIException
 from app.exceptions.exception_handlers import (
     devdox_base_exception_handler,
-    generic_exception_handler,
+    devdox_git_exception_handler, generic_exception_handler,
     validation_exception_handler,
 )
 from app.utils.api_response import APIResponse
@@ -49,12 +50,19 @@ def manage_generic_exception(request: Request, exc: Exception):
 
     return APIResponse.error(**asdict(payload))
 
+
+
 def manage_dev_dox_base_exception(request: Request, exc: DevDoxAPIException):
     payload = devdox_base_exception_handler(request, exc)
     payload.debug = handle_exception_debug_payload(exc)
 
     return APIResponse.error(**asdict(payload))
 
+def manage_dev_dox_git_exception(request: Request, exc: DevDoxGitException):
+    payload = devdox_git_exception_handler(request, exc)
+    payload.debug = handle_exception_debug_payload(exc)
+
+    return APIResponse.error(**asdict(payload))
 
 def manage_validation_exception(request: Request, exc: RequestValidationError):
     """
@@ -92,3 +100,4 @@ def register_exception_handlers(app: FastAPI):
     app.add_exception_handler(Exception, manage_generic_exception)
     app.add_exception_handler(DevDoxAPIException, manage_dev_dox_base_exception)
     app.add_exception_handler(RequestValidationError, manage_validation_exception)
+    app.add_exception_handler(DevDoxGitException, manage_dev_dox_git_exception)

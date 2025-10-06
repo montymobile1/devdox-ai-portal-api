@@ -1,5 +1,8 @@
 from typing import Annotated, List, Tuple
 from uuid import UUID, uuid4
+
+from devdox_ai_git.repo_fetcher import RepoFetcher
+from devdox_ai_git.schema.repo import NormalizedGitRepo
 from fastapi import Depends
 
 from app.exceptions import exception_constants
@@ -23,7 +26,6 @@ from app.schemas.repo import AddRepositoryRequest, GitRepoResponse, RepoResponse
 from app.utils.auth import UserClaims
 from app.utils.encryption import get_encryption_helper, FernetEncryptionHelper
 from app.utils.git_managers import retrieve_git_fetcher_or_die
-from app.utils.repo_fetcher import RepoFetcher
 from models_src.exceptions.base_exceptions import DevDoxModelsException
 from models_src.exceptions.utils import RepoErrors
 from models_src.repositories.git_label import TortoiseGitLabelStore as GitLabelRepository
@@ -196,7 +198,7 @@ class RepoManipulationService:
             decrypted_label_token, payload.relative_path
         )
 
-        transformed_data: GitRepoResponse = fetcher_data_mapper.from_git(repo_data)
+        transformed_data: NormalizedGitRepo = fetcher_data_mapper.from_git(repo_data)
 
         try:
             saved_repo = await self.repo_repository.save(
