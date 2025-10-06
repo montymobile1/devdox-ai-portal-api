@@ -130,6 +130,7 @@ class PostApiKeyService:
                 user_id=user_claims.sub,
                 api_key=result.hashed,
                 masked_api_key=result.masked,
+                is_active=True
             )
         )
 
