@@ -24,7 +24,7 @@ dependencies = [
     "fastapi-cli==0.0.7",
     "starlette==0.46.2",
     "uvicorn==0.34.2",
-    #"uvloop==0.21.0",
+    "uvloop==0.21.0",
 
     #queue
     "tembo-pgmq-python==0.10.0",
