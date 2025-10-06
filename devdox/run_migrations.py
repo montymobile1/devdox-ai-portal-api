@@ -6,8 +6,8 @@ import re
 import shutil
 import glob
 from datetime import datetime
+from typing import Any, Dict, List, Tuple
 
-from models_src.models import CUSTOM_INDEXES
 from tortoise import Tortoise
 from tortoise.transactions import in_transaction
 
@@ -15,58 +15,276 @@ from app.config import TORTOISE_ORM
 
 logger = logging.getLogger(__name__)
 
+# =============================================================
+# --- Schema snapshot & diff helpers --------------------------
+# =============================================================
+async def _snapshot_with_conn(conn) -> Dict[str, List[Dict[str, Any]]]:
+    # Tables
+    tables = await conn.execute_query_dict("""
+        SELECT table_schema, table_name
+        FROM information_schema.tables
+        WHERE table_type='BASE TABLE'
+          AND table_schema NOT IN ('pg_catalog','information_schema')
+        ORDER BY table_schema, table_name
+    """)
+    # Columns
+    columns = await conn.execute_query_dict("""
+        SELECT table_schema, table_name, column_name,
+               data_type, udt_name,
+               is_nullable,
+               column_default,
+               character_maximum_length, numeric_precision, numeric_scale
+        FROM information_schema.columns
+        WHERE table_schema NOT IN ('pg_catalog','information_schema')
+        ORDER BY table_schema, table_name, ordinal_position
+    """)
+    # Indexes
+    indexes = await conn.execute_query_dict("""
+        SELECT schemaname AS table_schema, tablename AS table_name,
+               indexname, indexdef
+        FROM pg_indexes
+        WHERE schemaname NOT IN ('pg_catalog','information_schema')
+        ORDER BY schemaname, tablename, indexname
+    """)
+    # Constraints (PK/UK/FK/Check)
+    constraints = await conn.execute_query_dict("""
+        SELECT n.nspname AS table_schema,
+               c.relname  AS table_name,
+               con.conname AS constraint_name,
+               con.contype AS constraint_type,
+               pg_get_constraintdef(con.oid) AS constraint_def
+        FROM pg_constraint con
+        JOIN pg_class c ON c.oid = con.conrelid
+        JOIN pg_namespace n ON n.oid = c.relnamespace
+        WHERE n.nspname NOT IN ('pg_catalog','information_schema')
+        ORDER BY n.nspname, c.relname, con.conname
+    """)
+    # Column comments
+    comments = await conn.execute_query_dict("""
+        SELECT n.nspname AS table_schema,
+               c.relname  AS table_name,
+               a.attname  AS column_name,
+               d.description AS comment
+        FROM pg_class c
+        JOIN pg_namespace n ON n.oid = c.relnamespace
+        LEFT JOIN pg_attribute a
+               ON a.attrelid = c.oid AND a.attnum > 0
+        LEFT JOIN pg_description d
+               ON d.objoid = a.attrelid AND d.objsubid = a.attnum
+        WHERE n.nspname NOT IN ('pg_catalog','information_schema')
+          AND c.relkind = 'r'
+        ORDER BY n.nspname, c.relname, a.attnum
+    """)
+    # Extensions (handy to confirm pgvector availability/location)
+    extensions = await conn.execute_query_dict("""
+        SELECT extname,
+               extnamespace::regnamespace::text AS schema
+        FROM pg_extension
+        ORDER BY extname
+    """)
+    return {
+        "tables": tables,
+        "columns": columns,
+        "indexes": indexes,
+        "constraints": constraints,
+        "comments": comments,
+        "extensions": extensions,
+    }
+
+async def snapshot_schema() -> Dict[str, List[Dict[str, Any]]]:
+    """Open a short-lived connection and capture a schema snapshot."""
+    await Tortoise.init(config=TORTOISE_ORM)
+    try:
+        conn = Tortoise.get_connection("default")
+        return await _snapshot_with_conn(conn)
+    finally:
+        await Tortoise.close_connections()
+
+def _index_by(rows: List[Dict[str, Any]], keys: Tuple[str, ...]) -> Dict[Tuple[Any, ...], Dict[str, Any]]:
+    return {tuple(row[k] for k in keys): row for row in rows}
+
+def _diff_simple(before: List[Dict[str, Any]],
+                 after: List[Dict[str, Any]],
+                 keycols: Tuple[str, ...],
+                 comparable_cols: List[str]) -> Dict[str, Any]:
+    bmap = _index_by(before, keycols)
+    amap = _index_by(after, keycols)
+    added_keys   = list(amap.keys() - bmap.keys())
+    removed_keys = list(bmap.keys() - amap.keys())
+    common_keys  = list(amap.keys() & bmap.keys())
+
+    added   = [amap[k] for k in sorted(added_keys)]
+    removed = [bmap[k] for k in sorted(removed_keys)]
+    changed = []
+
+    for k in sorted(common_keys):
+        b = bmap[k]; a = amap[k]
+        diffs = {}
+        for col in comparable_cols:
+            if b.get(col) != a.get(col):
+                diffs[col] = {"before": b.get(col), "after": a.get(col)}
+        if diffs:
+            changed.append({"key": dict(zip(keycols, k)), "changes": diffs})
+
+    return {"added": added, "removed": removed, "changed": changed}
+
+def diff_snapshots(before: Dict[str, List[Dict[str, Any]]],
+                   after: Dict[str, List[Dict[str, Any]]]) -> Dict[str, Any]:
+    return {
+        "tables": _diff_simple(
+            before["tables"], after["tables"],
+            keycols=("table_schema", "table_name"),
+            comparable_cols=[]
+        ),
+        "columns": _diff_simple(
+            before["columns"], after["columns"],
+            keycols=("table_schema", "table_name", "column_name"),
+            comparable_cols=["data_type", "udt_name", "is_nullable", "column_default",
+                             "character_maximum_length", "numeric_precision", "numeric_scale"]
+        ),
+        "indexes": _diff_simple(
+            before["indexes"], after["indexes"],
+            keycols=("table_schema", "table_name", "indexname"),
+            comparable_cols=["indexdef"]
+        ),
+        "constraints": _diff_simple(
+            before["constraints"], after["constraints"],
+            keycols=("table_schema", "table_name", "constraint_name"),
+            comparable_cols=["constraint_type", "constraint_def"]
+        ),
+        "comments": _diff_simple(
+            before["comments"], after["comments"],
+            keycols=("table_schema", "table_name", "column_name"),
+            comparable_cols=["comment"]
+        ),
+        "extensions": _diff_simple(
+            before["extensions"], after["extensions"],
+            keycols=("extname",),
+            comparable_cols=["schema"]
+        ),
+    }
+
+def print_diff_summary(diff: Dict[str, Any], max_per_section: int = 25) -> None:
+    def _head(lst): return lst[:max_per_section]
+    print("\n📋 Schema change summary")
+    for section in ["extensions", "tables", "columns", "indexes", "constraints", "comments"]:
+        d = diff[section]
+        print(f"\n— {section.upper()} —")
+        print(f"  + added   : {len(d['added'])}")
+        print(f"  - removed : {len(d['removed'])}")
+        print(f"  ~ changed : {len(d['changed'])}")
+
+        if d["added"]:
+            print("   • Added (sample):")
+            for row in _head(d["added"]):
+                print(f"     - {row}")
+        if d["removed"]:
+            print("   • Removed (sample):")
+            for row in _head(d["removed"]):
+                print(f"     - {row}")
+        if d["changed"]:
+            print("   • Changed (sample):")
+            for ch in _head(d["changed"]):
+                print(f"     - key={ch['key']} changes={ch['changes']}")
+
+# =============================================================
+# --- PGVECTOR Migration Operations ---------------------------
+# =============================================================
 async def apply_pgvector_migration():
     
     PGVECTOR_MIGRATION_SQL = """
-    -- 1) Ensure pgvector extension
-    DO $$
-    BEGIN
-      IF NOT EXISTS (SELECT 1 FROM pg_extension WHERE extname = 'vector') THEN
-        CREATE EXTENSION vector
-        with
-          schema extensions;
-      END IF;
-    END $$;
-
-    -- 2) If old JSONB column still named "embedding", rename -> embedding_json (only once)
-    DO $$
-    BEGIN
-      IF EXISTS (
-        SELECT 1 FROM information_schema.columns
-        WHERE table_schema='public' AND table_name='code_chunks'
-          AND column_name='embedding' AND data_type='jsonb'
-      ) AND NOT EXISTS (
-        SELECT 1 FROM information_schema.columns
-        WHERE table_schema='public' AND table_name='code_chunks'
-          AND column_name='embedding_json'
-      ) THEN
-        ALTER TABLE "code_chunks" RENAME COLUMN "embedding" TO "embedding_json";
-      END IF;
-    END $$;
-
-    -- 3) Add vector(768) column if missing
-    DO $$
-    BEGIN
-      IF NOT EXISTS (
-        SELECT 1 FROM information_schema.columns
-        WHERE table_schema='public' AND table_name='code_chunks'
-          AND column_name='embedding'
-      ) THEN
-        ALTER TABLE "code_chunks" ADD COLUMN "embedding" vector(768);
-      END IF;
-    END $$;
-
-    -- 4) Backfill vector values from JSONB array when present (and exactly 768 dims)
-    UPDATE "code_chunks"
-    SET "embedding" = (
-      SELECT (ARRAY(
-        SELECT jsonb_array_elements_text("embedding_json")::float8
-      ))::vector
-    )
-    WHERE "embedding" IS NULL
-      AND "embedding_json" IS NOT NULL
-      AND jsonb_typeof("embedding_json") = 'array'
-      AND jsonb_array_length("embedding_json") = 768;
+        -- 1) Handle old JSONB 'embedding' -> 'embedding_json2' (including the "stuck rename" case)
+        DO $$
+        BEGIN
+          IF EXISTS (
+            SELECT 1 FROM information_schema.columns
+            WHERE table_schema='public' AND table_name='code_chunks'
+              AND column_name='embedding' AND data_type='jsonb'
+          ) THEN
+            IF EXISTS (
+              SELECT 1 FROM information_schema.columns
+              WHERE table_schema='public' AND table_name='code_chunks'
+                AND column_name='embedding_json2'
+            ) THEN
+              UPDATE "public"."code_chunks"
+              SET "embedding_json2" = "embedding"
+              WHERE "embedding_json2" IS NULL;
+              ALTER TABLE "public"."code_chunks" DROP COLUMN "embedding";
+            ELSE
+              ALTER TABLE "public"."code_chunks" RENAME COLUMN "embedding" TO "embedding_json2";
+            END IF;
+          END IF;
+        END $$;
+        
+        -- 2) Discover 'vector' type schema, ensure embedding is vector(768), and (conditionally) backfill
+        DO $$
+        DECLARE
+          v_ns        text;  -- schema that owns 'vector' type (e.g., 'public' or 'extensions')
+          v_coltype   text;  -- current type of public.code_chunks.embedding if present
+          v_has_json2 boolean; -- whether embedding_json2 column exists
+        BEGIN
+          -- Find the namespace of the 'vector' type
+          SELECT n.nspname
+          INTO v_ns
+          FROM pg_type t
+          JOIN pg_namespace n ON n.oid = t.typnamespace
+          WHERE t.typname = 'vector'
+          LIMIT 1;
+        
+          IF v_ns IS NULL THEN
+            RAISE EXCEPTION 'pgvector type not found; ensure the extension is installed';
+          END IF;
+        
+          -- If embedding exists, verify it's vector(768); else create it as such
+          IF EXISTS (
+            SELECT 1 FROM information_schema.columns
+            WHERE table_schema='public' AND table_name='code_chunks'
+              AND column_name='embedding'
+          ) THEN
+            SELECT format_type(a.atttypid, a.atttypmod)
+            INTO v_coltype
+            FROM pg_attribute a
+            JOIN pg_class c ON c.oid = a.attrelid
+            JOIN pg_namespace n ON n.oid = c.relnamespace
+            WHERE n.nspname='public'
+              AND c.relname='code_chunks'
+              AND a.attname='embedding'
+              AND a.attnum > 0;
+        
+            IF v_coltype IS DISTINCT FROM 'vector(768)' THEN
+              RAISE EXCEPTION
+                'Existing column public.code_chunks.embedding is %, expected vector(768)', v_coltype;
+              -- Or ALTER to vector(768) if you prefer auto-fix.
+            END IF;
+          ELSE
+            EXECUTE format(
+              'ALTER TABLE "public"."code_chunks" ADD COLUMN "embedding" %I.vector(768)',
+              v_ns
+            );
+          END IF;
+        
+          -- Only backfill if the source column embedding_json2 actually exists
+          SELECT EXISTS (
+            SELECT 1 FROM information_schema.columns
+            WHERE table_schema='public' AND table_name='code_chunks'
+              AND column_name='embedding_json2'
+          ) INTO v_has_json2;
+        
+          IF v_has_json2 THEN
+            EXECUTE format($sql$
+              UPDATE "public"."code_chunks"
+              SET "embedding" = (
+                SELECT (ARRAY(
+                  SELECT jsonb_array_elements_text("embedding_json2")::float8
+                ))::%I.vector
+              )
+              WHERE "embedding" IS NULL
+                AND "embedding_json2" IS NOT NULL
+                AND jsonb_typeof("embedding_json2") = 'array'
+                AND jsonb_array_length("embedding_json2") = 768
+            $sql$, v_ns);
+          END IF;
+        END $$;
     """
     await Tortoise.init(config=TORTOISE_ORM)
     try:
@@ -75,34 +293,78 @@ async def apply_pgvector_migration():
     finally:
         await Tortoise.close_connections()
 
-async def ensure_pgvector_extension():
+# ======================================================================================================
+# --- Apply custom partial indexes defined in the `devdox-ai-models` package ---------------------------
+# ======================================================================================================
+
+async def apply_queue_processing_registry_one_claim_unique():
+    queue_partial_unique_sql = """
+    -- 0) Sanity checks
+    DO $$
+    BEGIN
+      IF NOT EXISTS (
+        SELECT 1 FROM information_schema.tables
+        WHERE table_schema = 'public' AND table_name = 'queue_processing_registry'
+      ) THEN
+        RAISE EXCEPTION 'Table public.queue_processing_registry does not exist';
+      END IF;
+
+      IF NOT EXISTS (
+        SELECT 1 FROM information_schema.columns
+        WHERE table_schema='public' AND table_name='queue_processing_registry' AND column_name='message_id'
+      ) THEN
+        RAISE EXCEPTION 'Column "message_id" missing on public.queue_processing_registry';
+      END IF;
+
+      IF NOT EXISTS (
+        SELECT 1 FROM information_schema.columns
+        WHERE table_schema='public' AND table_name='queue_processing_registry' AND column_name='status'
+      ) THEN
+        RAISE EXCEPTION 'Column "status" missing on public.queue_processing_registry';
+      END IF;
+    END $$ LANGUAGE plpgsql;
+
+    -- 1) Abort if duplicates would violate the unique partial index
+    DO $$
+    BEGIN
+      IF EXISTS (
+        SELECT 1
+        FROM (
+          SELECT message_id, COUNT(*) AS c
+          FROM public.queue_processing_registry
+          WHERE status IN ('pending','in_progress')
+          GROUP BY message_id
+          HAVING COUNT(*) > 1
+        ) d
+      ) THEN
+        RAISE EXCEPTION
+          'Cannot create unique partial index: duplicates exist for (message_id) with status in (pending,in_progress). Fix data and rerun.';
+      END IF;
+    END $$ LANGUAGE plpgsql;
+
+    -- 2) Replace any previous index to guarantee exact definition
+    DROP INDEX IF EXISTS "queue_processing_registry_message_id_idx";
+    
+    -- 3) Create the index
+    
+    CREATE UNIQUE INDEX "queue_processing_registry_message_id_idx"
+    ON public."queue_processing_registry" ("message_id")
+    WHERE "status" IN ('pending','in_progress');
+
+    COMMENT ON INDEX "queue_processing_registry_message_id_idx"
+      IS 'Enforces at most one row per message_id while status is pending/in_progress.';
+    """
+    
     await Tortoise.init(config=TORTOISE_ORM)
     try:
         async with in_transaction() as conn:
-            await conn.execute_script("""
-            DO $$
-            BEGIN
-                IF NOT EXISTS (SELECT 1 FROM pg_extension WHERE extname = 'vector') THEN
-                    CREATE EXTENSION vector
-                    with
-                      schema extensions;
-                END IF;
-            END $$;
-            """)
+            await conn.execute_script(queue_partial_unique_sql)
     finally:
         await Tortoise.close_connections()
 
-
-async def apply_custom_indexes():
-    await Tortoise.init(config=TORTOISE_ORM)
-    try:
-        conn = Tortoise.get_connection("default")
-        for _table, statements in CUSTOM_INDEXES.items():
-            for sql in statements:
-                await conn.execute_script(sql)
-    finally:
-        await Tortoise.close_connections()
-
+# =============================================================
+# --- OTHER ---------------------------------------------------
+# =============================================================
 
 def auto_run_command(cmd):
     """Run any command with automatic 'yes' responses."""
@@ -130,228 +392,11 @@ def auto_run_command(cmd):
         print(f"❌ Command failed: {e}")
         return False, "", str(e)
 
-
-def get_schema_config():
-    """Get schema configuration with fallback to defaults."""
-    try:
-        from migration_schema_config import get_schema_config
-
-        return get_schema_config()
-    except ImportError:
-        print("⚠️ Schema config not found, using built-in defaults...")
-        return get_default_schema_config()
-
-
-def get_default_schema_config():
-    """Default schema configuration for common scenarios."""
-    return {
-        "tables": {
-            "code_chunks": {
-                "columns": [
-                    ("id", "UUID NOT NULL PRIMARY KEY"),
-                    ("user_id", "VARCHAR(255) NOT NULL"),
-                    ("repo_id", "VARCHAR(255) NOT NULL"),
-                    ("content", "TEXT NOT NULL"),
-                    ("embedding", "JSONB"),
-                    ("metadata", "JSONB NOT NULL"),
-                    ("file_name", "VARCHAR(255) NOT NULL"),
-                    ("file_path", "VARCHAR(255) NOT NULL"),
-                    ("file_size", "INT NOT NULL"),
-                    ("commit_number", "VARCHAR(255) NOT NULL"),
-                    ("created_at", "TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP"),
-                ]
-            }
-        },
-        "columns": [
-            ("repo", "relative_path", "VARCHAR(1024)", True, None),
-            ("repo", "total_chunks", "INT", False, "0"),
-            ("repo", "processing_end_time", "TIMESTAMPTZ", True, None),
-            ("repo", "total_files", "INT", False, "0"),
-            ("repo", "processing_start_time", "TIMESTAMPTZ", True, None),
-            ("repo", "status", "VARCHAR(255)", False, "pending"),
-            ("repo", "last_commit", "VARCHAR(255)", False, ""),
-            ("repo", "error_message", "TEXT", True, None),
-        ],
-        "indexes": [
-            (
-                "uid_git_label_user_id_848e44",
-                "git_label",
-                '("user_id", "git_hosting", "masked_token")',
-                True,
-            ),
-            ("uid_repo_user_id_a03d4e", "repo", '("user_id", "repo_id")', True),
-            ("idx_repo_user_id_05a4f0", "repo", '("user_id", "created_at")', False),
-            ("idx_user_user_id_d610a5", "user", '("user_id", "created_at")', False),
-        ],
-        "type_changes": [
-            (
-                "repo",
-                "language",
-                "JSONB",
-                'CASE WHEN "language" IS NULL THEN NULL WHEN "language" = \'\' THEN NULL ELSE to_jsonb("language"::text) END',
-            ),
-        ],
-        "comments": {
-            "repo": {
-                "size": "Size of the Git repository in bytes. Represents only the .git directory contents, including commit history, branches, and git objects. Does not include release assets, LFS files, CI artifacts, or other non-Git storage",
-                "language": "Primary programming languages",
-            }
-        },
-        "custom_sql": [],
-    }
-
-
 def validate_identifier(name):
     """Validate SQL identifier to prevent injection."""
     if not re.match(r"^[a-zA-Z_][a-zA-Z0-9_]*$", name):
         raise ValueError(f"Invalid identifier: {name}")
     return name
-
-
-def generate_dynamic_migration_sql(config):
-    """Generate SQL from configuration."""
-    sql_parts = []
-
-    # 1. Create tables
-    for table_name, table_info in config["tables"].items():
-        table_name = validate_identifier(table_name)
-        columns_sql = []
-        for col_name, col_def in table_info["columns"]:
-            col_name = validate_identifier(col_name)
-            columns_sql.append(f'            "{col_name}" {col_def}')
-
-        sql_parts.append(
-            f"""
-        -- Create {table_name} table
-        CREATE TABLE IF NOT EXISTS "{table_name}" (
-{',\n'.join(columns_sql)}
-        );"""
-        )
-
-    # 2. Add columns with safety checks
-    if config["columns"]:
-        sql_parts.append(
-            """
-        -- Dynamic column additions with conflict prevention
-        DO $$
-        DECLARE
-            col_exists BOOLEAN;
-        BEGIN"""
-        )
-
-        for table, column, data_type, nullable, default in config["columns"]:
-            nullable_clause = "" if nullable else " NOT NULL"
-            default_clause = ""
-
-            if default is not None:
-                if data_type.upper().startswith(
-                    (
-                        "INT",
-                        "BIGINT",
-                        "DECIMAL",
-                        "NUMERIC",
-                        "SMALLINT",
-                        "REAL",
-                        "FLOAT",
-                        "DOUBLE",
-                    )
-                ):
-                    default_clause = f" DEFAULT {default}"
-                else:
-                    default_clause = f" DEFAULT '{default}'"
-
-            sql_parts.append(
-                f"""
-            -- Add {column} to {table}
-            SELECT EXISTS(SELECT 1 FROM information_schema.columns 
-                         WHERE table_name='{table}' AND column_name='{column}' AND table_schema='public') INTO col_exists;
-            IF NOT col_exists THEN
-                ALTER TABLE "{table}" ADD COLUMN "{column}" {data_type}{nullable_clause}{default_clause};
-                RAISE NOTICE 'Added %.% (%)', '{table}', '{column}', '{data_type}';
-            ELSE
-                RAISE NOTICE '%.% already exists - skipping', '{table}', '{column}';
-            END IF;"""
-            )
-
-        sql_parts.append("        END $$;")
-
-    # 3. Handle type changes
-    for table, column, new_type, conversion in config["type_changes"]:
-        sql_parts.append(
-            f"""
-        -- Convert {table}.{column} to {new_type}
-        DO $$
-        BEGIN
-            IF EXISTS (SELECT 1 FROM information_schema.columns 
-                      WHERE table_name='{table}' AND column_name='{column}' 
-                      AND data_type != '{new_type.lower()}' AND table_schema='public') THEN
-                ALTER TABLE "{table}" ALTER COLUMN "{column}" TYPE {new_type} USING {conversion};
-                RAISE NOTICE 'Converted {table}.{column} to {new_type}';
-            END IF;
-        EXCEPTION WHEN OTHERS THEN
-            RAISE NOTICE 'Could not convert {table}.{column}: %', SQLERRM;
-        END $$;"""
-        )
-
-    # 4. Add comments
-    for table, column_comments in config["comments"].items():
-        for column, comment in column_comments.items():
-            sql_parts.append(
-                f"""
-        -- Update comment for {table}.{column}
-        DO $$
-        BEGIN
-            COMMENT ON COLUMN "{table}"."{column}" IS '{comment}';
-        EXCEPTION WHEN OTHERS THEN
-            RAISE NOTICE 'Could not add comment for {table}.{column}: %', SQLERRM;
-        END $$;"""
-            )
-
-    # 5. Create indexes
-    for index_name, table, columns, is_unique in config["indexes"]:
-        unique_keyword = "UNIQUE " if is_unique else ""
-        sql_parts.append(
-            f"""
-        -- Create {index_name}
-        CREATE {unique_keyword}INDEX IF NOT EXISTS "{index_name}" ON "{table}" {columns};"""
-        )
-
-    # 6. Custom SQL
-    for sql in config["custom_sql"]:
-        sql_parts.append(
-            f"""
-        -- Custom SQL
-        {sql}"""
-        )
-
-    return "\n".join(sql_parts)
-
-
-
-
-def generate_drop_indexes_sql(config):
-    """Generate SQL to drop indexes."""
-    drops = []
-    for index_name, _, _, _ in config["indexes"]:
-        drops.append(f'DROP INDEX IF EXISTS "{index_name}";')
-    return "\n            ".join(drops)
-
-
-def generate_drop_columns_sql(config):
-    """Generate SQL to drop columns."""
-    drops = []
-    for table, column, _, _, _ in config["columns"]:
-        drops.append(f'ALTER TABLE "{table}" DROP COLUMN IF EXISTS "{column}";')
-    return "\n            ".join(drops)
-
-
-def generate_drop_tables_sql(config):
-    """Generate SQL to drop tables."""
-    drops = []
-    for table_name in config["tables"]:
-        drops.append(f'DROP TABLE IF EXISTS "{table_name}";')
-    return "\n            ".join(drops)
-
 
 def find_migration_files():
     """Find migration files in any directory structure."""
@@ -409,7 +454,11 @@ async def run_ultimate_migrations():
     if not await check_database():
         print("❌ Fix database connection first")
         return False
-
+        
+    # Take PRE snapshot of the database
+    print("\n📸 Taking PRE-migration snapshot...")
+    snapshot_before = await snapshot_schema()
+    
     # Step 2: Setup environment
     os.environ["PYTHONUNBUFFERED"] = "1"
     migrations_dir, existing_files = find_migration_files()
@@ -472,9 +521,6 @@ async def run_ultimate_migrations():
             )
             create_ultimate_migration(latest)
     
-    print("🧩 Ensuring pgvector extension exists...")
-    await ensure_pgvector_extension()
-    
     # Step 6: Apply migration (guaranteed to work)
     print("\n6️⃣ Applying ultimate safe migration...")
     max_attempts = 3
@@ -484,7 +530,7 @@ async def run_ultimate_migrations():
             await asyncio.sleep(2 ** (attempt - 1))  # Exponential backoff
         print(f"📤 Attempt {attempt}/{max_attempts}...")
         success, stdout, stderr = auto_run_command("aerich upgrade")
-        
+
         if success:
             print(f"✅ Upgrade successful on attempt {attempt}!")
             
@@ -492,8 +538,8 @@ async def run_ultimate_migrations():
             print("🧠 Applying pgvector data migration (rename/backfill/index)…")
             await apply_pgvector_migration()
             
-            print("🧩 Creating partial/conditional indexes…")
-            await apply_custom_indexes()
+            print("🧩 Creating unique partial index `queue_processing_registry_message_id_idx` on queue_processing_registry…")
+            await apply_queue_processing_registry_one_claim_unique()
             
             break
 
@@ -504,18 +550,16 @@ async def run_ultimate_migrations():
             print(f"❌ All attempts failed: {stderr}")
             return False
 
-    # Step 7: Final verification
+    # Step 7: Final verification + POST snapshot + diff
     print("\n7️⃣ Final verification...")
     if await check_database():
         print("✅ Database connection still working")
-
-        # Show schema configuration status
-        config = get_schema_config()
-        print(f"\n📊 Schema Configuration Applied:")
-        print(f"   ✅ Tables created: {len(config['tables'])}")
-        print(f"   ✅ Columns added: {len(config['columns'])}")
-        print(f"   ✅ Indexes created: {len(config['indexes'])}")
-        print(f"   ✅ Type conversions: {len(config['type_changes'])}")
+        
+        print("\n📸 Taking POST-migration snapshot...")
+        snapshot_after = await snapshot_schema()
+        
+        diff = diff_snapshots(snapshot_before, snapshot_after)
+        print_diff_summary(diff)
 
         return True
     else:
