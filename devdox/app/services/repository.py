@@ -197,6 +197,20 @@ class RepoManipulationService:
         repo_data, languages = fetcher.fetch_single_repo(
             decrypted_label_token, payload.relative_path
         )
+        repo_user = fetcher.fetch_repo_user(decrypted_label_token)
+        author_email = ''
+        author_name = ''
+
+        if retrieved_git_label.git_hosting=="github":
+            author_name= repo_user.login
+            emails = repo_user.get_emails()
+            author_email =next((e.email for e in emails if e.primary and e.verified), None)
+
+
+        else:  # GitHub returns AuthenticatedUser object
+            author_name = repo_user.get("username")
+            author_email = repo_user.get("commit_email")
+
 
         transformed_data: NormalizedGitRepo = fetcher_data_mapper.from_git(repo_data)
 
@@ -219,10 +233,14 @@ class RepoManipulationService:
                     repo_created_at=transformed_data.repo_created_at,
                     language=languages,
                     repo_alias_name=payload.repo_alias_name,
-                    repo_user_reference=payload.repo_user_reference
+                    repo_user_reference=payload.repo_user_reference,
+                    repo_author_email=author_email,
+                    repo_author_name=author_name,
+
                 )
             )
-            
+
+
             return str(saved_repo.id)
 
         except DevDoxModelsException as e:
