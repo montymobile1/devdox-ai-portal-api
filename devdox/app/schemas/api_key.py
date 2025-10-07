@@ -46,6 +46,7 @@ class APIKeyGetAllRequest:
         self.pagination = pagination
 
 class APIKeyPublicResponse(BaseModel):
+    id: uuid.UUID = Field(..., description="The unique identifier for the API key")
     masked_api_key: str = Field(..., description=MASKED_API_KEY_FIELD_DESCRIPTION)
     created_at: datetime.datetime = Field(..., description=CREATED_AT_FIELD_DESCRIPTION)
     last_used_at: Optional[datetime.datetime] = Field(
