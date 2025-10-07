@@ -189,6 +189,7 @@ class TestAPIKeyPublicResponse:
             masked_api_key="****abcd",
             created_at=now,
             last_used_at=now,
+            id=uuid4(),
         )
 
         assert response.masked_api_key == "****abcd"
@@ -200,6 +201,7 @@ class TestAPIKeyPublicResponse:
         response = APIKeyPublicResponse(
             masked_api_key="****abcd",
             created_at=now,
+            id=uuid4()
         )
 
         assert response.last_used_at is None
