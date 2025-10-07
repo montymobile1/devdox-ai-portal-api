@@ -121,6 +121,7 @@ class TestGetApiKeyRouter:
                         masked_api_key="****abcd",
                         created_at=datetime.datetime.now(datetime.timezone.utc),
                         last_used_at=datetime.datetime.now(datetime.timezone.utc),
+                        id=uuid.uuid4(),
                     )
                 ]
             )
