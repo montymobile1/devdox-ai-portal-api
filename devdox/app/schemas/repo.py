@@ -88,7 +88,16 @@ class RepoResponse(RepoBase):
     user_id: str = Field(..., description="User ID who owns this repository")
     repo_id: str = Field(..., description="Repository ID from the Git provider")
     token_id: Optional[str] = Field(None, description="Associated token ID")
+    status: Optional[str] = Field(None, description="Repository status")
     created_at: datetime = Field(..., description="Record creation timestamp")
+    repo_user_reference: Optional[str] = Field(
+        None,
+        exclude=True,
+        description="User-provided reference (excluded from API response)"
+    )
+    repo_system_reference: Optional[str] = Field(   None,
+        exclude=True,
+        description="Repo_system_reference(excluded from API response)")
     updated_at: datetime = Field(..., description="Record update timestamp")
 
 
