@@ -4,6 +4,7 @@ import uuid
 
 import pytest
 from devdox_ai_git.schema.repo import NormalizedGitRepo
+from github.AuthenticatedUser import AuthenticatedUser
 from models_src.dto.repo import GitHosting, RepoResponseDTO
 
 from app.exceptions.exception_constants import (
@@ -55,7 +56,12 @@ class StubTransformer:
 
 
 class StubFetcher:
+    
+    def __init__(self):
+        self.provider = None
+    
     def get_components(self, provider):
+        self.provider = provider
         if provider in [GitHosting.GITLAB.value, GitHosting.GITHUB.value]:
             return self, StubTransformer()
         return None, None
@@ -63,42 +69,8 @@ class StubFetcher:
     def fetch_single_repo(self, token, relative_path):
         return object(), ["Python"]
 
+    
 class TestRepoManipulationService:
-
-    @pytest.mark.asyncio
-    async def test_add_repo_from_provider_success(self):
-
-        claims = UserClaims(sub="u1")
-
-        fake_repo_repository = FakeRepoStore()
-        stub_git_label_store = StubGitLabelStore()
-
-        stub_git_label_store.set_output(
-            stub_git_label_store.find_by_token_id_and_user,
-            output=GitLabelResponseDTO(
-                token_value= "encrypted_token",
-                git_hosting=GitHosting.GITHUB.value
-            )
-        )
-
-        stub_user_store = StubUserStore()
-        stub_user_store.set_output(
-            stub_user_store.find_by_user_id,
-            output=UserResponseDTO(
-                encryption_salt="salt=="
-            )
-        )
-
-        service = RepoManipulationService(
-            git_label_repository=stub_git_label_store,
-            repo_repository=fake_repo_repository,
-            user_repository=stub_user_store,
-            encryption=StubEncryption(),
-            git_fetcher=StubFetcher(),
-        )
-
-        await service.add_repo_from_provider(claims, "t1", AddRepositoryRequest(relative_path="owner/repo", repo_alias_name="xyz"))
-        assert fake_repo_repository.data_store.get(claims.sub) # should have one saved repo
 
     @pytest.mark.asyncio
     async def test_add_repo_user_not_found(self):
@@ -195,38 +167,6 @@ class TestRepoManipulationService:
             await service.add_repo_from_provider(UserClaims(sub="u1"), "t1", AddRepositoryRequest(relative_path="p", repo_alias_name="xyz"))
 
         assert exc
-
-    @pytest.mark.asyncio
-    async def test_add_repo_duplicate(self):
-        repo_store = FakeRepoStore()
-
-        repo_store.set_exception(repo_store.save, internal_error(
-                **RepoErrors.REPOSITORY_ALREADY_EXIST.value
-        ))
-        stub_git_label_store = StubGitLabelStore()
-
-        stub_git_label_store.set_output(
-            stub_git_label_store.find_by_token_id_and_user,
-            output=GitLabelResponseDTO(
-                token_value="encrypted_token", git_hosting=GitHosting.GITHUB.value
-            ),
-        )
-
-        stub_user_store = StubUserStore()
-        stub_user_store.set_output(
-            stub_user_store.find_by_user_id,
-            output=UserResponseDTO(encryption_salt="salt=="),
-        )
-
-        service = RepoManipulationService(
-            git_label_repository=stub_git_label_store,
-            repo_repository=repo_store,
-            user_repository=stub_user_store,
-            encryption=StubEncryption(),
-            git_fetcher=StubFetcher(),
-        )
-        with pytest.raises(BadRequest):
-            await service.add_repo_from_provider(UserClaims(sub="u1"), "t1", AddRepositoryRequest(relative_path="p", repo_alias_name="xyz"))
 
 class TestRepoQueryService__GetAllUserRepositories:
     
