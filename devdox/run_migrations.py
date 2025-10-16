@@ -5,9 +5,10 @@ import logging
 import re
 import shutil
 import glob
+import configparser
 from datetime import datetime
 from typing import Any, Dict, List, Tuple
-
+from app.config import settings
 from tortoise import Tortoise
 from tortoise.transactions import in_transaction
 
@@ -398,18 +399,33 @@ def validate_identifier(name):
         raise ValueError(f"Invalid identifier: {name}")
     return name
 
+
 def find_migration_files():
-    """Find migration files in any directory structure."""
-    possible_dirs = ["migrations", "migrations/models", "db/migrations"]
+    """Find migration files in the configured migrations directory."""
+    migrations_path = settings.MIGRATIONS_PATH
 
-    for dir_path in possible_dirs:
-        if os.path.exists(dir_path):
-            files = glob.glob(f"{dir_path}/*.py")
-            files = [f for f in files if not f.endswith("__init__.py")]
-            if files:
-                return dir_path, files
+    print(f"🔍 Looking for migrations in: {migrations_path}")
 
-    return None, []
+    # Check configured path
+    if os.path.exists(migrations_path):
+        # Check root migrations directory
+        files = glob.glob(f"{migrations_path}/*.py")
+        files = [f for f in files if not f.endswith("__init__.py")]
+
+        # Check models subdirectory
+        models_dir = os.path.join(migrations_path, "models")
+        if os.path.exists(models_dir):
+            model_files = glob.glob(f"{models_dir}/*.py")
+            model_files = [f for f in model_files if not f.endswith("__init__.py")]
+            files.extend(model_files)
+
+        if files or os.path.exists(models_dir):
+            print(f"✅ Found migrations directory with {len(files)} {files} files")
+            return migrations_path, files
+
+    print(f"⚠️  No migrations found in {migrations_path}")
+    return migrations_path, []
+
 
 
 def create_ultimate_migration(migration_path):
@@ -440,6 +456,178 @@ async def check_database():
         await Tortoise.close_connections()
 
 
+def ensure_migrations_directory():
+    """
+    Ensure the migrations directory exists and is writable.
+    This must happen BEFORE aerich commands run.
+    """
+    migrations_path = settings.MIGRATIONS_PATH
+
+    print(f"📁 Ensuring migrations directory exists: {migrations_path}")
+
+    # Create directory if it doesn't exist
+    if not os.path.exists(migrations_path):
+        print(f"   Creating directory...")
+        try:
+            os.makedirs(migrations_path, exist_ok=True)
+            print(f"   ✅ Created: {migrations_path}")
+        except Exception as e:
+            print(f"   ❌ Failed to create directory: {e}")
+            raise
+
+    # Check if writable
+    test_file = os.path.join(migrations_path, '.write_test')
+    try:
+        with open(test_file, 'w') as f:
+            f.write('test')
+        os.remove(test_file)
+        print(f"   ✅ Directory is writable")
+    except Exception as e:
+        print(f"   ❌ Directory is not writable: {e}")
+        print(f"   Check permissions: ls -la {migrations_path}")
+        raise
+
+    # Show current contents
+    try:
+        contents = os.listdir(migrations_path)
+        if contents:
+            print(f"   📋 Current contents: {contents}")
+        else:
+            print(f"   📋 Directory is empty (expected for first run)")
+    except Exception as e:
+        print(f"   ⚠️  Cannot list directory contents: {e}")
+
+
+def ensure_pyproject_aerich_config():
+    """
+    Ensure pyproject.toml contains the correct aerich configuration.
+    This is critical because aerich init-db reads from pyproject.toml, not aerich.ini!
+    """
+    import toml
+
+    pyproject_path = "pyproject.toml"
+    expected_location = str(settings.MIGRATIONS_PATH)
+
+    print(f"🔍 Ensuring pyproject.toml has correct aerich config...")
+
+    try:
+        # Read current config
+        with open(pyproject_path, 'r') as f:
+            config = toml.load(f)
+
+        # Ensure tool.aerich section exists
+        if 'tool' not in config:
+            config['tool'] = {}
+        if 'aerich' not in config['tool']:
+            config['tool']['aerich'] = {}
+
+        # Set required fields
+        config['tool']['aerich']['tortoise_orm'] = 'app.config.TORTOISE_ORM'
+        config['tool']['aerich']['location'] = expected_location
+        config['tool']['aerich']['src_folder'] = '.'
+
+        # Write back
+        with open(pyproject_path, 'w') as f:
+            toml.dump(config, f)
+
+        print(f"   ✅ pyproject.toml aerich config updated")
+        print(f"   Location: {expected_location}")
+
+    except Exception as e:
+        print(f"   ❌ Failed to update pyproject.toml: {e}")
+        raise
+
+
+def verify_pyproject_location():
+    """Verify pyproject.toml has correct location."""
+    import toml
+
+    try:
+        with open("pyproject.toml", 'r') as f:
+            config = toml.load(f)
+
+        actual_location = config.get('tool', {}).get('aerich', {}).get('location', './migrations')
+        expected_location = str(settings.MIGRATIONS_PATH)
+
+        if actual_location != expected_location:
+            print(f"⚠️  pyproject.toml location mismatch!")
+            print(f"   Expected: {expected_location}")
+            print(f"   Actual: {actual_location}")
+            return False
+
+        return True
+    except Exception as e:
+        print(f"⚠️  Could not verify pyproject.toml: {e}")
+        return False
+
+
+def verify_migrations_location():
+    """Verify migrations were created in the correct location."""
+    expected_path = settings.MIGRATIONS_PATH
+    wrong_path = "./migrations"
+
+    # Check if migrations exist in expected location
+    models_dir = os.path.join(expected_path, "models")
+    if os.path.exists(models_dir):
+        print(f"✅ Migrations created in correct location: {expected_path}")
+        return True
+
+    # Check if they were created in wrong location
+    wrong_models_dir = os.path.join(wrong_path, "models")
+    if os.path.exists(wrong_models_dir):
+        print(f"❌ Migrations created in WRONG location: {wrong_path}")
+        print(f"   Expected location: {expected_path}")
+        return False
+
+    print(f"⚠️  No migrations directory found in either location")
+    return False
+
+def validate_and_fix_aerich_config():
+    """
+    Ensure aerich.ini uses the same path as settings.MIGRATIONS_PATH.
+    This is CRITICAL - aerich CLI ignores Python settings and only reads aerich.ini.
+    """
+    aerich_ini_path = "aerich.ini"
+    expected_location = str(settings.MIGRATIONS_PATH)
+
+    print(f"🔍 Validating aerich configuration...")
+    print(f"   Expected migrations path: {expected_location}")
+
+    # Check if aerich.ini exists
+    if not os.path.exists(aerich_ini_path):
+        print(f"⚠️  aerich.ini not found, will be created by aerich init")
+        return
+
+    # Read current config
+    config = configparser.ConfigParser()
+    config.read(aerich_ini_path)
+
+    if 'aerich' not in config:
+        print(f"⚠️  No [aerich] section in aerich.ini")
+        return
+
+    current_location = config.get('aerich', 'location', fallback='./migrations')
+
+    if current_location != expected_location:
+        print(f"🚨 MISMATCH DETECTED!")
+        print(f"   aerich.ini location: {current_location}")
+        print(f"   settings.MIGRATIONS_PATH: {expected_location}")
+        print(f"   ⚠️  This will cause migrations to be created in the wrong place!")
+
+        # Backup current config
+        backup_path = f"{aerich_ini_path}.backup_{datetime.now().strftime('%Y%m%d_%H%M%S')}"
+        shutil.copy2(aerich_ini_path, backup_path)
+        print(f"📦 Backed up aerich.ini to: {backup_path}")
+
+        # Update config
+        config.set('aerich', 'location', expected_location)
+        with open(aerich_ini_path, 'w') as f:
+            config.write(f)
+
+        print(f"✅ Updated aerich.ini location to: {expected_location}")
+    else:
+        print(f"✅ aerich.ini correctly configured: {current_location}")
+
 async def run_ultimate_migrations():
     """🚀 THE ULTIMATE MIGRATION SOLUTION - Handles everything automatically."""
 
@@ -448,6 +636,25 @@ async def run_ultimate_migrations():
     print("✅ Resolves conflicts automatically")
     print("✅ Adapts to future schema changes")
     print("✅ Works in any environment")
+    print("settings.MIGRATIONS_PATH ", settings.MIGRATIONS_PATH)
+    # Verify migrations directory exists
+    if not os.path.exists(settings.MIGRATIONS_PATH):
+        print(f"❌ Migrations path does not exist: {settings.MIGRATIONS_PATH}")
+        print("   Ensure Render disk is mounted at /data")
+        return False
+
+    try:
+        ensure_migrations_directory()
+    except Exception as e:
+        print(f"❌ Failed to setup migrations directory: {e}")
+        return False
+
+    ensure_pyproject_aerich_config()
+    try:
+        validate_and_fix_aerich_config()
+    except Exception as e:
+        print(f"⚠️  Could not validate aerich config: {e}")
+        # Continue anyway - aerich init will create it
 
     # Step 1: Check database
     print("\n1️⃣ Verifying database connection...")
@@ -461,27 +668,59 @@ async def run_ultimate_migrations():
     
     # Step 2: Setup environment
     os.environ["PYTHONUNBUFFERED"] = "1"
+    # 🔧 NEW: Check if migrations already exist in WRONG location
+    wrong_location = "./migrations"
+    if os.path.exists(wrong_location) and os.listdir(wrong_location):
+        print(f"\n⚠️  WARNING: Found migrations in wrong location: {wrong_location}")
+        print(f"   Expected location: {settings.MIGRATIONS_PATH}")
+
+        # Move them to correct location
+        print(f"   Moving migrations to {settings.MIGRATIONS_PATH}...")
+        try:
+            import shutil
+            for item in os.listdir(wrong_location):
+                src = os.path.join(wrong_location, item)
+                dst = os.path.join(settings.MIGRATIONS_PATH, item)
+                if os.path.isdir(src):
+                    shutil.copytree(src, dst, dirs_exist_ok=True)
+                else:
+                    shutil.copy2(src, dst)
+            print(f"   ✅ Moved migrations successfully")
+        except Exception as e:
+            print(f"   ❌ Failed to move migrations: {e}")
+            return False
+
+
+
     migrations_dir, existing_files = find_migration_files()
 
     if not migrations_dir:
         print("📁 Creating migrations directory...")
-        os.makedirs("migrations", exist_ok=True)
-        migrations_dir = "migrations"
+        os.makedirs(settings.MIGRATIONS_PATH, exist_ok=True)
+        migrations_dir = settings.MIGRATIONS_PATH
 
     print(f"📁 Using migrations directory: {migrations_dir}")
 
     # Step 3: Initialize if needed
     if not existing_files:
         print("\n2️⃣ Initializing aerich...")
-        success, _, _ = auto_run_command("aerich init -t app.config.TORTOISE_ORM")
+        success, _, _ = auto_run_command(f"aerich init -t app.config.TORTOISE_ORM --location {settings.MIGRATIONS_PATH}")
         if not success:
             print("❌ Aerich init failed")
             return False
+        if not verify_pyproject_location():
+            print("⚠️  pyproject.toml location mismatch, fixing...")
+            ensure_pyproject_aerich_config()
+
 
         print("\n3️⃣ Running init-db...")
         success, _, _ = auto_run_command("aerich init-db")
         if not success:
             print("❌ Init-db failed")
+            return False
+
+        if not verify_migrations_location():
+            print("❌ Migrations created in wrong location!")
             return False
 
     # Step 4: Create migration with auto-confirmation

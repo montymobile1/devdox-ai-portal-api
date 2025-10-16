@@ -21,8 +21,8 @@ WORKDIR /app
 # Set environment variables
 ENV PYTHONDONTWRITEBYTECODE=1 \
     PYTHONUNBUFFERED=1 \
-    ENVIRONMENT=production
-
+    ENVIRONMENT=production \
+    MIGRATIONS_PATH=/data/migrations
 # Copy pyproject.toml first for better Docker layer caching
 COPY pyproject.toml .
 COPY app ./app
@@ -36,18 +36,19 @@ RUN pip install --no-cache-dir --upgrade pip \
 COPY entrypoint.sh ./entrypoint.sh
 
 # Create migrations directory (will be mounted as volume)
-RUN mkdir -p /app/migrations
 COPY run_migrations.py ./run_migrations.py
 #COPY ../vault-fetcher/fetch_secrets.py ./fetch_secrets.py
 
 COPY aerich.ini ./aerich.ini
 COPY pyproject.toml ./pyproject.toml
 
+RUN chmod +x entrypoint.sh
 
 # Change ownership of the app directory to the non-root user
+# 🔧 FIX: Change ownership of ALL files to appuser BEFORE switching user
+RUN chown -R appuser:appgroup /app
+RUN mkdir -p /data/migrations && chown -R appuser:appgroup /data && chmod -R 755 /data && chmod -R 755 /data/migrations
 
-RUN chown -R appuser:appgroup /app \
-    && chmod +x entrypoint.sh
 
 # Switch to the non-root user (this should be LAST)
 USER appuser
