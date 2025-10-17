@@ -15,10 +15,9 @@ services:
     depends_on:
       - vault-fetcher
     volumes:
-      - ./migrations:/app/migrations
+      - ./data/migrations:/data/migrations
       - ./instance:/app/instance:ro
       - ./logs:/app/logs
     ports:
       - "8000:8000"
     command: sh -c "while [ ! -f /app/instance/.env ]; do sleep 1; done && ./entrypoint.sh"
-

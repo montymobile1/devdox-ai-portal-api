@@ -4,7 +4,7 @@ Configuration settings for the DevDox AI Portal API.
 from typing import Any, Dict, List, Literal, Optional
 
 from models_src.dto.repo import GitHosting
-
+from pathlib import Path
 from app.services.supabase_queue import SupabaseQueue
 from pydantic_settings import BaseSettings
 
@@ -18,6 +18,7 @@ class Settings(BaseSettings):
     API_ENV: Literal["development", "staging", "production", "test", "local"] = (
         "development"
     )
+    MIGRATIONS_PATH:Path = Path("/data/migrations")
     API_DEBUG: bool = True
     SECRET_KEY: str = "testtesttesttesttesttesttesttest"  # Only for local/testing
     # SUPABASE VAULT
