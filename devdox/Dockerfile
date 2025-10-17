@@ -35,18 +35,20 @@ RUN pip install --no-cache-dir --upgrade pip \
 # Copy application code
 COPY entrypoint.sh ./entrypoint.sh
 
-# Create migrations directory (will be mounted as volume)
+
 COPY run_migrations.py ./run_migrations.py
 #COPY ../vault-fetcher/fetch_secrets.py ./fetch_secrets.py
 
 COPY aerich.ini ./aerich.ini
 COPY pyproject.toml ./pyproject.toml
 
-RUN chmod +x entrypoint.sh
+
 
 # Change ownership of the app directory to the non-root user
 # 🔧 FIX: Change ownership of ALL files to appuser BEFORE switching user
 RUN chown -R appuser:appgroup /app
+
+RUN chmod +x entrypoint.sh
 RUN mkdir -p /data/migrations && chown -R appuser:appgroup /data && chmod -R 755 /data && chmod -R 755 /data/migrations
 
 
