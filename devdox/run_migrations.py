@@ -638,11 +638,6 @@ async def run_ultimate_migrations():
     print("✅ Works in any environment")
     print("settings.MIGRATIONS_PATH ", settings.MIGRATIONS_PATH)
     # Verify migrations directory exists
-    if not os.path.exists(settings.MIGRATIONS_PATH):
-        print(f"❌ Migrations path does not exist: {settings.MIGRATIONS_PATH}")
-        print("   Ensure Render disk is mounted at /data")
-        return False
-
     try:
         ensure_migrations_directory()
     except Exception as e:

@@ -40,7 +40,6 @@ COPY run_migrations.py ./run_migrations.py
 #COPY ../vault-fetcher/fetch_secrets.py ./fetch_secrets.py
 
 COPY aerich.ini ./aerich.ini
-COPY pyproject.toml ./pyproject.toml
 
 
 
