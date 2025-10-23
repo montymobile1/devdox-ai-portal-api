@@ -4,6 +4,7 @@ from uuid import UUID, uuid4
 from devdox_ai_git.repo_fetcher import RepoFetcher
 from devdox_ai_git.schema.repo import NormalizedGitRepo
 from fastapi import Depends
+from models_src.models.repo import StatusTypes
 
 from app.exceptions import exception_constants
 from app.exceptions.base_exceptions import DevDoxAPIException
@@ -254,7 +255,17 @@ class RepoManipulationService:
         token_info = await retrieve_git_label_or_die(
             self.git_label_repository, repo_info.token_id, user_claims.sub
         )
-
+        
+        _ = await self.repo_repository.update_analysis_metadata_by_id(
+            id=str(repo_info.id),
+            status=StatusTypes.ANALYSIS_PENDING,
+            processing_end_time=repo_info.processing_end_time,
+            total_files=repo_info.total_files,
+            total_chunks=repo_info.total_chunks,
+            total_embeddings=repo_info.total_embeddings,
+        )
+        
+        
         payload = {
             "job_type": "analyze",
             "payload": {
