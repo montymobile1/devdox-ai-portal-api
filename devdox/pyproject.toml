@@ -46,7 +46,7 @@ dependencies = [
     "email_validator==2.2.0",
 
     #models
-    "devdox-ai-models @ git+https://github.com/montymobile1/devdox-ai-models.git@93fa32a",
+    "devdox-ai-models @ git+https://github.com/montymobile1/devdox-ai-models.git@DEV-35-add-a-statues-enum-for-the-property-on-evdox-ai-models-to-streamline-and-modularize-the-code-and-add-a-missing-column",
 
     # git
     "devdox-ai-git @ git+https://github.com/montymobile1/devdox-ai-git@e36ee1a",
