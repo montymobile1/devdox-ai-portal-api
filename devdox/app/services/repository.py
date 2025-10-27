@@ -1,4 +1,5 @@
-from typing import Annotated, List, Tuple
+from enum import StrEnum
+from typing import Annotated, List, Literal, Tuple
 from uuid import UUID, uuid4
 
 from devdox_ai_git.repo_fetcher import RepoFetcher
@@ -13,9 +14,9 @@ from app.exceptions.local_exceptions import (
     ResourceNotFound,
 )
 from app.exceptions.exception_constants import (
-    GIT_LABEL_TOKEN_RESOURCE_NOT_FOUND,
+    ANALYSIS_NOT_IN_TERMINAL_STATE, GIT_LABEL_TOKEN_RESOURCE_NOT_FOUND,
     REPOSITORY_ALREADY_EXISTS,
-    TOKEN_NOT_FOUND,
+    REPOSITORY_NOT_FOUND, TOKEN_NOT_FOUND,
     USER_RESOURCE_NOT_FOUND,
     REPOSITORY_TOKEN_RESOURCE_NOT_FOUND,
 )
@@ -160,6 +161,9 @@ async def retrieve_repo_by_id(repo_repository_instance: RepoRepository, id):
 
     return repo_info
 
+class AnalyzeMode(StrEnum):
+    ANALYZE = "analyze"
+    REANALYZE = "reanalyze"
 
 class RepoManipulationService:
     def __init__(
@@ -248,23 +252,34 @@ class RepoManipulationService:
             if e.error_type == RepoErrors.REPOSITORY_ALREADY_EXIST.value["error_type"]:
                 raise BadRequest(reason=REPOSITORY_ALREADY_EXISTS) from e
             raise
-
-
-    async def analyze_repo(self, user_claims: UserClaims, id: str | UUID) -> None:
+    
+    async def _analyze_repository_base(self, mode:AnalyzeMode, user_claims: UserClaims, id: str | UUID):
         repo_info = await retrieve_repo_by_id(self.repo_repository, id)
+        
+        if not repo_info:
+            raise ResourceNotFound(reason=REPOSITORY_NOT_FOUND)
+        
+        if mode == AnalyzeMode.REANALYZE:
+            status = StatusTypes.REANALYSIS_PENDING
+            if not repo_info.status or not repo_info.status.strip() or repo_info.status != StatusTypes.COMPLETED:
+                raise BadRequest(reason=ANALYSIS_NOT_IN_TERMINAL_STATE)
+        elif mode == AnalyzeMode.ANALYZE:
+            status = StatusTypes.ANALYSIS_PENDING
+        else:
+            raise ValueError("Invalid analyze mode passed")
+        
         token_info = await retrieve_git_label_or_die(
             self.git_label_repository, repo_info.token_id, user_claims.sub
         )
         
         _ = await self.repo_repository.update_analysis_metadata_by_id(
             id=str(repo_info.id),
-            status=StatusTypes.ANALYSIS_PENDING,
+            status=status,
             processing_end_time=repo_info.processing_end_time,
             total_files=repo_info.total_files,
             total_chunks=repo_info.total_chunks,
             total_embeddings=repo_info.total_embeddings,
         )
-        
         
         payload = {
             "job_type": "analyze",
@@ -281,7 +296,7 @@ class RepoManipulationService:
                 "context_id": uuid4().hex,
             },
         }
-
+        
         _ = await supabase_queue.enqueue(
             "processing",
             payload=payload,
@@ -289,3 +304,9 @@ class RepoManipulationService:
             job_type="analyze",
             user_id=user_claims.sub,
         )
+    
+    async def analyze_repo(self, user_claims: UserClaims, id: str | UUID) -> None:
+        await self._analyze_repository_base(mode=AnalyzeMode.ANALYZE, user_claims=user_claims, id=id)
+    
+    async def reanalyze_repo(self, user_claims: UserClaims, id: str | UUID) -> None:
+        await self._analyze_repository_base(mode=AnalyzeMode.REANALYZE, user_claims=user_claims, id=id)
