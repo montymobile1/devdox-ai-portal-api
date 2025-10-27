@@ -5,7 +5,7 @@ from uuid import UUID, uuid4
 from devdox_ai_git.repo_fetcher import RepoFetcher
 from devdox_ai_git.schema.repo import NormalizedGitRepo
 from fastapi import Depends
-from models_src.models.repo import StatusTypes
+from models_src.models.repo import QueueJobType, StatusTypes
 
 from app.exceptions import exception_constants
 from app.exceptions.base_exceptions import DevDoxAPIException
@@ -161,10 +161,6 @@ async def retrieve_repo_by_id(repo_repository_instance: RepoRepository, id):
 
     return repo_info
 
-class AnalyzeMode(StrEnum):
-    ANALYZE = "analyze"
-    REANALYZE = "reanalyze"
-
 class RepoManipulationService:
     def __init__(
         self,
@@ -253,20 +249,20 @@ class RepoManipulationService:
                 raise BadRequest(reason=REPOSITORY_ALREADY_EXISTS) from e
             raise
     
-    async def _analyze_repository_base(self, mode:AnalyzeMode, user_claims: UserClaims, id: str | UUID):
+    async def _analyze_repository_base(self, job_type:QueueJobType, user_claims: UserClaims, id: str | UUID):
         repo_info = await retrieve_repo_by_id(self.repo_repository, id)
         
         if not repo_info:
             raise ResourceNotFound(reason=REPOSITORY_NOT_FOUND)
         
-        if mode == AnalyzeMode.REANALYZE:
+        if job_type == QueueJobType.REANALYZE:
             status = StatusTypes.REANALYSIS_PENDING
             if not repo_info.status or not repo_info.status.strip() or repo_info.status != StatusTypes.COMPLETED:
                 raise BadRequest(reason=ANALYSIS_NOT_IN_TERMINAL_STATE)
-        elif mode == AnalyzeMode.ANALYZE:
+        elif job_type == QueueJobType.ANALYZE:
             status = StatusTypes.ANALYSIS_PENDING
         else:
-            raise ValueError("Invalid analyze mode passed")
+            raise ValueError("Invalid analyze job_type passed")
         
         token_info = await retrieve_git_label_or_die(
             self.git_label_repository, repo_info.token_id, user_claims.sub
@@ -282,7 +278,7 @@ class RepoManipulationService:
         )
         
         payload = {
-            "job_type": "analyze",
+            "job_type": job_type,
             "payload": {
                 "branch": repo_info.default_branch,
                 "repo_id": str(repo_info.repo_id),
@@ -301,12 +297,12 @@ class RepoManipulationService:
             "processing",
             payload=payload,
             priority=1,
-            job_type="analyze",
+            job_type=job_type,
             user_id=user_claims.sub,
         )
     
     async def analyze_repo(self, user_claims: UserClaims, id: str | UUID) -> None:
-        await self._analyze_repository_base(mode=AnalyzeMode.ANALYZE, user_claims=user_claims, id=id)
+        await self._analyze_repository_base(job_type=QueueJobType.ANALYZE, user_claims=user_claims, id=id)
     
     async def reanalyze_repo(self, user_claims: UserClaims, id: str | UUID) -> None:
-        await self._analyze_repository_base(mode=AnalyzeMode.REANALYZE, user_claims=user_claims, id=id)
+        await self._analyze_repository_base(job_type=QueueJobType.REANALYZE, user_claims=user_claims, id=id)
