@@ -26,7 +26,7 @@ from app.schemas.repo import AddRepositoryRequest, GitRepoResponse, RepoResponse
 from app.utils.auth import UserClaims
 from app.utils.encryption import get_encryption_helper, FernetEncryptionHelper
 from app.utils.git_managers import retrieve_git_fetcher_or_die
-from models_src import (StatusTypes, RepoRequestDTO, DevDoxModelsException, RepoErrors, ILabelStore, get_active_git_label_store, get_active_repo_store, IRepoStore,
+from models_src import (StatusTypes, QueueJobType, RepoRequestDTO, DevDoxModelsException, RepoErrors, ILabelStore, get_active_git_label_store, get_active_repo_store, IRepoStore,
                         get_active_user_store, IUserStore, ProcessingJobType, ProcessingQPayload, ProcessingQPayloadMeta, ProcessingPriority, processing_queue_name)
 
 class RepoQueryService:
@@ -155,10 +155,6 @@ async def retrieve_repo_by_id(repo_repository_instance: IRepoStore, id):
 
     return repo_info
 
-class AnalyzeMode(StrEnum):
-    ANALYZE = "analyze"
-    REANALYZE = "reanalyze"
-
 class RepoManipulationService:
     def __init__(
         self,
@@ -247,20 +243,20 @@ class RepoManipulationService:
                 raise BadRequest(reason=REPOSITORY_ALREADY_EXISTS) from e
             raise
     
-    async def _analyze_repository_base(self, mode:AnalyzeMode, user_claims: UserClaims, id: str | UUID):
+    async def _analyze_repository_base(self, job_type:QueueJobType, user_claims: UserClaims, id: str | UUID):
         repo_info = await retrieve_repo_by_id(self.repo_repository, id)
         
         if not repo_info:
             raise ResourceNotFound(reason=REPOSITORY_NOT_FOUND)
         
-        if mode == AnalyzeMode.REANALYZE:
+        if job_type == QueueJobType.REANALYZE:
             status = StatusTypes.REANALYSIS_PENDING
             if not repo_info.status or not repo_info.status.strip() or repo_info.status != StatusTypes.COMPLETED:
                 raise BadRequest(reason=ANALYSIS_NOT_IN_TERMINAL_STATE)
-        elif mode == AnalyzeMode.ANALYZE:
+        elif job_type == QueueJobType.ANALYZE:
             status = StatusTypes.ANALYSIS_PENDING
         else:
-            raise ValueError("Invalid analyze mode passed")
+            raise ValueError("Invalid analyze job_type passed")
         
         token_info = await retrieve_git_label_or_die(
             self.git_label_repository, repo_info.token_id, user_claims.sub
@@ -276,7 +272,7 @@ class RepoManipulationService:
         )
         
         payload = ProcessingQPayload(
-            job_type=ProcessingJobType.ANALYZE,
+            job_type=job_type,
             payload=ProcessingQPayloadMeta(
                 branch= repo_info.default_branch,
                 repo_id= str(repo_info.repo_id),
@@ -300,7 +296,7 @@ class RepoManipulationService:
         )
     
     async def analyze_repo(self, user_claims: UserClaims, id: str | UUID) -> None:
-        await self._analyze_repository_base(mode=AnalyzeMode.ANALYZE, user_claims=user_claims, id=id)
+        await self._analyze_repository_base(job_type=QueueJobType.ANALYZE, user_claims=user_claims, id=id)
     
     async def reanalyze_repo(self, user_claims: UserClaims, id: str | UUID) -> None:
-        await self._analyze_repository_base(mode=AnalyzeMode.REANALYZE, user_claims=user_claims, id=id)
+        await self._analyze_repository_base(job_type=QueueJobType.REANALYZE, user_claims=user_claims, id=id)
