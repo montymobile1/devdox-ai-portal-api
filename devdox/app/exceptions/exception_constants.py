@@ -31,3 +31,5 @@ UNKNOWN_REASON = "UNKNOWN"
 USER_RESOURCE_NOT_FOUND = "User Not Found"
 
 ANALYSIS_NOT_IN_TERMINAL_STATE = "Cannot start a new analysis, the last run is still active or in a non-terminal state."
+ALREADY_SET_FOR_ANALYSIS = "This repository already has an analysis scheduled"
+CANNOT_START_ANALYSIS = "Cannot start an analysis for this repository right now"

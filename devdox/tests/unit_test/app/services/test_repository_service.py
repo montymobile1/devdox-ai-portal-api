@@ -336,7 +336,7 @@ class TestHelpers:
         )
 
         with pytest.raises(DevDoxAPIException) as exc:
-            await repo_mod.retrieve_repo_by_id(repo_store, "r1")
+            await repo_mod.retrieve_repo_by_id_or_die(repo_store, "r1")
 
         # Optional: check it used the constants you expect
         assert exc.value.error_type == exception_constants.REPOSITORY_DOESNT_EXIST_TITLE
@@ -346,13 +346,13 @@ class TestHelpers:
         repo_store = CapturingRepoStore()
         repo_store.by_id_result = None
         with pytest.raises(ResourceNotFound):
-            await repo_mod.retrieve_repo_by_id(repo_store, "r1")
+            await repo_mod.retrieve_repo_by_id_or_die(repo_store, "r1")
 
     @pytest.mark.asyncio
     async def test_retrieve_repo_by_id_ok(self):
         repo_store = CapturingRepoStore()
         repo_store.by_id_result = SimpleNamespace(id="db-id", token_id="tok", default_branch="main")
-        res = await repo_mod.retrieve_repo_by_id(repo_store, "r1")
+        res = await repo_mod.retrieve_repo_by_id_or_die(repo_store, "r1")
         assert res.id == "db-id"
 
 
@@ -375,6 +375,7 @@ class TestRepoManipulationService_AnalyzeRepo:
             total_chunks=None,
             total_embeddings=None,
             repo_id="provider-repo-id",
+            status=""
         )
 
         # Git label / token info
@@ -452,7 +453,7 @@ class TestRepoManipulationService_AnalyzeRepo:
             id="db-id", token_id="tok-1",
             default_branch="main", processing_end_time=None,
             total_files=None, total_chunks=None, total_embeddings=None,
-            repo_id="provider-repo-id",
+            repo_id="provider-repo-id", status=""
         )
 
         label_store = StubGitLabelStore()  # returns None
