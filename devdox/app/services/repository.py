@@ -287,7 +287,7 @@ class RepoManipulationService:
         
         repo_info = await retrieve_repo_by_id_or_die(self.repo_repository, id)
 
-        if repo_info.status and repo_info.status != StatusTypes.PENDING.value and repo_info.status.strip != "":
+        if repo_info.status and repo_info.status != StatusTypes.PENDING.value and repo_info.status.strip() != "":
             if repo_info.status == StatusTypes.ANALYSIS_PENDING.value:
                 raise BadRequest(reason=ALREADY_SET_FOR_ANALYSIS)
             else:
@@ -297,9 +297,9 @@ class RepoManipulationService:
             self.git_label_repository, repo_info.token_id, user_claims.sub
         )
         
-        await self._update_job_metadata(current_repo_status=StatusTypes.ANALYSIS_PENDING, repo_info=repo_info)
+        await self._update_job_metadata(current_repo_status=StatusTypes.ANALYSIS_PENDING.value, repo_info=repo_info)
         
-        await self.register_processing_job(QueueJobType.ANALYZE, user_claims, repo_info, token_info)
+        await self.register_processing_job(QueueJobType.ANALYZE.value, user_claims, repo_info, token_info)
     
     async def reanalyze_repo(self, user_claims: UserClaims, id: str | UUID) -> None:
         
@@ -312,6 +312,6 @@ class RepoManipulationService:
             self.git_label_repository, repo_info.token_id, user_claims.sub
         )
         
-        await self._update_job_metadata(current_repo_status=StatusTypes.REANALYSIS_PENDING, repo_info=repo_info)
+        await self._update_job_metadata(current_repo_status=StatusTypes.REANALYSIS_PENDING.value, repo_info=repo_info)
         
-        await self.register_processing_job(QueueJobType.REANALYZE, user_claims, repo_info, token_info)
+        await self.register_processing_job(QueueJobType.REANALYZE.value, user_claims, repo_info, token_info)
