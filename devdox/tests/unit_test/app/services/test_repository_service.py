@@ -10,7 +10,7 @@ from models_src.dto.git_label import GitLabelResponseDTO
 from models_src.dto.user import UserResponseDTO
 from models_src.exceptions.utils import RepoErrors
 from app.exceptions.base_exceptions import DevDoxAPIException
-from app.exceptions.local_exceptions import ResourceNotFound
+from app.exceptions.local_exceptions import BadRequest, ResourceNotFound
 from app.exceptions import exception_constants
 from models_src.models.repo import StatusTypes
 import app.services.repository as repo_mod
@@ -336,7 +336,7 @@ class TestHelpers:
         )
 
         with pytest.raises(DevDoxAPIException) as exc:
-            await repo_mod.retrieve_repo_by_id(repo_store, "r1")
+            await repo_mod.retrieve_repo_by_id_or_die(repo_store, "r1")
 
         # Optional: check it used the constants you expect
         assert exc.value.error_type == exception_constants.REPOSITORY_DOESNT_EXIST_TITLE
@@ -346,13 +346,13 @@ class TestHelpers:
         repo_store = CapturingRepoStore()
         repo_store.by_id_result = None
         with pytest.raises(ResourceNotFound):
-            await repo_mod.retrieve_repo_by_id(repo_store, "r1")
+            await repo_mod.retrieve_repo_by_id_or_die(repo_store, "r1")
 
     @pytest.mark.asyncio
     async def test_retrieve_repo_by_id_ok(self):
         repo_store = CapturingRepoStore()
         repo_store.by_id_result = SimpleNamespace(id="db-id", token_id="tok", default_branch="main")
-        res = await repo_mod.retrieve_repo_by_id(repo_store, "r1")
+        res = await repo_mod.retrieve_repo_by_id_or_die(repo_store, "r1")
         assert res.id == "db-id"
 
 
@@ -375,6 +375,7 @@ class TestRepoManipulationService_AnalyzeRepo:
             total_chunks=None,
             total_embeddings=None,
             repo_id="provider-repo-id",
+            status=""
         )
 
         # Git label / token info
@@ -452,7 +453,7 @@ class TestRepoManipulationService_AnalyzeRepo:
             id="db-id", token_id="tok-1",
             default_branch="main", processing_end_time=None,
             total_files=None, total_chunks=None, total_embeddings=None,
-            repo_id="provider-repo-id",
+            repo_id="provider-repo-id", status=""
         )
 
         label_store = StubGitLabelStore()  # returns None
@@ -467,3 +468,187 @@ class TestRepoManipulationService_AnalyzeRepo:
 
         with pytest.raises(ResourceNotFound):
             await service.analyze_repo(UserClaims(sub="u1"), id="db-id")
+
+class TestRepoManipulationService_ReanalyzeRepo:
+
+    @pytest.mark.asyncio
+    async def test_reanalyze_repo_happy_path_completed(self, monkeypatch):
+        # repo in terminal COMPLETED state
+        repo_store = CapturingRepoStore()
+        repo_store.by_id_result = SimpleNamespace(
+            id="db-id",
+            token_id="tok-1",
+            default_branch="main",
+            processing_end_time=None,
+            total_files=None,
+            total_chunks=None,
+            total_embeddings=None,
+            repo_id="provider-repo-id",
+            status=StatusTypes.COMPLETED.value,
+        )
+
+        label_store = StubGitLabelStore()
+        label_store.set_output(SimpleNamespace(
+            id="tok-1", token_value="enc-token", git_hosting="github"
+        ))
+
+        calls = {"args": None}
+        class StubQueue:
+            async def enqueue(self, queue_name, payload, priority, job_type, user_id):
+                calls["args"] = (queue_name, payload, priority, job_type, user_id)
+                return True
+
+        monkeypatch.setattr(repo_mod, "supabase_queue", StubQueue(), raising=True)
+
+        service = repo_mod.RepoManipulationService(
+            git_label_repository=label_store,
+            repo_repository=repo_store,
+            user_repository=StubUserStore(),
+            encryption=StubEncryption(),
+            git_fetcher=StubFetcher(),
+        )
+
+        await service.reanalyze_repo(UserClaims(sub="u1"), id="db-id")
+
+        # metadata update to REANALYSIS_PENDING
+        assert repo_store.updated, "Should call update_analysis_metadata_by_id"
+        upd = repo_store.updated[-1]
+        assert upd["id"] == "db-id"
+        assert upd["status"] == StatusTypes.REANALYSIS_PENDING.value
+
+        # queue job shape
+        assert calls["args"] is not None
+        qname, payload, priority, job_type, user_id = calls["args"]
+        assert qname == "processing"
+        assert job_type == "reanalyze"
+        assert user_id == "u1"
+        assert payload["payload"]["git_provider"] == "github"
+        assert payload["payload"]["token_value"] == "enc-token"
+        assert payload["payload"]["repo_id"] == "provider-repo-id"
+
+    @pytest.mark.asyncio
+    async def test_reanalyze_repo_happy_path_failed(self, monkeypatch):
+        # repo in terminal FAILED state
+        repo_store = CapturingRepoStore()
+        repo_store.by_id_result = SimpleNamespace(
+            id="db-id",
+            token_id="tok-1",
+            default_branch="main",
+            processing_end_time=None,
+            total_files=None,
+            total_chunks=None,
+            total_embeddings=None,
+            repo_id="provider-repo-id",
+            status=StatusTypes.FAILED.value,
+        )
+
+        label_store = StubGitLabelStore()
+        label_store.set_output(SimpleNamespace(
+            id="tok-1", token_value="enc-token", git_hosting="gitlab"
+        ))
+
+        class StubQueue:
+            async def enqueue(self, *a, **k): return True
+
+        monkeypatch.setattr(repo_mod, "supabase_queue", StubQueue(), raising=True)
+
+        service = repo_mod.RepoManipulationService(
+            git_label_repository=label_store,
+            repo_repository=repo_store,
+            user_repository=StubUserStore(),
+            encryption=StubEncryption(),
+            git_fetcher=StubFetcher(),
+        )
+
+        await service.reanalyze_repo(UserClaims(sub="u1"), id="db-id")
+        # verify status and that an update happened
+        assert repo_store.updated[-1]["status"] == StatusTypes.REANALYSIS_PENDING.value
+
+    @pytest.mark.asyncio
+    async def test_reanalyze_repo_non_terminal_state_raises_bad_request(self):
+        # non-terminal: IN_PROGRESS (also covers empty/None in separate checks)
+        repo_store = CapturingRepoStore()
+        repo_store.by_id_result = SimpleNamespace(
+            id="db-id",
+            token_id="tok-1",
+            default_branch="main",
+            processing_end_time=None,
+            total_files=None,
+            total_chunks=None,
+            total_embeddings=None,
+            repo_id="provider-repo-id",
+            status=StatusTypes.IN_PROGRESS.value,
+        )
+
+        service = repo_mod.RepoManipulationService(
+            git_label_repository=StubGitLabelStore(),
+            repo_repository=repo_store,
+            user_repository=StubUserStore(),
+            encryption=StubEncryption(),
+            git_fetcher=StubFetcher(),
+        )
+
+        with pytest.raises(BadRequest):
+            await service.reanalyze_repo(UserClaims(sub="u1"), id="db-id")
+
+        # also assert when status is None / empty string
+        repo_store.by_id_result.status = None
+        with pytest.raises(BadRequest):
+            await service.reanalyze_repo(UserClaims(sub="u1"), id="db-id")
+
+        repo_store.by_id_result.status = ""
+        with pytest.raises(BadRequest):
+            await service.reanalyze_repo(UserClaims(sub="u1"), id="db-id")
+
+    @pytest.mark.asyncio
+    async def test_reanalyze_repo_repo_missing_translates_models_exception(self, monkeypatch):
+        class DummyDevDoxModelsException(Exception):
+            def __init__(self, error_type):
+                super().__init__("dummy")
+                self.error_type = error_type
+
+        monkeypatch.setattr(repo_mod, "DevDoxModelsException", DummyDevDoxModelsException, raising=True)
+
+        repo_store = CapturingRepoStore()
+        repo_store.by_id_exception = DummyDevDoxModelsException(
+            RepoErrors.REPOSITORY_DOESNT_EXIST.value["error_type"]
+        )
+
+        service = repo_mod.RepoManipulationService(
+            git_label_repository=StubGitLabelStore(),
+            repo_repository=repo_store,
+            user_repository=StubUserStore(),
+            encryption=StubEncryption(),
+            git_fetcher=StubFetcher(),
+        )
+
+        with pytest.raises(DevDoxAPIException):
+            await service.reanalyze_repo(UserClaims(sub="u1"), id="does-not-exist")
+
+    @pytest.mark.asyncio
+    async def test_reanalyze_repo_token_missing_raises_resource_not_found(self):
+        repo_store = CapturingRepoStore()
+        repo_store.by_id_result = SimpleNamespace(
+            id="db-id",
+            token_id="tok-1",
+            default_branch="main",
+            processing_end_time=None,
+            total_files=None,
+            total_chunks=None,
+            total_embeddings=None,
+            repo_id="provider-repo-id",
+            status=StatusTypes.COMPLETED.value,
+        )
+
+        label_store = StubGitLabelStore()  # no output set → None
+
+        service = repo_mod.RepoManipulationService(
+            git_label_repository=label_store,
+            repo_repository=repo_store,
+            user_repository=StubUserStore(),
+            encryption=StubEncryption(),
+            git_fetcher=StubFetcher(),
+        )
+
+        with pytest.raises(ResourceNotFound):
+            await service.reanalyze_repo(UserClaims(sub="u1"), id="db-id")

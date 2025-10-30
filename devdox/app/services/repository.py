@@ -4,7 +4,7 @@ from uuid import UUID, uuid4
 from devdox_ai_git.repo_fetcher import RepoFetcher
 from devdox_ai_git.schema.repo import NormalizedGitRepo
 from fastapi import Depends
-from models_src.models.repo import StatusTypes
+from models_src.models.repo import QueueJobType, StatusTypes
 
 from app.exceptions import exception_constants
 from app.exceptions.base_exceptions import DevDoxAPIException
@@ -13,7 +13,7 @@ from app.exceptions.local_exceptions import (
     ResourceNotFound,
 )
 from app.exceptions.exception_constants import (
-    GIT_LABEL_TOKEN_RESOURCE_NOT_FOUND,
+    ALREADY_SET_FOR_ANALYSIS, ANALYSIS_NOT_IN_TERMINAL_STATE, CANNOT_START_ANALYSIS, GIT_LABEL_TOKEN_RESOURCE_NOT_FOUND,
     REPOSITORY_ALREADY_EXISTS,
     TOKEN_NOT_FOUND,
     USER_RESOURCE_NOT_FOUND,
@@ -141,7 +141,7 @@ async def retrieve_git_label_or_die(repository:GitLabelRepository, id, user_id):
     return retrieved_git_label
 
 
-async def retrieve_repo_by_id(repo_repository_instance: RepoRepository, id):
+async def retrieve_repo_by_id_or_die(repo_repository_instance: RepoRepository, id):
     try:
         repo_info = await repo_repository_instance.get_by_id(id)
     except DevDoxModelsException as e:
@@ -159,7 +159,6 @@ async def retrieve_repo_by_id(repo_repository_instance: RepoRepository, id):
         raise ResourceNotFound(reason=REPOSITORY_TOKEN_RESOURCE_NOT_FOUND)
 
     return repo_info
-
 
 class RepoManipulationService:
     def __init__(
@@ -248,26 +247,20 @@ class RepoManipulationService:
             if e.error_type == RepoErrors.REPOSITORY_ALREADY_EXIST.value["error_type"]:
                 raise BadRequest(reason=REPOSITORY_ALREADY_EXISTS) from e
             raise
-
-
-    async def analyze_repo(self, user_claims: UserClaims, id: str | UUID) -> None:
-        repo_info = await retrieve_repo_by_id(self.repo_repository, id)
-        token_info = await retrieve_git_label_or_die(
-            self.git_label_repository, repo_info.token_id, user_claims.sub
-        )
-        
+    
+    async def _update_job_metadata(self, current_repo_status, repo_info):
         _ = await self.repo_repository.update_analysis_metadata_by_id(
             id=str(repo_info.id),
-            status=StatusTypes.ANALYSIS_PENDING,
+            status=current_repo_status,
             processing_end_time=repo_info.processing_end_time,
             total_files=repo_info.total_files,
             total_chunks=repo_info.total_chunks,
             total_embeddings=repo_info.total_embeddings,
         )
-        
-        
+    
+    async def register_processing_job(self, job_type, user_claims, repo_info, token_info):
         payload = {
-            "job_type": "analyze",
+            "job_type": job_type,
             "payload": {
                 "branch": repo_info.default_branch,
                 "repo_id": str(repo_info.repo_id),
@@ -281,11 +274,44 @@ class RepoManipulationService:
                 "context_id": uuid4().hex,
             },
         }
-
+        
         _ = await supabase_queue.enqueue(
             "processing",
             payload=payload,
             priority=1,
-            job_type="analyze",
+            job_type=job_type,
             user_id=user_claims.sub,
         )
+    
+    async def analyze_repo(self, user_claims: UserClaims, id: str | UUID) -> None:
+        
+        repo_info = await retrieve_repo_by_id_or_die(self.repo_repository, id)
+
+        if repo_info.status and repo_info.status != StatusTypes.PENDING.value and repo_info.status.strip() != "":
+            if repo_info.status == StatusTypes.ANALYSIS_PENDING.value:
+                raise BadRequest(reason=ALREADY_SET_FOR_ANALYSIS)
+            else:
+                raise BadRequest(reason=CANNOT_START_ANALYSIS)
+        
+        token_info = await retrieve_git_label_or_die(
+            self.git_label_repository, repo_info.token_id, user_claims.sub
+        )
+        
+        await self._update_job_metadata(current_repo_status=StatusTypes.ANALYSIS_PENDING.value, repo_info=repo_info)
+        
+        await self.register_processing_job(QueueJobType.ANALYZE.value, user_claims, repo_info, token_info)
+    
+    async def reanalyze_repo(self, user_claims: UserClaims, id: str | UUID) -> None:
+        
+        repo_info = await retrieve_repo_by_id_or_die(self.repo_repository, id)
+        
+        if not repo_info.status or not repo_info.status.strip() or repo_info.status not in [StatusTypes.COMPLETED.value, StatusTypes.FAILED.value]:
+            raise BadRequest(reason=ANALYSIS_NOT_IN_TERMINAL_STATE)
+        
+        token_info = await retrieve_git_label_or_die(
+            self.git_label_repository, repo_info.token_id, user_claims.sub
+        )
+        
+        await self._update_job_metadata(current_repo_status=StatusTypes.REANALYSIS_PENDING.value, repo_info=repo_info)
+        
+        await self.register_processing_job(QueueJobType.REANALYZE.value, user_claims, repo_info, token_info)

@@ -390,3 +390,142 @@ class TestAnalyzeRepo:
         assert (
             response.status_code == 400
         )  # Unprocessable Entity for missing 'payload id'
+
+
+class TestReanalyzeRepo:
+
+    class FakeRepoService:
+        def __init__(self):
+            self.called_with = None
+            self.call_count = 0
+
+        async def reanalyze_repo(self, user, repo_id):
+            self.called_with = (user, repo_id)
+            self.call_count += 1
+
+    class FakeAuthenticator(IUserAuthenticator):
+        async def authenticate(self, request: Requestish) -> UserClaims:
+            # mirror the analyze tests’ claims
+            return UserClaims(sub="user123", email="test@example.com", name="TestUser")
+
+    @pytest.fixture
+    def fake_repo_service(self):
+        return self.FakeRepoService()
+
+    @pytest.fixture
+    def client(self, fake_repo_service):
+        app.dependency_overrides[RepoManipulationService] = lambda: fake_repo_service
+        app.dependency_overrides[get_user_authenticator_dependency] = (
+            lambda: self.FakeAuthenticator()
+        )
+        yield TestClient(app), fake_repo_service
+        app.dependency_overrides.clear()
+
+    def test_reanalyze_repo_with_string_id(self, client):
+        test_client, fake_service = client
+        payload = {"id": "123"}
+        headers = {"Authorization": "Bearer faketoken"}
+
+        resp = test_client.post("/api/v1/repos/re-analyze", json=payload, headers=headers)
+        assert resp.status_code in (200, 201)
+        body = resp.json()
+        assert body["success"] is True
+        assert body["message"] == "Reanalysis scheduled successfully"
+        assert fake_service.called_with is not None
+        user, repo_id = fake_service.called_with
+        assert isinstance(user, UserClaims)
+        assert user.sub == "user123"
+        assert repo_id == "123"
+
+    def test_reanalyze_repo_with_uuid_format(self, client):
+        test_client, fake_service = client
+        test_uuid = str(uuid4())
+        headers = {"Authorization": "Bearer faketoken"}
+
+        resp = test_client.post("/api/v1/repos/re-analyze", json={"id": test_uuid}, headers=headers)
+        assert resp.status_code in (200, 201)
+        data = resp.json()
+        assert data["success"] is True
+        assert "Reanalysis scheduled successfully" in data["message"]
+        user, repo_id = fake_service.called_with
+        assert user.email == "test@example.com"
+        assert repo_id == test_uuid
+        assert fake_service.call_count == 1
+
+    def test_reanalyze_repo_with_different_uuid_formats(self, client):
+        test_client, fake_service = client
+        headers = {"Authorization": "Bearer faketoken"}
+
+        # standard UUID
+        u1 = str(uuid4())
+        r1 = test_client.post("/api/v1/repos/re-analyze", json={"id": u1}, headers=headers)
+        assert r1.status_code in (200, 201)
+
+        # UUID without hyphens
+        u2 = str(uuid4()).replace("-", "")
+        r2 = test_client.post("/api/v1/repos/re-analyze", json={"id": u2}, headers=headers)
+        assert r2.status_code in (200, 201)
+
+        assert fake_service.call_count == 2
+
+    def test_proper_service_method_calls_and_response_validation(self, client):
+        test_client, fake_service = client
+        repo_id = str(uuid4())
+        headers = {"Authorization": "Bearer faketoken"}
+
+        resp = test_client.post("/api/v1/repos/re-analyze", json={"id": repo_id}, headers=headers)
+        assert resp.status_code in (200, 201)
+        assert resp.headers["content-type"] == "application/json"
+
+        body = resp.json()
+        assert set(body.keys()) >= {"success", "message"}
+        assert body["success"] is True
+        assert body["message"] == "Reanalysis scheduled successfully"
+        assert fake_service.call_count == 1
+        u, rid = fake_service.called_with
+        assert isinstance(u, UserClaims) and u.sub == "user123"
+        assert rid == repo_id
+
+    def test_reanalyze_repo_service_call_isolation(self, client):
+        test_client, fake_service = client
+        headers = {"Authorization": "Bearer faketoken"}
+
+        r1 = test_client.post("/api/v1/repos/re-analyze", json={"id": "repo-1"}, headers=headers)
+        assert r1.status_code in (200, 201)
+        first = fake_service.called_with
+
+        r2 = test_client.post("/api/v1/repos/re-analyze", json={"id": "repo-2"}, headers=headers)
+        assert r2.status_code in (200, 201)
+        second = fake_service.called_with
+
+        assert fake_service.call_count == 2
+        assert second != first
+        assert second[1] == "repo-2"
+
+    def test_reanalyze_repo_authentication_validation(self, client):
+        test_client, fake_service = client
+        headers = {"Authorization": "Bearer faketoken"}
+
+        resp = test_client.post("/api/v1/repos/re-analyze", json={"id": str(uuid4())}, headers=headers)
+        assert resp.status_code in (200, 201)
+        user_param, _ = fake_service.called_with
+        assert user_param.sub == "user123"
+
+    def test_reanalyze_repo_response_format_consistency(self, client):
+        test_client, _ = client
+        headers = {"Authorization": "Bearer faketoken"}
+        cases = [{"id": "string-id"}, {"id": str(uuid4())}, {"id": "123456"}]
+
+        for payload in cases:
+            resp = test_client.post("/api/v1/repos/re-analyze", json=payload, headers=headers)
+            assert resp.status_code in (200, 201)
+            data = resp.json()
+            assert data["success"] is True
+            assert data["message"] == "Reanalysis scheduled successfully"
+
+    def test_reanalyze_repo_validation_error(self, client):
+        test_client, _ = client
+        headers = {"Authorization": "Bearer faketoken"}
+        resp = test_client.post("/api/v1/repos/re-analyze", json={}, headers=headers)
+        # mirror your analyze test’s expectation
+        assert resp.status_code == 400
