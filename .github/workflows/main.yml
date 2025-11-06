@@ -53,3 +53,24 @@ jobs:
         env:
           SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
 
+      - name: DevDox Locust Test Generator
+        working-directory: devdox
+        uses: montymobile1/devdox-ai-locust@0.1.5.6
+        with:
+          swagger_url: "https://portal-api.devdox.ai/openapi.json"
+          output: "/github/workspace/generated_tests"
+          users: "15"
+          spawn_rate: "3"
+          run_time: "10m"
+          together_api_key: ${{ secrets.TOGETHER_API_KEY }}
+
+      - name: Upload generated tests as artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: generated-locust-tests
+          path: generated_tests/
+
+
+
+
+
