@@ -54,7 +54,7 @@ jobs:
           SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
 
       - name: DevDox Locust Test Generator
-        uses: montymobile1/devdox-ai-locust@0.1.5.6
+        uses: montymobile1/devdox-ai-locust@0.1.6
         with:
           swagger_url: "https://portal-api.devdox.ai/openapi.json"
           output: "generated_tests"
