@@ -18,7 +18,7 @@ jobs:
       - name: Set up Python
         uses: actions/setup-python@v5
         with:
-          python-version: 3.12  # or your actual version
+          python-version: 3.12
       
       - name: Install dependencies
         working-directory: devdox
@@ -54,11 +54,10 @@ jobs:
           SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
 
       - name: DevDox Locust Test Generator
-        working-directory: devdox
         uses: montymobile1/devdox-ai-locust@0.1.5.6
         with:
           swagger_url: "https://portal-api.devdox.ai/openapi.json"
-          output: "/github/workspace/generated_tests"
+          output: "generated_tests"
           users: "15"
           spawn_rate: "3"
           run_time: "10m"
