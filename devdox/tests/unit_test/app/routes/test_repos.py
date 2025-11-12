@@ -5,7 +5,7 @@ from uuid import uuid4
 import pytest
 from clerk_backend_api import Requestish
 from fastapi.testclient import TestClient
-from models_src.dto.repo import GitHosting
+from models_src import GitHosting
 
 from app.exceptions.local_exceptions import ValidationFailed
 from app.main import app

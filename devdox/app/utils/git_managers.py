@@ -1,7 +1,7 @@
 from typing import Any
 
 from devdox_ai_git.repo_fetcher import RepoFetcher
-from models_src.dto.repo import GitHosting
+from models_src import GitHosting
 
 from app.exceptions.base_exceptions import DevDoxAPIException
 from app.exceptions.exception_constants import (

@@ -3,7 +3,7 @@ from typing import Optional
 
 from app.services.api_keys import APIKeyManagerReturn, IAPIKeyManager
 from app.services.git_tokens import mask_token
-from models_src.repositories.api_key import IApiKeyStore
+from models_src import IApiKeyStore
 
 
 class FakeAPIKeyManager(IAPIKeyManager):

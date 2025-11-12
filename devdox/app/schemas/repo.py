@@ -1,14 +1,9 @@
 import uuid
-from types import SimpleNamespace
 
-from github.AuthenticatedUser import AuthenticatedUser
-from github.Repository import Repository
-from gitlab.v4.objects import Project
-from models_src.dto.repo import GitHosting
+from models_src import GitHosting
 from pydantic import BaseModel, Field, ConfigDict
 from typing import Optional, List
 from datetime import datetime
-from enum import Enum
 
 
 

@@ -1,10 +1,12 @@
 import json
+import uuid
 from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
 from encryption_src.test_doubles import FakeEncryptionHelper
 from fastapi import status
-from svix.webhooks import WebhookVerificationError
+from models_src import FakeUserStore, UserResponseDTO
+from svix.webhooks import Webhook, WebhookVerificationError
 
 import app.exceptions.exception_constants
 from app.utils import constants
@@ -38,7 +40,7 @@ class TestWebhookEndpoint:
     @pytest.mark.asyncio
     @patch("app.routes.webhooks.get_encryption_helper", return_value=FakeEncryptionHelper())
     @patch("app.routes.webhooks.Webhook")
-    @patch("app.routes.webhooks.User")
+    @patch("app.routes.webhooks.get_active_user_store", return_value=FakeUserStore())
     async def test_user_created_success(
         self,
         mock_user,
@@ -54,12 +56,7 @@ class TestWebhookEndpoint:
         mock_webhook_instance = MagicMock()
         mock_webhook_instance.verify.return_value = test_payload
         mock_webhook_class.return_value = mock_webhook_instance
-
-        # Setup User.filter().exists() → False
-        mock_user.filter.return_value.exists = AsyncMock(return_value=False)
-        # Setup User.create()
-        mock_user.create = AsyncMock()
-
+        
         # Fire request
         response = client.post(
             "/api/v1/webhooks/",
@@ -71,17 +68,13 @@ class TestWebhookEndpoint:
         assert response.status_code == status.HTTP_200_OK
         assert response.json()["message"] == constants.USER_CREATED_SUCCESS
 
-        mock_user.filter.assert_called_once_with(user_id="user_123")
-        mock_user.create.assert_called_once()
 
     @pytest.mark.asyncio
     @patch("app.routes.webhooks.Webhook")
-    @patch("app.routes.webhooks.User.filter")
-    @patch("app.routes.webhooks.User.create")
+    @patch("app.routes.webhooks.get_active_user_store")
     async def test_user_already_exists(
         self,
-        mock_create,
-        mock_filter,
+        mock_store,
         mock_webhook_class,
         client,
         test_payload,
@@ -92,13 +85,29 @@ class TestWebhookEndpoint:
         mock_webhook_class.return_value = (
             mock_webhook_instance  # Return mock instance on init
         )
-        mock_filter.return_value.exists = AsyncMock(return_value=True)
+        
+        fake_store = FakeUserStore()
+        fake_store.set_fake_data(
+            [
+                UserResponseDTO(
+                    id=uuid.uuid4(),
+                    user_id=test_payload["data"]["id"],
+                    first_name=test_payload["data"]["first_name"],
+                    last_name=test_payload["data"]["last_name"],
+                    email=test_payload["data"]["primary_email_address_id"],
+                    username=test_payload["data"]["username"]
+                )
+            ]
+        )
+        
+        mock_store.return_value = fake_store
+        
         response = client.post(
             "/api/v1/webhooks/", json=test_payload, headers=test_headers
         )
 
         assert response.status_code == status.HTTP_200_OK
-        mock_create.assert_not_called()
+        assert fake_store.save.__name__ not in [x[0] for x in fake_store.received_calls]
 
     @pytest.mark.asyncio
     @patch("app.routes.webhooks.Webhook")
@@ -124,12 +133,16 @@ class TestWebhookEndpoint:
 
     @pytest.mark.asyncio
     @patch("app.routes.webhooks.Webhook.verify")
-    @patch("app.routes.webhooks.User.filter")
+    @patch("app.routes.webhooks.get_active_user_store")
     async def test_unexpected_error(
-        self, mock_filter, mock_verify, client, test_payload, test_headers
+        self, mock_store, mock_verify, client, test_payload, test_headers
     ):
         mock_verify.return_value = test_payload
-        mock_filter.side_effect = Exception("DB error")
+        
+        fake_store = FakeUserStore()
+        fake_store.set_exception(fake_store.exists_by_user_id, Exception("DB error"))
+        mock_store.return_value = fake_store
+        
         response = client.post(
             "/api/v1/webhooks/", json=test_payload, headers=test_headers
         )

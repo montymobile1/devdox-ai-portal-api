@@ -22,8 +22,7 @@ from app.services.api_keys import (
 )
 from app.services.git_tokens import mask_token
 from app.utils.auth import UserClaims
-from models_src.dto.api_key import APIKeyRequestDTO
-from models_src.test_doubles.repositories.api_key import FakeApiKeyStore
+from models_src import APIKeyRequestDTO, FakeApiKeyStore
 
 from tests.unit_test.test_doubles.app.service.api_keys import (
     FakeAPIKeyManager,

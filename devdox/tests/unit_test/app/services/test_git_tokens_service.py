@@ -19,14 +19,7 @@ from app.services.git_tokens import (
     PostGitLabelService,
 )
 from app.utils.auth import UserClaims
-from models_src.dto.git_label import GitLabelResponseDTO
-from models_src.dto.repo import GitHosting
-from models_src.exceptions.utils import GitLabelErrors, internal_error
-from models_src.test_doubles.repositories.git_label import (
-    FakeGitLabelStore,
-    make_fake_git_label,
-)
-from models_src.test_doubles.repositories.user import FakeUserStore, make_fake_user
+from models_src import GitLabelResponseDTO, GitHosting, GitLabelErrors, internal_error, FakeGitLabelStore, make_fake_git_label, FakeUserStore, make_fake_user
 
 
 @pytest.mark.asyncio

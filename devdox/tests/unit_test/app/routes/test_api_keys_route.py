@@ -1,7 +1,6 @@
 import datetime
 import uuid
 import pytest
-from types import SimpleNamespace
 
 import pytest_asyncio
 from fastapi import status
@@ -13,8 +12,7 @@ from app.schemas.basic import RequiredPaginationParams
 from app.services.api_keys import GetApiKeyService, RevokeApiKeyService
 from app.utils.auth import UserClaims
 from app.utils.constants import API_KEY_REVOKED_SUCCESSFULLY, GENERIC_SUCCESS
-from models_src.dto.api_key import APIKeyRequestDTO
-from models_src.test_doubles.repositories.api_key import FakeApiKeyStore
+from models_src import APIKeyRequestDTO, FakeApiKeyStore
 
 
 class TestRevokeApiKeyRouter:

@@ -1,5 +1,5 @@
 from fastapi import Body, Depends, Query, Path
-from models_src.dto.repo import GitHosting
+from models_src import GitHosting
 from pydantic import BaseModel, Field, ConfigDict
 from typing import Annotated, Optional
 from datetime import datetime

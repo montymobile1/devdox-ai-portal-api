@@ -20,15 +20,7 @@ from app.exceptions.local_exceptions import (
     ValidationFailed,
 )
 from app.utils.constants import TOKEN_DELETED_SUCCESSFULLY, TOKEN_SAVED_SUCCESSFULLY
-from models_src.dto.git_label import GitLabelResponseDTO
-from models_src.test_doubles.repositories.git_label import (
-    FakeGitLabelStore,
-    make_fake_git_label,
-)
-from models_src.test_doubles.repositories.user import (
-    FakeUserStore,
-    make_fake_user,
-)
+from models_src import GitLabelResponseDTO, FakeGitLabelStore, make_fake_git_label, FakeUserStore, make_fake_user
 
 
 class TestGetGitLabelsRouter:
