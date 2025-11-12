@@ -3,8 +3,12 @@ Configuration settings for the DevDox AI Portal API.
 """
 from typing import Any, Dict, List, Literal, Optional
 
-from models_src.dto.repo import GitHosting
+from models_src import GitHosting
 from pathlib import Path
+
+from models_src.configs.mongo_config import MongoConfig
+from pydantic import Field
+
 from app.services.supabase_queue import SupabaseQueue
 from pydantic_settings import BaseSettings
 
@@ -63,7 +67,9 @@ class Settings(BaseSettings):
 
     # Version
     VERSION: str = "0.1.1"
-
+    
+    MONGO: Optional[MongoConfig] = Field(default_factory=MongoConfig)
+    
     class Config:
         """Pydantic config class."""
 
@@ -71,6 +77,7 @@ class Settings(BaseSettings):
         case_sensitive = True
         git_hosting: Optional[GitHosting] = None
         extra = "ignore"
+        env_nested_delimiter="__"
 
 
 # Initialize settings instance
