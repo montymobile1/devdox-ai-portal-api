@@ -7,7 +7,7 @@ from contextlib import asynccontextmanager
 import uvicorn
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
-from models_src import init_via_uri
+from models_src import init_via_uri, MongoConfig
 
 from app.config import settings, TORTOISE_ORM
 from app.exceptions.exception_manager import register_exception_handlers
@@ -16,21 +16,10 @@ from app.routes import router as api_router
 
 logger = setup_logging()
 
-# Initialize FastAPI app
+async def init_mongo(mongo_settings:MongoConfig | None):
 
-
-@asynccontextmanager
-async def lifespan(app: FastAPI):
-    """Application lifespan manager for startup and shutdown events."""
-    # Startup
-    from tortoise import Tortoise
-
-    await Tortoise.init(config=TORTOISE_ORM)
-    
-    # INITIALIZE MONGODB
-    mongo_client = None
-    if settings.MONGO:
-        mongo_uri = settings.MONGO.build_uri()
+    if mongo_settings:
+        mongo_uri = mongo_settings.build_uri()
         mongo_client, mongo_db = await init_via_uri(mongo_uri)
         
         # health check to fail fast
@@ -42,21 +31,37 @@ async def lifespan(app: FastAPI):
             if inspect.isawaitable(mongo_res):
                 await mongo_res
             raise
+        
+        return mongo_client, mongo_db
+    return None, None
+
+
+async def shutdown_mongo(mongo_settings:MongoConfig | None, mongo_client):
+    if mongo_settings and mongo_client:
+        res = mongo_client.close()
+        if inspect.isawaitable(res):
+            await res
+        
+        logger.info("MongoDB connections closed")
+
+# Initialize FastAPI app
+@asynccontextmanager
+async def lifespan(app: FastAPI):
+    """Application lifespan manager for startup and shutdown events."""
+    # Startup
+    from tortoise import Tortoise
+
+    await Tortoise.init(config=TORTOISE_ORM)
     
+    # INITIALIZE MONGODB
+    mongo_client, _ = await init_mongo(mongo_settings=settings.MONGO)
     
     yield
     
     # Shutdown
     await Tortoise.close_connections()
     
-    if settings.MONGO and mongo_client:
-        res = mongo_client.close()
-        if inspect.isawaitable(res):
-            await res
-        
-        logger.info("MongoDB connections closed")
-    
-    
+    await shutdown_mongo(mongo_settings=settings.MONGO, mongo_client=mongo_client)
 
 app = FastAPI(
     title="DevDox AI Portal API",
