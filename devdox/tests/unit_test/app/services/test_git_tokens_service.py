@@ -19,21 +19,26 @@ from app.services.git_tokens import (
     PostGitLabelService,
 )
 from app.utils.auth import UserClaims
-from models_src import GitLabelResponseDTO, GitHosting, GitLabelErrors, internal_error, FakeGitLabelStore, make_fake_git_label, FakeUserStore, make_fake_user
+from models_src import GenericFakeStore, GitLabelResponseDTO, GitHosting, GitLabelErrors, GitLabelStore, \
+    InMemoryGitLabelBackend, InMemoryUserBackend, internal_error, make_fake_git_label, make_fake_user, UserStore
 
 
 @pytest.mark.asyncio
 class TestGetGitLabelService__GetGitLabelsByUser:
     def setup_method(self):
-        self.fake_store = FakeGitLabelStore()
-        self.service = GetGitLabelService(label_repository=self.fake_store)
         self.user_claims = UserClaims(sub="user123")
 
     async def test_returns_empty_if_store_count_is_zero(self):
-        self.fake_store.set_fake_data([])
+        in_memo_git_label_backend = InMemoryGitLabelBackend()
+        in_memo_git_label_backend.set_fake_data([])
+        
+        fake_label_store = GenericFakeStore(base_store=GitLabelStore(storage_backend=in_memo_git_label_backend))
+        
+        service = GetGitLabelService(label_repository=fake_label_store)
+        
         pagination = RequiredPaginationParams(limit=10, offset=0)
 
-        result = await self.service.get_git_labels_by_user(
+        result = await service.get_git_labels_by_user(
             pagination=pagination,
             user_claims=self.user_claims,
             git_hosting=None,
@@ -45,14 +50,21 @@ class TestGetGitLabelService__GetGitLabelsByUser:
             "page": 1,
             "size": 10,
         }
-        assert (self.fake_store.count_by_user_id.__name__, (), {'git_hosting': None, 'user_id': 'user123'}) in self.fake_store.received_calls
+        assert (GitLabelStore.count_by_user_id.__name__, (), {'git_hosting': None, 'user_id': 'user123'}) in fake_label_store.received_calls
 
     async def test_returns_formatted_git_labels(self):
+        
+        in_memo_git_label_backend = InMemoryGitLabelBackend()
         fake_label = make_fake_git_label(user_id="user123", label="bugfix")
-        self.fake_store.set_fake_data([fake_label])
+        in_memo_git_label_backend.set_fake_data([fake_label])
+        
+        fake_label_store = GenericFakeStore(base_store=GitLabelStore(storage_backend=in_memo_git_label_backend))
+        
+        service = GetGitLabelService(label_repository=fake_label_store)
+        
         pagination = RequiredPaginationParams(limit=10, offset=0)
 
-        result = await self.service.get_git_labels_by_user(
+        result = await service.get_git_labels_by_user(
             pagination=pagination,
             user_claims=self.user_claims,
             git_hosting="github",
@@ -62,23 +74,30 @@ class TestGetGitLabelService__GetGitLabelsByUser:
         assert result["items"][0]["label"] == "bugfix"
         assert result["items"][0]["masked_token"] == "****1234"
         assert (
-            self.fake_store.count_by_user_id.__name__,
+            GitLabelStore.count_by_user_id.__name__,
             (),
             {'git_hosting': 'github', 'user_id': 'user123'}
-        ) in self.fake_store.received_calls
+        ) in fake_label_store.received_calls
         
         assert (
-            self.fake_store.find_all_by_user_id.__name__,
+            GitLabelStore.find_all_by_user_id.__name__,
             (),
             {'git_hosting': 'github', 'limit': 10, 'offset': 0, 'user_id': 'user123'}
-        ) in self.fake_store.received_calls
+        ) in fake_label_store.received_calls
 
     async def test_bubbles_up_store_exception(self):
-        self.fake_store.set_exception(self.fake_store.count_by_user_id, ValueError("Boom"))
+        in_memo_git_label_backend = InMemoryGitLabelBackend()
+        
+        fake_label_store = GenericFakeStore(base_store=GitLabelStore(storage_backend=in_memo_git_label_backend))
+        fake_label_store.set_exception(GitLabelStore.count_by_user_id, ValueError("Boom"))
+        
+        service = GetGitLabelService(label_repository=fake_label_store)
+        
+        
         pagination = RequiredPaginationParams(limit=10, offset=0)
 
         with pytest.raises(ValueError) as exc:
-            await self.service.get_git_labels_by_user(
+            await service.get_git_labels_by_user(
                 pagination=pagination,
                 user_claims=self.user_claims,
                 git_hosting=None,
@@ -91,16 +110,20 @@ class TestGetGitLabelService__GetGitLabelsByUser:
 class TestGetGitLabelService__GetGitLabelsByLabel:
 
     def setup_method(self):
-        self.store = FakeGitLabelStore()
-        self.service = GetGitLabelService(label_repository=self.store)
         self.user_claims = UserClaims(sub="user123")
         self.pagination = PaginationParams(limit=10, offset=0)
 
     async def test_get_git_labels_by_label_returns_formatted(self):
+        
+        in_memo_git_label_backend = InMemoryGitLabelBackend()
         label = make_fake_git_label(user_id="user123", label="bug")
-        self.store.set_fake_data([label])
-
-        result = await self.service.get_git_labels_by_label(
+        in_memo_git_label_backend.set_fake_data([label])
+        
+        fake_label_store = GenericFakeStore(base_store=GitLabelStore(storage_backend=in_memo_git_label_backend))
+        
+        service = GetGitLabelService(label_repository=fake_label_store)
+        
+        result = await service.get_git_labels_by_label(
             pagination=self.pagination,
             user_claims=self.user_claims,
             label="bug",
@@ -111,33 +134,47 @@ class TestGetGitLabelService__GetGitLabelsByLabel:
         assert dict_res[0]["masked_token"] == "****1234"
 
     async def test_get_git_labels_by_label_handles_store_exception(self):
-        self.store.set_exception(
-            self.store.count_by_user_id_and_label, ValueError("Simulated error")
+        
+        in_memo_git_label_backend = InMemoryGitLabelBackend()
+        fake_label_store = GenericFakeStore(base_store=GitLabelStore(storage_backend=in_memo_git_label_backend))
+        fake_label_store.set_exception(
+            GitLabelStore.count_by_user_id_and_label, ValueError("Simulated error")
         )
-
+        
+        service = GetGitLabelService(label_repository=fake_label_store)
+        
         with pytest.raises(ValueError, match="Simulated error"):
-            await self.service.get_git_labels_by_label(
+            await service.get_git_labels_by_label(
                 pagination=self.pagination,
                 user_claims=self.user_claims,
                 label="bug",
             )
 
     async def test_get_git_labels_by_label_returns_empty_list(self):
-        self.store.set_fake_data([])
+        in_memo_git_label_backend = InMemoryGitLabelBackend()
+        in_memo_git_label_backend.set_fake_data([])
+        
+        fake_label_store = GenericFakeStore(base_store=GitLabelStore(storage_backend=in_memo_git_label_backend))
+        service = GetGitLabelService(label_repository=fake_label_store)
 
-        result = await self.service.get_git_labels_by_label(
+        result = await service.get_git_labels_by_label(
             pagination=self.pagination, user_claims=self.user_claims, label="anything"
         )
 
         assert result["items"] == []
 
     async def test_get_git_labels_by_label_applies_formatting(self):
+        
+        in_memo_git_label_backend = InMemoryGitLabelBackend()
         label = make_fake_git_label(
             user_id="user123", label="bug", masked_token="****abcd"
         )
-        self.store.set_fake_data([label])
-
-        result = await self.service.get_git_labels_by_label(
+        in_memo_git_label_backend.set_fake_data([label])
+        
+        fake_label_store = GenericFakeStore(base_store=GitLabelStore(storage_backend=in_memo_git_label_backend))
+        service = GetGitLabelService(label_repository=fake_label_store)
+        
+        result = await service.get_git_labels_by_label(
             pagination=self.pagination, user_claims=self.user_claims, label="bug"
         )
 
@@ -147,37 +184,32 @@ class TestGetGitLabelService__GetGitLabelsByLabel:
         assert "id" in item and "created_at" in item
 
     async def test_get_git_labels_by_label_passes_correct_arguments(self):
+        
+        in_memo_git_label_backend = InMemoryGitLabelBackend()
         label = make_fake_git_label(user_id="user123", label="feature")
-        self.store.set_fake_data([label])
-
-        await self.service.get_git_labels_by_label(
+        in_memo_git_label_backend.set_fake_data([label])
+        
+        fake_label_store = GenericFakeStore(base_store=GitLabelStore(storage_backend=in_memo_git_label_backend))
+        service = GetGitLabelService(label_repository=fake_label_store)
+    
+        await service.get_git_labels_by_label(
             pagination=self.pagination, user_claims=self.user_claims, label="feature"
         )
 
         assert (
-            self.store.find_all_by_user_id_and_label.__name__,
+            GitLabelStore.find_all_by_user_id_and_label.__name__,
             (),
             {'label': 'feature', 'limit': 10, 'offset': 0, 'user_id': 'user123'}
-        ) in self.store.received_calls
+        ) in fake_label_store.received_calls
 
 
 class TestPostGitLabelService__AddGitToken:
 
     def setup_method(self):
-        self.fake_label_store = FakeGitLabelStore()
-        self.fake_user_store = FakeUserStore()
         self.fake_crypto = FakeEncryptionHelper()
         self.fake_fetcher = FakeRepoFetcher()
 
-        self.service = PostGitLabelService(
-            user_repository=self.fake_user_store,
-            label_repository=self.fake_label_store,
-            crypto_store=self.fake_crypto,
-            git_manager=self.fake_fetcher,
-        )
-
         self.valid_user = make_fake_user(user_id="user123")
-        self.fake_user_store.set_fake_data(fake_data=[self.valid_user])
 
         self.valid_payload = GitLabelBase(
             label="label1", token_value="mytoken", git_hosting=GitHosting.GITHUB
@@ -185,7 +217,23 @@ class TestPostGitLabelService__AddGitToken:
 
     @pytest.mark.asyncio
     async def test_add_token_success(self):
-        result = await self.service.add_git_token(
+        
+        in_memo_git_label_backend = InMemoryGitLabelBackend()
+        fake_label_store = GenericFakeStore(base_store=GitLabelStore(storage_backend=in_memo_git_label_backend))
+        
+        in_memo_user_backend = InMemoryUserBackend()
+        in_memo_user_backend.set_fake_data(fake_data=[self.valid_user])
+        fake_user_store = GenericFakeStore(base_store=UserStore(storage_backend=in_memo_user_backend))
+        
+        service = PostGitLabelService(
+            user_repository=fake_user_store,
+            label_repository=fake_label_store,
+            crypto_store=self.fake_crypto,
+            git_manager=self.fake_fetcher,
+        )
+        
+        
+        result = await service.add_git_token(
             user_claims=UserClaims(sub="user123"), json_payload=self.valid_payload
         )
 
@@ -195,9 +243,23 @@ class TestPostGitLabelService__AddGitToken:
     @pytest.mark.asyncio
     async def test_raises_if_token_is_blank(self):
         self.valid_payload.token_value = "   "
-
+        
+        in_memo_git_label_backend = InMemoryGitLabelBackend()
+        fake_label_store = GenericFakeStore(base_store=GitLabelStore(storage_backend=in_memo_git_label_backend))
+        
+        in_memo_user_backend = InMemoryUserBackend()
+        in_memo_user_backend.set_fake_data(fake_data=[self.valid_user])
+        fake_user_store = GenericFakeStore(base_store=UserStore(storage_backend=in_memo_user_backend))
+        
+        service = PostGitLabelService(
+            user_repository=fake_user_store,
+            label_repository=fake_label_store,
+            crypto_store=self.fake_crypto,
+            git_manager=self.fake_fetcher,
+        )
+        
         with pytest.raises(BadRequest) as exc:
-            await self.service.add_git_token(
+            await service.add_git_token(
                 UserClaims(sub="user123"), self.valid_payload
             )
 
@@ -205,8 +267,23 @@ class TestPostGitLabelService__AddGitToken:
 
     @pytest.mark.asyncio
     async def test_raises_if_user_not_found(self):
+        
+        in_memo_git_label_backend = InMemoryGitLabelBackend()
+        fake_label_store = GenericFakeStore(base_store=GitLabelStore(storage_backend=in_memo_git_label_backend))
+        
+        in_memo_user_backend = InMemoryUserBackend()
+        in_memo_user_backend.set_fake_data(fake_data=[self.valid_user])
+        fake_user_store = GenericFakeStore(base_store=UserStore(storage_backend=in_memo_user_backend))
+        
+        service = PostGitLabelService(
+            user_repository=fake_user_store,
+            label_repository=fake_label_store,
+            crypto_store=self.fake_crypto,
+            git_manager=self.fake_fetcher,
+        )
+        
         with pytest.raises(ResourceNotFound) as exc:
-            await self.service.add_git_token(
+            await service.add_git_token(
                 UserClaims(sub="user_not_found"), self.valid_payload
             )
 
@@ -215,9 +292,23 @@ class TestPostGitLabelService__AddGitToken:
     @pytest.mark.asyncio
     async def test_raises_if_git_user_is_none(self):
         self.fake_fetcher.github_fetcher.repo_user = None
-
+        
+        in_memo_git_label_backend = InMemoryGitLabelBackend()
+        fake_label_store = GenericFakeStore(base_store=GitLabelStore(storage_backend=in_memo_git_label_backend))
+        
+        in_memo_user_backend = InMemoryUserBackend()
+        in_memo_user_backend.set_fake_data(fake_data=[self.valid_user])
+        fake_user_store = GenericFakeStore(base_store=UserStore(storage_backend=in_memo_user_backend))
+        
+        service = PostGitLabelService(
+            user_repository=fake_user_store,
+            label_repository=fake_label_store,
+            crypto_store=self.fake_crypto,
+            git_manager=self.fake_fetcher,
+        )
+        
         with pytest.raises(ResourceNotFound) as exc:
-            await self.service.add_git_token(
+            await service.add_git_token(
                 UserClaims(sub="user123"), self.valid_payload
             )
 
@@ -225,13 +316,28 @@ class TestPostGitLabelService__AddGitToken:
 
     @pytest.mark.asyncio
     async def test_raises_if_integrity_error(self):
-        self.fake_label_store.set_exception(
-            self.fake_label_store.save,
+        
+        in_memo_git_label_backend = InMemoryGitLabelBackend()
+        fake_label_store = GenericFakeStore(base_store=GitLabelStore(storage_backend=in_memo_git_label_backend))
+        fake_label_store.set_exception(
+            GitLabelStore.save,
             internal_error(**GitLabelErrors.GIT_LABEL_ALREADY_EXISTS.value)
         )
-
+        
+        in_memo_user_backend = InMemoryUserBackend()
+        in_memo_user_backend.set_fake_data(fake_data=[self.valid_user])
+        fake_user_store = GenericFakeStore(base_store=UserStore(storage_backend=in_memo_user_backend))
+        
+        
+        service = PostGitLabelService(
+            user_repository=fake_user_store,
+            label_repository=fake_label_store,
+            crypto_store=self.fake_crypto,
+            git_manager=self.fake_fetcher,
+        )
+        
         with pytest.raises(BadRequest) as exc:
-            await self.service.add_git_token(
+            await service.add_git_token(
                 UserClaims(sub="user123"), self.valid_payload
             )
 
@@ -246,14 +352,14 @@ def make_fake_user_claims(user_id="user123"):
 class TestDeleteGitLabelService__DeleteByGitLabelId:
 
     def setup_method(self):
-        self.fake_store = FakeGitLabelStore()
-        self.service = DeleteGitLabelService(label_repository=self.fake_store)
         self.user_claims = make_fake_user_claims()
         self.existing_label_id = uuid.uuid4()
 
     async def test_returns_label_when_found(self):
         # Arrange
-        self.fake_store.set_fake_data(fake_data=[
+        
+        in_memo_git_label_backend = InMemoryGitLabelBackend()
+        in_memo_git_label_backend.set_fake_data(fake_data=[
             GitLabelResponseDTO(
                 id=self.existing_label_id,
                 user_id="user123",
@@ -261,8 +367,11 @@ class TestDeleteGitLabelService__DeleteByGitLabelId:
             )
         ])
         
+        fake_label_store = GenericFakeStore(base_store=GitLabelStore(storage_backend=in_memo_git_label_backend))
+        service = DeleteGitLabelService(label_repository=fake_label_store)
+        
         # Act
-        result = await self.service.delete_by_git_label_id(
+        result = await service.delete_by_git_label_id(
             user_claims=self.user_claims, git_label_id=self.existing_label_id
         )
 
@@ -272,21 +381,25 @@ class TestDeleteGitLabelService__DeleteByGitLabelId:
             'delete_by_id_and_user_id',
             (),
             {'label_id': self.existing_label_id, 'user_id': 'user123'}
-        ) in self.fake_store.received_calls
+        ) in fake_label_store.received_calls
 
     async def test_raises_when_label_not_found(self):
         # Arrange: empty store
-        self.fake_store.set_fake_data([])
-
+        in_memo_git_label_backend = InMemoryGitLabelBackend()
+        in_memo_git_label_backend.set_fake_data([])
+        
+        fake_label_store = GenericFakeStore(base_store=GitLabelStore(storage_backend=in_memo_git_label_backend))
+        service = DeleteGitLabelService(label_repository=fake_label_store)
+        
         # Act & Assert
         with pytest.raises(ResourceNotFound) as exc:
-            await self.service.delete_by_git_label_id(
+            await service.delete_by_git_label_id(
                 user_claims=self.user_claims, git_label_id=self.existing_label_id
             )
 
         assert exc.value.user_message == TOKEN_NOT_FOUND
         assert (
-            self.fake_store.delete_by_id_and_user_id.__name__,
+            GitLabelStore.delete_by_id_and_user_id.__name__,
             (),
             {'label_id': self.existing_label_id, 'user_id': 'user123'}
-        ) in self.fake_store.received_calls
+        ) in fake_label_store.received_calls

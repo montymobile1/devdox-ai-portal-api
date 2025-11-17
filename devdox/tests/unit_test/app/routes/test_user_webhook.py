@@ -5,7 +5,7 @@ from unittest.mock import AsyncMock, MagicMock, patch
 import pytest
 from encryption_src.test_doubles import FakeEncryptionHelper
 from fastapi import status
-from models_src import FakeUserStore, UserResponseDTO
+from models_src import GenericFakeStore, InMemoryUserBackend, UserResponseDTO, UserStore
 from svix.webhooks import Webhook, WebhookVerificationError
 
 import app.exceptions.exception_constants
@@ -40,7 +40,7 @@ class TestWebhookEndpoint:
     @pytest.mark.asyncio
     @patch("app.routes.webhooks.get_encryption_helper", return_value=FakeEncryptionHelper())
     @patch("app.routes.webhooks.Webhook")
-    @patch("app.routes.webhooks.get_active_user_store", return_value=FakeUserStore())
+    @patch("app.routes.webhooks.get_active_user_store")
     async def test_user_created_success(
         self,
         mock_user,
@@ -50,6 +50,13 @@ class TestWebhookEndpoint:
         test_payload,
         test_headers,
     ):
+        
+        
+        in_memo = InMemoryUserBackend()
+        fake_user_store = GenericFakeStore(base_store=UserStore(storage_backend=in_memo))
+        
+        mock_user.return_value = fake_user_store
+        
         raw_payload = json.dumps(test_payload).encode("utf-8")
 
         # Setup webhook.verify to return the full dict
@@ -86,8 +93,10 @@ class TestWebhookEndpoint:
             mock_webhook_instance  # Return mock instance on init
         )
         
-        fake_store = FakeUserStore()
-        fake_store.set_fake_data(
+        in_memo = InMemoryUserBackend()
+        
+        
+        in_memo.set_fake_data(
             [
                 UserResponseDTO(
                     id=uuid.uuid4(),
@@ -100,14 +109,17 @@ class TestWebhookEndpoint:
             ]
         )
         
-        mock_store.return_value = fake_store
+        fake_user_store = GenericFakeStore(base_store=UserStore(storage_backend=in_memo))
+
+        
+        mock_store.return_value = fake_user_store
         
         response = client.post(
             "/api/v1/webhooks/", json=test_payload, headers=test_headers
         )
 
         assert response.status_code == status.HTTP_200_OK
-        assert fake_store.save.__name__ not in [x[0] for x in fake_store.received_calls]
+        assert UserStore.save.__name__ not in [x[0] for x in fake_user_store.received_calls]
 
     @pytest.mark.asyncio
     @patch("app.routes.webhooks.Webhook")
@@ -139,9 +151,10 @@ class TestWebhookEndpoint:
     ):
         mock_verify.return_value = test_payload
         
-        fake_store = FakeUserStore()
-        fake_store.set_exception(fake_store.exists_by_user_id, Exception("DB error"))
-        mock_store.return_value = fake_store
+        in_memo = InMemoryUserBackend()
+        fake_user_store = GenericFakeStore(base_store=UserStore(storage_backend=in_memo))
+        fake_user_store.set_exception(UserStore.exists_by_user_id, Exception("DB error"))
+        mock_store.return_value = fake_user_store
         
         response = client.post(
             "/api/v1/webhooks/", json=test_payload, headers=test_headers

@@ -12,40 +12,47 @@ from app.schemas.basic import RequiredPaginationParams
 from app.services.api_keys import GetApiKeyService, RevokeApiKeyService
 from app.utils.auth import UserClaims
 from app.utils.constants import API_KEY_REVOKED_SUCCESSFULLY, GENERIC_SUCCESS
-from models_src import APIKeyRequestDTO, FakeApiKeyStore
+from models_src import APIKeyRequestDTO, ApiKeyStore, InMemoryApiKeyBackend
 
 
 class TestRevokeApiKeyRouter:
-
+    
     route_url = "/api/v1/api-keys/"
 
     @pytest_asyncio.fixture
     async def override_revoke_service_success(self):
-        store = FakeApiKeyStore()
+        in_memo = InMemoryApiKeyBackend()
         
-        saved_rec = await store.save(create_model=APIKeyRequestDTO(
+        fake = ApiKeyStore(storage_backend=in_memo)
+        
+        saved_rec = await fake.save(create_model=APIKeyRequestDTO(
             user_id="user123",
             api_key= str(uuid.uuid4()),
             masked_api_key="masked_api_key",
             is_active=True
         ))
 
-        service = RevokeApiKeyService(api_key_repository=store)
+        service = RevokeApiKeyService(api_key_repository=fake)
 
         def _override():
             return service
 
         app.dependency_overrides[RevokeApiKeyService.with_dependency] = _override
         try:
-            yield store, saved_rec.api_key
+            yield fake, saved_rec.api_key
         finally:
             app.dependency_overrides.clear()
 
 
     @pytest.fixture
     def override_revoke_service_not_found(self):
-        store = FakeApiKeyStore()  # no matching keys stored
-        service = RevokeApiKeyService(api_key_repository=store)
+        
+        in_memo = InMemoryApiKeyBackend()
+        
+        fake = ApiKeyStore(storage_backend=in_memo)
+        
+        
+        service = RevokeApiKeyService(api_key_repository=fake)
 
         def _override():
             return service
