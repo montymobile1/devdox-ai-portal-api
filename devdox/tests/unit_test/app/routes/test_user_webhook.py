@@ -5,7 +5,7 @@ from unittest.mock import AsyncMock, MagicMock, patch
 import pytest
 from encryption_src.test_doubles import FakeEncryptionHelper
 from fastapi import status
-from models_src import GenericFakeStore, InMemoryUserBackend, UserResponseDTO, UserStore
+from models_src import GenericFakeStore, InMemoryUserBackend, UserResponseDTO
 from svix.webhooks import Webhook, WebhookVerificationError
 
 import app.exceptions.exception_constants
@@ -52,8 +52,7 @@ class TestWebhookEndpoint:
     ):
         
         
-        in_memo = InMemoryUserBackend()
-        fake_user_store = GenericFakeStore(base_store=UserStore(storage_backend=in_memo))
+        fake_user_store = GenericFakeStore(in_memory_backend=InMemoryUserBackend())
         
         mock_user.return_value = fake_user_store
         
@@ -93,10 +92,8 @@ class TestWebhookEndpoint:
             mock_webhook_instance  # Return mock instance on init
         )
         
-        in_memo = InMemoryUserBackend()
-        
-        
-        in_memo.set_fake_data(
+        fake_user_store = GenericFakeStore(in_memory_backend=InMemoryUserBackend())
+        fake_user_store.backend.set_data_store(
             [
                 UserResponseDTO(
                     id=uuid.uuid4(),
@@ -109,9 +106,6 @@ class TestWebhookEndpoint:
             ]
         )
         
-        fake_user_store = GenericFakeStore(base_store=UserStore(storage_backend=in_memo))
-
-        
         mock_store.return_value = fake_user_store
         
         response = client.post(
@@ -119,7 +113,7 @@ class TestWebhookEndpoint:
         )
 
         assert response.status_code == status.HTTP_200_OK
-        assert UserStore.save.__name__ not in [x[0] for x in fake_user_store.received_calls]
+        assert fake_user_store.store.save.__name__ not in [x[0] for x in fake_user_store.received_calls]
 
     @pytest.mark.asyncio
     @patch("app.routes.webhooks.Webhook")
@@ -151,9 +145,8 @@ class TestWebhookEndpoint:
     ):
         mock_verify.return_value = test_payload
         
-        in_memo = InMemoryUserBackend()
-        fake_user_store = GenericFakeStore(base_store=UserStore(storage_backend=in_memo))
-        fake_user_store.set_exception(UserStore.exists_by_user_id, Exception("DB error"))
+        fake_user_store = GenericFakeStore(in_memory_backend=InMemoryUserBackend())
+        fake_user_store.set_exception(fake_user_store.store.exists_by_user_id, Exception("DB error"))
         mock_store.return_value = fake_user_store
         
         response = client.post(

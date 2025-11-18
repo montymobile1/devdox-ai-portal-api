@@ -3,10 +3,9 @@ Configuration settings for the DevDox AI Portal API.
 """
 from typing import Any, Dict, List, Literal, Optional
 
-from models_src import GitHosting
+from models_src import MongoConfig, GitHosting
 from pathlib import Path
 
-from models_src.configs.mongo_config import MongoConfig
 from pydantic import Field
 
 from app.services.supabase_queue import SupabaseQueue

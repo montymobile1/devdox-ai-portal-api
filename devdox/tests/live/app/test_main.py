@@ -1,6 +1,6 @@
 import pytest
 
-from models_src.configs.mongo_config import MongoConfig
+from models_src import MongoConfig
 
 from app.main import init_mongo, shutdown_mongo
 

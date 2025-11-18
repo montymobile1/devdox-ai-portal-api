@@ -12,7 +12,7 @@ from app.schemas.basic import RequiredPaginationParams
 from app.services.api_keys import GetApiKeyService, RevokeApiKeyService
 from app.utils.auth import UserClaims
 from app.utils.constants import API_KEY_REVOKED_SUCCESSFULLY, GENERIC_SUCCESS
-from models_src import APIKeyRequestDTO, ApiKeyStore, InMemoryApiKeyBackend
+from models_src import APIKeyRequestDTO, GenericFakeStore, InMemoryApiKeyBackend
 
 
 class TestRevokeApiKeyRouter:
@@ -21,9 +21,7 @@ class TestRevokeApiKeyRouter:
 
     @pytest_asyncio.fixture
     async def override_revoke_service_success(self):
-        in_memo = InMemoryApiKeyBackend()
-        
-        fake = ApiKeyStore(storage_backend=in_memo)
+        fake = GenericFakeStore(in_memory_backend=InMemoryApiKeyBackend())
         
         saved_rec = await fake.save(create_model=APIKeyRequestDTO(
             user_id="user123",
@@ -47,11 +45,8 @@ class TestRevokeApiKeyRouter:
     @pytest.fixture
     def override_revoke_service_not_found(self):
         
-        in_memo = InMemoryApiKeyBackend()
-        
-        fake = ApiKeyStore(storage_backend=in_memo)
-        
-        
+        fake = GenericFakeStore(in_memory_backend=InMemoryApiKeyBackend())
+    
         service = RevokeApiKeyService(api_key_repository=fake)
 
         def _override():

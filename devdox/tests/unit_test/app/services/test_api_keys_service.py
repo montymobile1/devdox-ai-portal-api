@@ -1,7 +1,6 @@
 import datetime
 import hashlib
 import re
-from types import SimpleNamespace
 from typing import Optional
 from uuid import uuid4
 
@@ -22,7 +21,7 @@ from app.services.api_keys import (
 )
 from app.services.git_tokens import mask_token
 from app.utils.auth import UserClaims
-from models_src import APIKeyRequestDTO, ApiKeyStore, GenericFakeStore, GitLabelStore, InMemoryApiKeyBackend
+from models_src import APIKeyRequestDTO, GenericFakeStore, InMemoryApiKeyBackend
 
 from tests.unit_test.test_doubles.app.service.api_keys import (
     FakeAPIKeyManager,
@@ -32,10 +31,11 @@ from tests.unit_test.test_doubles.app.service.api_keys import (
 
 @pytest.mark.asyncio
 class TestAPIKeyManager:
-
+    
+    IN_MEMO = InMemoryApiKeyBackend
+    
     async def test_generate_unique_key_success(self):
-        in_memo = InMemoryApiKeyBackend()
-        fake_label_store = GenericFakeStore(base_store=ApiKeyStore(storage_backend=in_memo))
+        fake_label_store = GenericFakeStore(in_memory_backend=self.IN_MEMO())
         
         manager = APIKeyManager(api_key_repository=fake_label_store)
 
@@ -47,8 +47,7 @@ class TestAPIKeyManager:
         assert result.masked == mask_token(result.plain)
 
     async def test_returns_none_if_hash_exists(self, monkeypatch):
-        in_memo = InMemoryApiKeyBackend()
-        fake_label_store = GenericFakeStore(base_store=ApiKeyStore(storage_backend=in_memo))
+        fake_label_store = GenericFakeStore(in_memory_backend=self.IN_MEMO())
         
         
         manager = APIKeyManager(fake_label_store)
@@ -73,9 +72,8 @@ class TestAPIKeyManager:
         assert result is None
 
     async def test_handles_store_exception(self):
-        in_memo = InMemoryApiKeyBackend()
-        fake_label_store = GenericFakeStore(base_store=ApiKeyStore(storage_backend=in_memo))
-        fake_label_store.set_exception(ApiKeyStore.exists_by_hash_key, RuntimeError("DB error"))
+        fake_label_store = GenericFakeStore(in_memory_backend=self.IN_MEMO())
+        fake_label_store.set_exception(fake_label_store.store.exists_by_hash_key, RuntimeError("DB error"))
         
         manager = APIKeyManager(fake_label_store)
 
@@ -83,8 +81,7 @@ class TestAPIKeyManager:
             await manager.generate_unique_api_key()
 
     async def test_generate_key_respects_prefix_and_length(self):
-        in_memo = InMemoryApiKeyBackend()
-        fake_label_store = GenericFakeStore(base_store=ApiKeyStore(storage_backend=in_memo))
+        fake_label_store = GenericFakeStore(in_memory_backend=self.IN_MEMO())
         
         manager = APIKeyManager(fake_label_store)
 
@@ -104,11 +101,12 @@ class DummyUserClaims:
 
 @pytest.mark.asyncio
 class TestPostApiKeyService:
-
+    
+    IN_MEMO = InMemoryApiKeyBackend
+    
     async def test_generate_api_key_success(self):
         
-        in_memo = InMemoryApiKeyBackend()
-        fake_label_store = GenericFakeStore(base_store=ApiKeyStore(storage_backend=in_memo))
+        fake_label_store = GenericFakeStore(in_memory_backend=self.IN_MEMO())
         
         fake_manager = FakeAPIKeyManager(fake_label_store)
         fake_manager.set_fixed_key("dvd_mock_key")
@@ -121,12 +119,11 @@ class TestPostApiKeyService:
         key_id, plain = await service.generate_api_key(user_claims)
 
         assert plain == "dvd_mock_key"
-        assert any(k == "user-123" for k, v in in_memo.data_store.items())
+        assert any(k == "user-123" for k, v in fake_label_store.backend.data_store.items())
         assert key_id is not None
 
     async def test_generate_api_key_fails_after_retries(self):
-        in_memo = InMemoryApiKeyBackend()
-        fake_label_store = GenericFakeStore(base_store=ApiKeyStore(storage_backend=in_memo))
+        fake_label_store = GenericFakeStore(in_memory_backend=self.IN_MEMO())
         
         fake_manager = StubAPIKeyManager()
         
@@ -151,11 +148,12 @@ class TestPostApiKeyService:
 
 @pytest.mark.asyncio
 class TestRevokeApiKeyService:
-
+    
+    In_MEMO = InMemoryApiKeyBackend
+    
     async def test_successful_revoke(self):
         
-        in_memo = InMemoryApiKeyBackend()
-        fake_label_store = GenericFakeStore(base_store=ApiKeyStore(storage_backend=in_memo))
+        fake_label_store = GenericFakeStore(in_memory_backend=self.In_MEMO())
         
         user_id = "user123"
         
@@ -177,8 +175,7 @@ class TestRevokeApiKeyService:
         assert not saved_rec.is_active
 
     async def test_revoke_fails_when_key_not_found(self):
-        in_memo = InMemoryApiKeyBackend()
-        fake_label_store = GenericFakeStore(base_store=ApiKeyStore(storage_backend=in_memo))
+        fake_label_store = GenericFakeStore(in_memory_backend=self.In_MEMO())
         
         service = RevokeApiKeyService(api_key_repository=fake_label_store)
         claims = UserClaims(sub="user123")
@@ -187,10 +184,9 @@ class TestRevokeApiKeyService:
             await service.revoke_api_key(claims, api_key_id=uuid4())
 
     async def test_revoke_handles_store_exception(self):
-        in_memo = InMemoryApiKeyBackend()
-        fake_label_store = GenericFakeStore(base_store=ApiKeyStore(storage_backend=in_memo))
+        fake_label_store = GenericFakeStore(in_memory_backend=self.In_MEMO())
         fake_label_store.set_exception(
-            ApiKeyStore.update_is_active_by_user_id_and_api_key_id, RuntimeError("DB Error")
+            fake_label_store.store.update_is_active_by_user_id_and_api_key_id, RuntimeError("DB Error")
         )
         
         service = RevokeApiKeyService(api_key_repository=fake_label_store)
@@ -229,10 +225,11 @@ class TestAPIKeyPublicResponse:
 
 @pytest.mark.asyncio
 class TestGetApiKeyService:
-
+    
+    IN_MEMO = InMemoryApiKeyBackend
+    
     async def test_get_api_keys_by_user_returns_expected_models(self):
-        in_memo = InMemoryApiKeyBackend()
-        fake_label_store = GenericFakeStore(base_store=ApiKeyStore(storage_backend=in_memo))
+        fake_label_store = GenericFakeStore(in_memory_backend=self.IN_MEMO())
         
         _ = await fake_label_store.save(
             APIKeyRequestDTO(
@@ -255,8 +252,7 @@ class TestGetApiKeyService:
 
     async def test_returns_empty_list_when_no_keys(self):
         
-        in_memo = InMemoryApiKeyBackend()
-        fake_label_store = GenericFakeStore(base_store=ApiKeyStore(storage_backend=in_memo))
+        fake_label_store = GenericFakeStore(in_memory_backend=self.IN_MEMO())
         
         service = GetApiKeyService(api_key_repository=fake_label_store)
         claims = UserClaims(sub="user123")
@@ -273,11 +269,9 @@ class TestGetApiKeyService:
         }
 
     async def test_get_api_keys_by_user_propagates_exception(self):
-        in_memo = InMemoryApiKeyBackend()
-        fake_label_store = GenericFakeStore(base_store=ApiKeyStore(storage_backend=in_memo))
+        fake_label_store = GenericFakeStore(in_memory_backend=self.IN_MEMO())
+        fake_label_store.set_exception(fake_label_store.store.count_by_user_id, RuntimeError("store error"))
         
-        
-        fake_label_store.set_exception(GitLabelStore.count_by_user_id, RuntimeError("store error"))
         service = GetApiKeyService(api_key_repository=fake_label_store)
         claims = UserClaims(sub="user123")
 

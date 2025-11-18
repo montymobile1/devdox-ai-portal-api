@@ -20,8 +20,8 @@ from app.exceptions.local_exceptions import (
     ValidationFailed,
 )
 from app.utils.constants import TOKEN_DELETED_SUCCESSFULLY, TOKEN_SAVED_SUCCESSFULLY
-from models_src import GenericFakeStore, GitLabelResponseDTO, GitLabelStore, InMemoryGitLabelBackend, \
-    InMemoryUserBackend, make_fake_git_label, make_fake_user, UserStore
+from models_src import GenericFakeStore, GitLabelResponseDTO, InMemoryGitLabelBackend, \
+    InMemoryUserBackend, make_fake_git_label, make_fake_user
 
 
 class TestGetGitLabelsRouter:
@@ -32,11 +32,9 @@ class TestGetGitLabelsRouter:
     def override_git_label_service_with_data(self):
         def _override():
             
-            in_memo = InMemoryGitLabelBackend()
+            fake = GenericFakeStore(in_memory_backend=InMemoryGitLabelBackend())
             label = make_fake_git_label(user_id="user123", label="feature")
-            in_memo.set_fake_data([label])
-            
-            fake = GitLabelStore(storage_backend=in_memo)
+            fake.backend.set_data_store([label])
             
             return GetGitLabelService(label_repository=fake)
 
@@ -49,10 +47,8 @@ class TestGetGitLabelsRouter:
     @pytest.fixture
     def override_git_label_service_empty(self):
         def _override():
-            in_memo = InMemoryGitLabelBackend()
-            in_memo.set_fake_data([])
-            
-            fake = GitLabelStore(storage_backend=in_memo)
+            fake = GenericFakeStore(in_memory_backend=InMemoryGitLabelBackend())
+            fake.backend.set_data_store([])
             
             return GetGitLabelService(label_repository=fake)
 
@@ -65,10 +61,8 @@ class TestGetGitLabelsRouter:
     @pytest.fixture
     def override_git_label_service_exception(self):
         def _override():
-            
-            in_memo = InMemoryGitLabelBackend()
-            fake = GenericFakeStore(base_store=GitLabelStore(storage_backend=in_memo))
-            fake.set_exception(GitLabelStore.count_by_user_id, ValueError("Simulated error"))
+            fake = GenericFakeStore(in_memory_backend=InMemoryGitLabelBackend())
+            fake.set_exception(fake.store.count_by_user_id, ValueError("Simulated error"))
             return GetGitLabelService(label_repository=fake)
 
         app.dependency_overrides[GetGitLabelService.with_dependency] = _override
@@ -124,11 +118,9 @@ class TestGetGitLabelByLabelRouter:
     def override_git_label_service_label(self):
         def _override():
             
-            in_memo = InMemoryGitLabelBackend()
+            fake = GenericFakeStore(in_memory_backend=InMemoryGitLabelBackend())
             label = make_fake_git_label(user_id="user123", label="feature")
-            in_memo.set_fake_data([label])
-            fake = GenericFakeStore(base_store=GitLabelStore(storage_backend=in_memo))
-            
+            fake.backend.set_data_store([label])
             return GetGitLabelService(label_repository=fake)
 
         app.dependency_overrides[GetGitLabelService.with_dependency] = _override
@@ -140,11 +132,8 @@ class TestGetGitLabelByLabelRouter:
     @pytest.fixture
     def override_git_label_service_label_empty(self):
         def _override():
-            
-            in_memo = InMemoryGitLabelBackend()
-            in_memo.set_fake_data([])
-            
-            fake = GenericFakeStore(base_store=GitLabelStore(storage_backend=in_memo))
+            fake = GenericFakeStore(in_memory_backend=InMemoryGitLabelBackend())
+            fake.backend.set_data_store([])
             
             return GetGitLabelService(label_repository=fake)
 
@@ -158,12 +147,11 @@ class TestGetGitLabelByLabelRouter:
     def override_git_label_service_label_exception(self):
         def _override():
             
-            in_memo = InMemoryGitLabelBackend()
-            in_memo.total_count = 1
+            fake = GenericFakeStore(in_memory_backend=InMemoryGitLabelBackend())
+            fake.backend.total_count = 1
             
-            fake = GenericFakeStore(base_store=GitLabelStore(storage_backend=in_memo))
             fake.set_exception(
-                GitLabelStore.count_by_user_id_and_label, ValueError("Simulated error")
+                fake.store.count_by_user_id_and_label, ValueError("Simulated error")
             )
             
             return GetGitLabelService(label_repository=fake)
@@ -201,7 +189,7 @@ class TestGetGitLabelByLabelRouter:
         assert response.status_code == status.HTTP_503_SERVICE_UNAVAILABLE
 
 
-class TestPostGitLabelRouter__AddGitToken:
+class TestPostGitLabelRouterAddGitToken:
     route_url = "/api/v1/git_tokens/"
 
     @pytest.fixture
@@ -209,17 +197,13 @@ class TestPostGitLabelRouter__AddGitToken:
         def _override():
             
             
-            in_memo_user_store = InMemoryUserBackend()
+            fake_user_store = GenericFakeStore(in_memory_backend=InMemoryUserBackend())
             user = make_fake_user(user_id="user123")
-            in_memo_user_store.set_fake_data([user])
+            fake_user_store.backend.set_data_store([user])
             
-            fake_user_store = GenericFakeStore(base_store=UserStore(storage_backend=in_memo_user_store))
-            
-            in_memo_git_label_backend = InMemoryGitLabelBackend()
+            fake_label_store = GenericFakeStore(in_memory_backend=InMemoryGitLabelBackend())
             label = make_fake_git_label(label="label1", user_id="user123")
-            in_memo_user_store.set_fake_data([label])
-            
-            fake_label_store = GenericFakeStore(base_store=GitLabelStore(storage_backend=in_memo_git_label_backend))
+            fake_label_store.backend.set_data_store([label])
             
             fake_crypto = FakeEncryptionHelper()
             fake_git_manager = FakeRepoFetcher()
@@ -241,13 +225,10 @@ class TestPostGitLabelRouter__AddGitToken:
     def override_post_git_label_service_user_not_found(self):
         def _override():
             
+            fake_user_store = GenericFakeStore(in_memory_backend=InMemoryUserBackend())
+            fake_user_store.backend.set_data_store(fake_data=[])
             
-            in_memo_user_store = InMemoryUserBackend()
-            in_memo_user_store.set_fake_data(fake_data=[])
-            fake_user_store = GenericFakeStore(base_store=UserStore(storage_backend=in_memo_user_store))
-            
-            in_memo_git_label_backend = InMemoryGitLabelBackend()
-            fake_label_store = GenericFakeStore(base_store=GitLabelStore(storage_backend=in_memo_git_label_backend))
+            fake_label_store = GenericFakeStore(in_memory_backend=InMemoryGitLabelBackend())
             
             
             fake_crypto = FakeEncryptionHelper()
@@ -270,16 +251,13 @@ class TestPostGitLabelRouter__AddGitToken:
     def override_post_git_label_service_duplicate_label(self):
         def _override():
             
-            
-            in_memo_user_store = InMemoryUserBackend()
+            fake_user_store = GenericFakeStore(in_memory_backend=InMemoryUserBackend())
             user = make_fake_user(user_id="user123")
-            in_memo_user_store.set_fake_data(fake_data=[user])
-            fake_user_store = GenericFakeStore(base_store=UserStore(storage_backend=in_memo_user_store))
+            fake_user_store.backend.set_data_store(fake_data=[user])
             
-            in_memo_git_label_backend = InMemoryGitLabelBackend()
-            fake_label_store = GenericFakeStore(base_store=GitLabelStore(storage_backend=in_memo_git_label_backend))
+            fake_label_store = GenericFakeStore(in_memory_backend=InMemoryGitLabelBackend())
             fake_label_store.set_exception(
-                GitLabelStore.save, BadRequest(reason=GENERIC_ALREADY_EXIST)
+                fake_label_store.store.save, BadRequest(reason=GENERIC_ALREADY_EXIST)
             )
             
             fake_crypto = FakeEncryptionHelper()
@@ -375,10 +353,10 @@ class TestDeleteGitLabel:
     @pytest.fixture
     def override_delete_service_success(self):
         def _override():
-
-            in_memo_git_label_backend = InMemoryGitLabelBackend()
             
-            in_memo_git_label_backend.set_fake_data([
+            fake_label_store = GenericFakeStore(in_memory_backend=InMemoryGitLabelBackend())
+            
+            fake_label_store.backend.set_data_store([
                 GitLabelResponseDTO(
                     id = uuid.UUID("fb3e5e80-88ae-4b59-9e6f-088fb6e7c8e0"),
                     user_id="user123",
@@ -386,8 +364,6 @@ class TestDeleteGitLabel:
                     git_hosting="github",
                 )
             ])  # only the behavior matters here
-            
-            fake_label_store = GenericFakeStore(base_store=GitLabelStore(storage_backend=in_memo_git_label_backend))
             
             return DeleteGitLabelService(label_repository=fake_label_store)
 
@@ -401,11 +377,8 @@ class TestDeleteGitLabel:
     def override_delete_service_not_found(self):
         def _override():
             
-            in_memo_git_label_backend = InMemoryGitLabelBackend()
-            
-            in_memo_git_label_backend.set_fake_data([])
-            
-            fake_label_store = GenericFakeStore(base_store=GitLabelStore(storage_backend=in_memo_git_label_backend))
+            fake_label_store = GenericFakeStore(in_memory_backend=InMemoryGitLabelBackend())
+            fake_label_store.backend.set_data_store([])
             
             return DeleteGitLabelService(label_repository=fake_label_store)
 
