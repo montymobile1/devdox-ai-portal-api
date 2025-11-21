@@ -7,7 +7,7 @@ from contextlib import asynccontextmanager
 import uvicorn
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
-from models_src import init_via_uri, MongoConfig
+from models_src import init_via_uri, build_uri, MongoConfig
 
 from app.config import settings, TORTOISE_ORM
 from app.exceptions.exception_manager import register_exception_handlers
@@ -19,7 +19,7 @@ logger = setup_logging()
 async def init_mongo(mongo_settings:MongoConfig | None):
 
     if mongo_settings:
-        mongo_uri = mongo_settings.build_uri()
+        mongo_uri = build_uri(mongo_conf=mongo_settings)
         mongo_client, mongo_db = await init_via_uri(mongo_uri)
         
         # health check to fail fast

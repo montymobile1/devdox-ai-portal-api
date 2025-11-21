@@ -3,14 +3,11 @@ Configuration settings for the DevDox AI Portal API.
 """
 from typing import Any, Dict, List, Literal, Optional
 
-from models_src import MongoConfig, GitHosting
+from models_src import MongoConfig
 from pathlib import Path
 
-from pydantic import Field
-
 from app.services.supabase_queue import SupabaseQueue
-from pydantic_settings import BaseSettings
-
+from pydantic_settings import BaseSettings, SettingsConfigDict
 
 search_path = "vault,public"
 
@@ -67,20 +64,19 @@ class Settings(BaseSettings):
     # Version
     VERSION: str = "0.1.1"
     
-    MONGO: Optional[MongoConfig] = Field(default_factory=MongoConfig)
+    MONGO: Optional[MongoConfig] = None
     
-    class Config:
-        """Pydantic config class."""
-
-        env_file = "app/instance/.env"
-        case_sensitive = True
-        git_hosting: Optional[GitHosting] = None
+    model_config = SettingsConfigDict(
+        case_sensitive = True,
         extra = "ignore"
-        env_nested_delimiter="__"
+    )
 
+def load_settings(env_files, mongo_enabled: bool = False) -> Settings:
+    mongo = MongoConfig(_env_file=env_files) if mongo_enabled else None
+    return Settings(_env_file=env_files, MONGO=mongo)
 
 # Initialize settings instance
-settings = Settings()
+settings = load_settings(env_files="instance/.env", mongo_enabled=True)
 
 
 def get_database_config() -> Dict[str, Any]:
