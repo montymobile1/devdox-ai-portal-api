@@ -76,7 +76,7 @@ def load_settings(env_files, mongo_enabled: bool = False) -> Settings:
     return Settings(_env_file=env_files, MONGO=mongo)
 
 # Initialize settings instance
-settings = load_settings(env_files="instance/.env", mongo_enabled=True)
+settings = load_settings(env_files="app/instance/.env", mongo_enabled=True)
 
 
 def get_database_config() -> Dict[str, Any]:
