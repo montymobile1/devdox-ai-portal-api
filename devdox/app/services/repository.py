@@ -25,7 +25,8 @@ from app.schemas.repo import AddRepositoryRequest, GitRepoResponse, RepoResponse
 from app.utils.auth import UserClaims
 from app.utils.encryption import get_encryption_helper, FernetEncryptionHelper
 from app.utils.git_managers import retrieve_git_fetcher_or_die
-from models_src import StatusTypes, RepoRequestDTO, DevDoxModelsException, RepoErrors, ILabelStore, get_active_git_label_store, get_active_repo_store, IRepoStore, get_active_user_store, IUserStore
+from models_src import (StatusTypes, RepoRequestDTO, DevDoxModelsException, RepoErrors, ILabelStore, get_active_git_label_store, get_active_repo_store, IRepoStore,
+                        get_active_user_store, IUserStore, ProcessingJobType, ProcessingQPayload, ProcessingQPayloadMeta, ProcessingPriority, processing_queue_name)
 
 class RepoQueryService:
     def __init__(
@@ -258,27 +259,26 @@ class RepoManipulationService:
             total_embeddings=repo_info.total_embeddings,
         )
         
+        payload = ProcessingQPayload(
+            job_type=ProcessingJobType.ANALYZE,
+            payload=ProcessingQPayloadMeta(
+                branch= repo_info.default_branch,
+                repo_id= str(repo_info.repo_id),
+                token_id= str(token_info.id),
+                config= {},
+                user_id= str(user_claims.sub),
+                priority= ProcessingPriority.LEVEL_1,
+                git_token= str(token_info.id),
+                token_value= token_info.token_value,
+                git_provider= token_info.git_hosting,
+                context_id= uuid4().hex,
+            )
+        )
         
-        payload = {
-            "job_type": "analyze",
-            "payload": {
-                "branch": repo_info.default_branch,
-                "repo_id": str(repo_info.repo_id),
-                "token_id": str(token_info.id),
-                "config": {},
-                "user_id": str(user_claims.sub),
-                "priority": 1,
-                "git_token": str(token_info.id),
-                "token_value": token_info.token_value,
-                "git_provider": token_info.git_hosting,
-                "context_id": uuid4().hex,
-            },
-        }
-
         _ = await supabase_queue.enqueue(
-            "processing",
-            payload=payload,
-            priority=1,
-            job_type="analyze",
+            processing_queue_name,
+            payload=payload.model_dump(),
+            priority=payload.payload.priority,
+            job_type=payload.job_type,
             user_id=user_claims.sub,
         )
