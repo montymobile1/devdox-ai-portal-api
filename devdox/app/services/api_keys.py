@@ -18,8 +18,7 @@ from app.services.git_tokens import mask_token
 from app.utils.auth import UserClaims
 from fastapi import Depends
 
-from models_src.dto.api_key import APIKeyRequestDTO
-from models_src.repositories.api_key import TortoiseApiKeyStore as ApiKeyRepository
+from models_src import APIKeyRequestDTO, IApiKeyStore, get_active_api_key_store
 
 @dataclasses.dataclass
 class APIKeyManagerReturn:
@@ -43,7 +42,7 @@ class APIKeyManager(IAPIKeyManager):
     DEFAULT_MAX_KEY_LENGTH = 32
     DEFAULT_PREFIX = "dvd_"
 
-    def __init__(self, api_key_repository: ApiKeyRepository):
+    def __init__(self, api_key_repository: IApiKeyStore):
         self.api_key_repository = api_key_repository
 
     @staticmethod
@@ -87,7 +86,7 @@ class PostApiKeyService:
 
     def __init__(
         self,
-        api_key_repository: ApiKeyRepository,
+        api_key_repository: IApiKeyStore,
         api_key_manager: APIKeyManager,
     ):
         self.api_key_repository = api_key_repository
@@ -96,7 +95,7 @@ class PostApiKeyService:
     @classmethod
     def with_dependency(
         cls,
-        api_key_store: Annotated[ApiKeyRepository, Depends()],
+        api_key_store: Annotated[IApiKeyStore, Depends(get_active_api_key_store)],
     ) -> "PostApiKeyService":
 
         api_key_manager = APIKeyManager(api_key_repository=api_key_store)
@@ -141,14 +140,14 @@ class RevokeApiKeyService:
 
     def __init__(
         self,
-        api_key_repository: ApiKeyRepository,
+        api_key_repository: IApiKeyStore,
     ):
         self.api_key_repository = api_key_repository
 
     @classmethod
     def with_dependency(
         cls,
-        api_key_store: Annotated[ApiKeyRepository, Depends()],
+        api_key_store: Annotated[IApiKeyStore, Depends(get_active_api_key_store)],
     ) -> "RevokeApiKeyService":
 
         return cls(
@@ -173,14 +172,14 @@ class GetApiKeyService:
 
     def __init__(
         self,
-        api_key_repository: ApiKeyRepository,
+        api_key_repository: IApiKeyStore,
     ):
         self.api_key_repository = api_key_repository
 
     @classmethod
     def with_dependency(
         cls,
-        api_key_store: Annotated[ApiKeyRepository, Depends()],
+        api_key_store: Annotated[IApiKeyStore, Depends(get_active_api_key_store)],
     ) -> "GetApiKeyService":
 
         return cls(

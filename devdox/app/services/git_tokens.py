@@ -13,9 +13,7 @@ from app.exceptions.exception_constants import (
     TOKEN_NOT_FOUND,
     USER_RESOURCE_NOT_FOUND,
 )
-from models_src.dto.git_label import GitLabelRequestDTO
-from models_src.exceptions.base_exceptions import DevDoxModelsException
-from models_src.exceptions.exception_constants import LABEL_ALREADY_EXISTS_TITLE
+from models_src import GitLabelRequestDTO, DevDoxModelsException, exception_constants, IUserStore, get_active_user_store, get_active_git_label_store, ILabelStore
 from app.schemas.basic import PaginationParams, RequiredPaginationParams
 from app.schemas.git_label import GitLabelBase, GitLabelResponse
 from app.utils.auth import UserClaims
@@ -24,9 +22,6 @@ from app.utils.encryption import (
     get_encryption_helper,
 )
 from app.utils.git_managers import retrieve_git_fetcher_or_die
-
-from models_src.repositories.user import TortoiseUserStore as UserRepository
-from models_src.repositories.git_label import TortoiseGitLabelStore as GitLabelRepository
 
 logger = logging.getLogger(__name__)
 
@@ -54,13 +49,13 @@ def format_git_label_data(raw_git_labels):
 
 class GetGitLabelService:
 
-    def __init__(self, label_repository: GitLabelRepository):
+    def __init__(self, label_repository: ILabelStore):
         self.label_repository = label_repository
 
     @classmethod
     def with_dependency(
         cls,
-        label_store: Annotated[GitLabelRepository, Depends()],
+        label_store: Annotated[ILabelStore, Depends(get_active_git_label_store)],
     ) -> "GetGitLabelService":
         return cls(label_repository=label_store)
 
@@ -161,8 +156,8 @@ class PostGitLabelService:
 
     def __init__(
         self,
-        user_repository: UserRepository,
-        label_repository: GitLabelRepository,
+        user_repository: IUserStore,
+        label_repository: ILabelStore,
         crypto_store: FernetEncryptionHelper,
         git_manager: RepoFetcher,
     ):
@@ -174,8 +169,8 @@ class PostGitLabelService:
     @classmethod
     def with_dependency(
         cls,
-        user_store: Annotated[UserRepository, Depends()],
-        label_store: Annotated[GitLabelRepository, Depends()],
+        user_store: Annotated[IUserStore, Depends(get_active_user_store)],
+        label_store: Annotated[ILabelStore, Depends(get_active_git_label_store)],
         crypto_store: Annotated[FernetEncryptionHelper, Depends(get_encryption_helper)],
         git_manager: Annotated[RepoFetcher, Depends()],
     ) -> "PostGitLabelService":
@@ -228,7 +223,7 @@ class PostGitLabelService:
                 )
             )
         except DevDoxModelsException as e:
-            if e.error_type == LABEL_ALREADY_EXISTS_TITLE:
+            if e.error_type == exception_constants.LABEL_ALREADY_EXISTS_TITLE:
                 raise BadRequest(reason=GENERIC_ALREADY_EXIST) from e
             
             raise
@@ -240,14 +235,14 @@ class DeleteGitLabelService:
 
     def __init__(
         self,
-        label_repository: GitLabelRepository,
+        label_repository: ILabelStore,
     ):
         self.label_repository = label_repository
 
     @classmethod
     def with_dependency(
         cls,
-        label_store: Annotated[GitLabelRepository, Depends()],
+        label_store: Annotated[ILabelStore, Depends(get_active_git_label_store)],
     ) -> "DeleteGitLabelService":
         return cls(
             label_repository=label_store,

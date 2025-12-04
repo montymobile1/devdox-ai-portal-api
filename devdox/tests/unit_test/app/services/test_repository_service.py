@@ -5,14 +5,10 @@ import pytest
 from app.schemas.basic import RequiredPaginationParams
 from app.utils.auth import UserClaims
 from devdox_ai_git.schema.repo import NormalizedGitRepo
-from models_src.dto.repo import GitHosting, RepoRequestDTO
-from models_src.dto.git_label import GitLabelResponseDTO
-from models_src.dto.user import UserResponseDTO
-from models_src.exceptions.utils import RepoErrors
+from models_src import GitHosting, RepoRequestDTO, GitLabelResponseDTO, UserResponseDTO, StatusTypes, RepoErrors
 from app.exceptions.base_exceptions import DevDoxAPIException
 from app.exceptions.local_exceptions import ResourceNotFound
 from app.exceptions import exception_constants
-from models_src.models.repo import StatusTypes
 import app.services.repository as repo_mod
 
 

@@ -1,7 +1,6 @@
 import datetime
 import uuid
 import pytest
-from types import SimpleNamespace
 
 import pytest_asyncio
 from fastapi import status
@@ -13,41 +12,42 @@ from app.schemas.basic import RequiredPaginationParams
 from app.services.api_keys import GetApiKeyService, RevokeApiKeyService
 from app.utils.auth import UserClaims
 from app.utils.constants import API_KEY_REVOKED_SUCCESSFULLY, GENERIC_SUCCESS
-from models_src.dto.api_key import APIKeyRequestDTO
-from models_src.test_doubles.repositories.api_key import FakeApiKeyStore
+from models_src import APIKeyRequestDTO, GenericFakeStore, InMemoryApiKeyBackend
 
 
 class TestRevokeApiKeyRouter:
-
+    
     route_url = "/api/v1/api-keys/"
 
     @pytest_asyncio.fixture
     async def override_revoke_service_success(self):
-        store = FakeApiKeyStore()
+        fake = GenericFakeStore(in_memory_backend=InMemoryApiKeyBackend())
         
-        saved_rec = await store.save(create_model=APIKeyRequestDTO(
+        saved_rec = await fake.save(create_model=APIKeyRequestDTO(
             user_id="user123",
             api_key= str(uuid.uuid4()),
             masked_api_key="masked_api_key",
             is_active=True
         ))
 
-        service = RevokeApiKeyService(api_key_repository=store)
+        service = RevokeApiKeyService(api_key_repository=fake)
 
         def _override():
             return service
 
         app.dependency_overrides[RevokeApiKeyService.with_dependency] = _override
         try:
-            yield store, saved_rec.api_key
+            yield fake, saved_rec
         finally:
             app.dependency_overrides.clear()
 
 
     @pytest.fixture
     def override_revoke_service_not_found(self):
-        store = FakeApiKeyStore()  # no matching keys stored
-        service = RevokeApiKeyService(api_key_repository=store)
+        
+        fake = GenericFakeStore(in_memory_backend=InMemoryApiKeyBackend())
+    
+        service = RevokeApiKeyService(api_key_repository=fake)
 
         def _override():
             return service
@@ -59,8 +59,8 @@ class TestRevokeApiKeyRouter:
     async def test_successful_revoke(
         self, test_client, override_auth_user, override_revoke_service_success
     ):
-        _, fake_key_id = override_revoke_service_success
-        response = test_client.delete(f"{self.route_url}{fake_key_id}")
+        _, saved_rec = override_revoke_service_success
+        response = test_client.delete(f"{self.route_url}{saved_rec.id}")
         assert response.status_code == status.HTTP_200_OK
         assert response.json()["success"] is True
         assert response.json()["message"] == API_KEY_REVOKED_SUCCESSFULLY
@@ -77,8 +77,8 @@ class TestRevokeApiKeyRouter:
         override_auth_user_unauthorized,
         override_revoke_service_success,
     ):
-        _, fake_key_id = override_revoke_service_success
-        response = test_client.delete(f"{self.route_url}{fake_key_id}")
+        _, saved_rec = override_revoke_service_success
+        response = test_client.delete(f"{self.route_url}{saved_rec.id}")
         assert response.status_code == status.HTTP_401_UNAUTHORIZED
 
     def test_invalid_uuid_path(

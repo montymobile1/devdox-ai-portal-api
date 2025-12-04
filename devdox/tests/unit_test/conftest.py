@@ -3,6 +3,12 @@ from starlette.testclient import TestClient
 
 from app.main import app
 
+@pytest.fixture(autouse=True)
+def _disable_mongo(monkeypatch):
+    # Make settings.MONGO falsy so lifespan() skips Mongo init in tests
+    import app.main as app_main
+    monkeypatch.setattr(app_main.settings, "MONGO", None, raising=False)
+
 
 @pytest.fixture
 def client_permissive():

@@ -3,11 +3,11 @@ import logging
 import os
 
 from fastapi import APIRouter, Request, Response, status
+from models_src import get_active_user_store, IUserStore, UserRequestDTO
 from svix.webhooks import Webhook, WebhookVerificationError
 
 import app.exceptions.exception_constants
 from app.config import settings
-from models_src.models import User
 from app.schemas.user import WebhookUserData
 from app.utils import constants
 from app.utils.api_response import APIResponse
@@ -40,13 +40,14 @@ async def webhook_handler(request: Request, response: Response):
         msg = wh.verify(payload, headers)
         
         encryptor:FernetEncryptionHelper = get_encryption_helper()
+        user_store: IUserStore = get_active_user_store()
         
         event_type = msg.get("type")
         data = msg.get("data", {})
         logger.info(f"Processing webhook event: {event_type}")
 
         if event_type == "user.created":
-            res = await _handle_user_created(encryptor, data)
+            res = await _handle_user_created(encryptor=encryptor, user_store= user_store, data=data)
             if not res:
                 APIResponse.success(message=constants.USER_EXIST)
         else:
@@ -69,14 +70,15 @@ async def webhook_handler(request: Request, response: Response):
         )
 
 
-async def _handle_user_created(encryptor:FernetEncryptionHelper, data: dict) -> None:
+async def _handle_user_created(encryptor:FernetEncryptionHelper, user_store: IUserStore , data: dict) -> None:
     """Handle user.created webhook event."""
     try:
         # Validate and clean the webhook data using Pydantic
         user_data = WebhookUserData(**(data))
 
         # Check if user already exists
-        existing_user = await User.filter(user_id=user_data.id).exists()
+        existing_user = await user_store.exists_by_user_id(user_id=user_data.id)
+
         logger.info(f"User exists check for {user_data.id}: {existing_user}")
 
         if existing_user:
@@ -87,16 +89,20 @@ async def _handle_user_created(encryptor:FernetEncryptionHelper, data: dict) -> 
         salt_b64 = base64.urlsafe_b64encode(salt_bytes).decode()
 
         # Create user using the validated Pydantic model data
-        await User.create(
+        
+        user_request = UserRequestDTO(
             user_id=user_data.id,
             first_name=user_data.first_name,
             last_name=user_data.last_name,
             email=user_data.primary_email,
-            username=user_data.username,  # This is now cleaned by Pydantic
+            username=user_data.username,
             encryption_salt=encryptor.encrypt(salt_b64),
             role="user",
             active=True,
         )
+        
+        await user_store.save(user_model=user_request)
+        
         logger.info(f"Successfully created user: {user_data.id}")
 
     except Exception as e:

@@ -1,7 +1,6 @@
 import datetime
 import hashlib
 import re
-from types import SimpleNamespace
 from typing import Optional
 from uuid import uuid4
 
@@ -22,8 +21,7 @@ from app.services.api_keys import (
 )
 from app.services.git_tokens import mask_token
 from app.utils.auth import UserClaims
-from models_src.dto.api_key import APIKeyRequestDTO
-from models_src.test_doubles.repositories.api_key import FakeApiKeyStore
+from models_src import APIKeyRequestDTO, GenericFakeStore, InMemoryApiKeyBackend
 
 from tests.unit_test.test_doubles.app.service.api_keys import (
     FakeAPIKeyManager,
@@ -33,10 +31,13 @@ from tests.unit_test.test_doubles.app.service.api_keys import (
 
 @pytest.mark.asyncio
 class TestAPIKeyManager:
-
+    
+    IN_MEMO = InMemoryApiKeyBackend
+    
     async def test_generate_unique_key_success(self):
-        store = FakeApiKeyStore()
-        manager = APIKeyManager(store)
+        fake_label_store = GenericFakeStore(in_memory_backend=self.IN_MEMO())
+        
+        manager = APIKeyManager(api_key_repository=fake_label_store)
 
         result = await manager.generate_unique_api_key()
 
@@ -46,14 +47,16 @@ class TestAPIKeyManager:
         assert result.masked == mask_token(result.plain)
 
     async def test_returns_none_if_hash_exists(self, monkeypatch):
-        store = FakeApiKeyStore()
-        manager = APIKeyManager(store)
+        fake_label_store = GenericFakeStore(in_memory_backend=self.IN_MEMO())
+        
+        
+        manager = APIKeyManager(fake_label_store)
 
         precomputed_result: Optional[APIKeyManagerReturn] = (
             await manager.generate_unique_api_key()
         )
 
-        await store.save(
+        await fake_label_store.save(
             APIKeyRequestDTO(
                 user_id="user 1234",
                 api_key=precomputed_result.hashed,
@@ -69,16 +72,18 @@ class TestAPIKeyManager:
         assert result is None
 
     async def test_handles_store_exception(self):
-        store = FakeApiKeyStore()
-        store.set_exception(store.exists_by_hash_key, RuntimeError("DB error"))
-        manager = APIKeyManager(store)
+        fake_label_store = GenericFakeStore(in_memory_backend=self.IN_MEMO())
+        fake_label_store.set_exception(fake_label_store.store.exists_by_hash_key, RuntimeError("DB error"))
+        
+        manager = APIKeyManager(fake_label_store)
 
         with pytest.raises(RuntimeError, match="DB error"):
             await manager.generate_unique_api_key()
 
     async def test_generate_key_respects_prefix_and_length(self):
-        store = FakeApiKeyStore()
-        manager = APIKeyManager(store)
+        fake_label_store = GenericFakeStore(in_memory_backend=self.IN_MEMO())
+        
+        manager = APIKeyManager(fake_label_store)
 
         prefix = "test_"
         length = 20
@@ -96,25 +101,30 @@ class DummyUserClaims:
 
 @pytest.mark.asyncio
 class TestPostApiKeyService:
-
+    
+    IN_MEMO = InMemoryApiKeyBackend
+    
     async def test_generate_api_key_success(self):
-        fake_store = FakeApiKeyStore()
-        fake_manager = FakeAPIKeyManager(fake_store)
+        
+        fake_label_store = GenericFakeStore(in_memory_backend=self.IN_MEMO())
+        
+        fake_manager = FakeAPIKeyManager(fake_label_store)
         fake_manager.set_fixed_key("dvd_mock_key")
 
         service = PostApiKeyService(
-            api_key_repository=fake_store, api_key_manager=fake_manager
+            api_key_repository=fake_label_store, api_key_manager=fake_manager
         )
         user_claims = DummyUserClaims("user-123")
 
         key_id, plain = await service.generate_api_key(user_claims)
 
         assert plain == "dvd_mock_key"
-        assert any(k == "user-123" for k, v in fake_store.data_store.items())
+        assert any(k == "user-123" for k, v in fake_label_store.backend.data_store.items())
         assert key_id is not None
 
     async def test_generate_api_key_fails_after_retries(self):
-        fake_store = FakeApiKeyStore()
+        fake_label_store = GenericFakeStore(in_memory_backend=self.IN_MEMO())
+        
         fake_manager = StubAPIKeyManager()
         
         fake_manager.set_output(
@@ -123,7 +133,7 @@ class TestPostApiKeyService:
         )
         
         service = PostApiKeyService(
-            api_key_repository=fake_store, api_key_manager=fake_manager
+            api_key_repository=fake_label_store, api_key_manager=fake_manager
         )
         user_claims = DummyUserClaims("user-123")
 
@@ -138,42 +148,48 @@ class TestPostApiKeyService:
 
 @pytest.mark.asyncio
 class TestRevokeApiKeyService:
-
+    
+    In_MEMO = InMemoryApiKeyBackend
+    
     async def test_successful_revoke(self):
-        store = FakeApiKeyStore()
+        
+        fake_label_store = GenericFakeStore(in_memory_backend=self.In_MEMO())
+        
         user_id = "user123"
         
         generated_api_key_id = uuid4()
         
-        saved_rec = await store.save(APIKeyRequestDTO(
+        saved_rec = await fake_label_store.save(APIKeyRequestDTO(
             user_id=user_id,
             api_key=str(generated_api_key_id),
             masked_api_key="masked_api_key_123",
             is_active=True
         ))
         
-        service = RevokeApiKeyService(api_key_repository=store)
+        service = RevokeApiKeyService(api_key_repository=fake_label_store)
 
         claims = UserClaims(sub=user_id)
-        result = await service.revoke_api_key(claims, api_key_id=generated_api_key_id)
+        result = await service.revoke_api_key(claims, api_key_id=saved_rec.id)
 
         assert result == 1
         assert not saved_rec.is_active
 
     async def test_revoke_fails_when_key_not_found(self):
-        store = FakeApiKeyStore()
-        service = RevokeApiKeyService(api_key_repository=store)
+        fake_label_store = GenericFakeStore(in_memory_backend=self.In_MEMO())
+        
+        service = RevokeApiKeyService(api_key_repository=fake_label_store)
         claims = UserClaims(sub="user123")
 
         with pytest.raises(ResourceNotFound):
             await service.revoke_api_key(claims, api_key_id=uuid4())
 
     async def test_revoke_handles_store_exception(self):
-        store = FakeApiKeyStore()
-        store.set_exception(
-            store.update_is_active_by_user_id_and_api_key_id, RuntimeError("DB Error")
+        fake_label_store = GenericFakeStore(in_memory_backend=self.In_MEMO())
+        fake_label_store.set_exception(
+            fake_label_store.store.update_is_active_by_user_id_and_api_key_id, RuntimeError("DB Error")
         )
-        service = RevokeApiKeyService(api_key_repository=store)
+        
+        service = RevokeApiKeyService(api_key_repository=fake_label_store)
         claims = UserClaims(sub="user123")
 
         with pytest.raises(RuntimeError, match="DB Error"):
@@ -209,11 +225,13 @@ class TestAPIKeyPublicResponse:
 
 @pytest.mark.asyncio
 class TestGetApiKeyService:
-
+    
+    IN_MEMO = InMemoryApiKeyBackend
+    
     async def test_get_api_keys_by_user_returns_expected_models(self):
-        store = FakeApiKeyStore()
-
-        _ = await store.save(
+        fake_label_store = GenericFakeStore(in_memory_backend=self.IN_MEMO())
+        
+        _ = await fake_label_store.save(
             APIKeyRequestDTO(
                 user_id="user123",
                 api_key=str(uuid4()),
@@ -222,7 +240,7 @@ class TestGetApiKeyService:
             )
         )
 
-        service = GetApiKeyService(api_key_repository=store)
+        service = GetApiKeyService(api_key_repository=fake_label_store)
         claims = UserClaims(sub="user123")
         
         result = await service.get_api_keys_by_user(user_claims=claims, pagination=RequiredPaginationParams(
@@ -233,8 +251,10 @@ class TestGetApiKeyService:
         assert isinstance(result["items"][0], APIKeyPublicResponse)
 
     async def test_returns_empty_list_when_no_keys(self):
-        store = FakeApiKeyStore()
-        service = GetApiKeyService(api_key_repository=store)
+        
+        fake_label_store = GenericFakeStore(in_memory_backend=self.IN_MEMO())
+        
+        service = GetApiKeyService(api_key_repository=fake_label_store)
         claims = UserClaims(sub="user123")
         
         result = await service.get_api_keys_by_user(user_claims=claims, pagination=RequiredPaginationParams(
@@ -249,9 +269,10 @@ class TestGetApiKeyService:
         }
 
     async def test_get_api_keys_by_user_propagates_exception(self):
-        store = FakeApiKeyStore()
-        store.set_exception(store.count_by_user_id, RuntimeError("store error"))
-        service = GetApiKeyService(api_key_repository=store)
+        fake_label_store = GenericFakeStore(in_memory_backend=self.IN_MEMO())
+        fake_label_store.set_exception(fake_label_store.store.count_by_user_id, RuntimeError("store error"))
+        
+        service = GetApiKeyService(api_key_repository=fake_label_store)
         claims = UserClaims(sub="user123")
 
         with pytest.raises(RuntimeError, match="store error"):

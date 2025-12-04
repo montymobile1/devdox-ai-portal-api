@@ -4,7 +4,6 @@ from uuid import UUID, uuid4
 from devdox_ai_git.repo_fetcher import RepoFetcher
 from devdox_ai_git.schema.repo import NormalizedGitRepo
 from fastapi import Depends
-from models_src.models.repo import StatusTypes
 
 from app.exceptions import exception_constants
 from app.exceptions.base_exceptions import DevDoxAPIException
@@ -19,7 +18,6 @@ from app.exceptions.exception_constants import (
     USER_RESOURCE_NOT_FOUND,
     REPOSITORY_TOKEN_RESOURCE_NOT_FOUND,
 )
-from models_src.dto.repo import RepoRequestDTO
 from app.config import supabase_queue
 
 from app.schemas.basic import RequiredPaginationParams
@@ -27,17 +25,14 @@ from app.schemas.repo import AddRepositoryRequest, GitRepoResponse, RepoResponse
 from app.utils.auth import UserClaims
 from app.utils.encryption import get_encryption_helper, FernetEncryptionHelper
 from app.utils.git_managers import retrieve_git_fetcher_or_die
-from models_src.exceptions.base_exceptions import DevDoxModelsException
-from models_src.exceptions.utils import RepoErrors
-from models_src.repositories.git_label import TortoiseGitLabelStore as GitLabelRepository
-from models_src.repositories.repo import TortoiseRepoStore as RepoRepository
-from models_src.repositories.user import TortoiseUserStore as UserRepository
+from models_src import (StatusTypes, RepoRequestDTO, DevDoxModelsException, RepoErrors, ILabelStore, get_active_git_label_store, get_active_repo_store, IRepoStore,
+                        get_active_user_store, IUserStore, ProcessingJobType, ProcessingQPayload, ProcessingQPayloadMeta, ProcessingPriority, processing_queue_name)
 
 class RepoQueryService:
     def __init__(
         self,
-        repo_repository: Annotated[RepoRepository, Depends()],
-        git_label_repository: Annotated[GitLabelRepository, Depends()],
+        repo_repository: Annotated[IRepoStore, Depends(get_active_repo_store)],
+        git_label_repository: Annotated[ILabelStore, Depends(get_active_git_label_store)],
     ):
         self.repo_repository = repo_repository
         self.git_label_repository = git_label_repository
@@ -73,8 +68,8 @@ class RepoQueryService:
 class RepoProviderService:
     def __init__(
         self,
-        git_label_repository: Annotated[GitLabelRepository, Depends()],
-        user_repository: Annotated[UserRepository, Depends()],
+        git_label_repository: Annotated[ILabelStore, Depends(get_active_git_label_store)],
+        user_repository: Annotated[IUserStore, Depends(get_active_user_store)],
         encryption: Annotated[FernetEncryptionHelper, Depends(get_encryption_helper)],
         git_fetcher: Annotated[RepoFetcher, Depends()]
     ):
@@ -124,7 +119,7 @@ class RepoProviderService:
         return fetched_data["data_count"], transformed_response
 
 
-async def retrieve_user_by_id_or_die(user_repository_instance: UserRepository, user_id):
+async def retrieve_user_by_id_or_die(user_repository_instance: IUserStore, user_id):
     retrieved_user_data = await user_repository_instance.find_by_user_id(user_id)
 
     if retrieved_user_data is None:
@@ -132,8 +127,7 @@ async def retrieve_user_by_id_or_die(user_repository_instance: UserRepository, u
 
     return retrieved_user_data
 
-
-async def retrieve_git_label_or_die(repository:GitLabelRepository, id, user_id):
+async def retrieve_git_label_or_die(repository:ILabelStore, id, user_id):
     retrieved_git_label = await repository.find_by_token_id_and_user(id, user_id)
     if retrieved_git_label is None:
         raise ResourceNotFound(reason=GIT_LABEL_TOKEN_RESOURCE_NOT_FOUND)
@@ -141,7 +135,7 @@ async def retrieve_git_label_or_die(repository:GitLabelRepository, id, user_id):
     return retrieved_git_label
 
 
-async def retrieve_repo_by_id(repo_repository_instance: RepoRepository, id):
+async def retrieve_repo_by_id(repo_repository_instance: IRepoStore, id):
     try:
         repo_info = await repo_repository_instance.get_by_id(id)
     except DevDoxModelsException as e:
@@ -164,9 +158,9 @@ async def retrieve_repo_by_id(repo_repository_instance: RepoRepository, id):
 class RepoManipulationService:
     def __init__(
         self,
-        git_label_repository: Annotated[GitLabelRepository, Depends()],
-        repo_repository: Annotated[RepoRepository, Depends()],
-        user_repository: Annotated[UserRepository, Depends()],
+        git_label_repository: Annotated[ILabelStore, Depends(get_active_git_label_store)],
+        repo_repository: Annotated[IRepoStore, Depends(get_active_repo_store)],
+        user_repository: Annotated[IUserStore, Depends(get_active_user_store)],
         encryption: Annotated[FernetEncryptionHelper, Depends(get_encryption_helper)],
         git_fetcher: Annotated[RepoFetcher, Depends()]
     ):
@@ -265,27 +259,26 @@ class RepoManipulationService:
             total_embeddings=repo_info.total_embeddings,
         )
         
+        payload = ProcessingQPayload(
+            job_type=ProcessingJobType.ANALYZE,
+            payload=ProcessingQPayloadMeta(
+                branch= repo_info.default_branch,
+                repo_id= str(repo_info.repo_id),
+                token_id= str(token_info.id),
+                config= {},
+                user_id= str(user_claims.sub),
+                priority= ProcessingPriority.LEVEL_1,
+                git_token= str(token_info.id),
+                token_value= token_info.token_value,
+                git_provider= token_info.git_hosting,
+                context_id= uuid4().hex,
+            )
+        )
         
-        payload = {
-            "job_type": "analyze",
-            "payload": {
-                "branch": repo_info.default_branch,
-                "repo_id": str(repo_info.repo_id),
-                "token_id": str(token_info.id),
-                "config": {},
-                "user_id": str(user_claims.sub),
-                "priority": 1,
-                "git_token": str(token_info.id),
-                "token_value": token_info.token_value,
-                "git_provider": token_info.git_hosting,
-                "context_id": uuid4().hex,
-            },
-        }
-
         _ = await supabase_queue.enqueue(
-            "processing",
-            payload=payload,
-            priority=1,
-            job_type="analyze",
+            processing_queue_name,
+            payload=payload.model_dump(),
+            priority=payload.payload.priority,
+            job_type=payload.job_type,
             user_id=user_claims.sub,
         )
