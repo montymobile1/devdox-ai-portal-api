@@ -101,3 +101,22 @@ async def analyze_repo(
 ):
     await repo_service.analyze_repo(user, payload.id)
     return APIResponse.success("Start analyzing successfully")
+
+@router.post(
+    "/re-analyze",
+    status_code=status.HTTP_201_CREATED,
+    summary="Re-run repository analysis by ID",
+    description="""
+    Starts a new analysis run for a repository that has already completed a previous run, regardless of whether it succeeded or failed.
+    This is useful for reprocessing a repository after changes to its code or configuration. The repository must already exist and its last analysis must be in a terminal state.
+    When triggered, a new analysis job is enqueued and a 201 Created response is returned if scheduling succeeds.
+    If another analysis is already running, the request is rejected.
+    """
+)
+async def reanalyze_repo(
+    payload: AnalyzeRepositoryRequest,
+    user: UserClaims = Depends(get_authenticated_user),
+    repo_service: RepoManipulationService = Depends(RepoManipulationService),
+):
+    await repo_service.reanalyze_repo(user, payload.id)
+    return APIResponse.success("Reanalysis scheduled successfully")

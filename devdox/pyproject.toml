@@ -49,7 +49,7 @@ dependencies = [
     "devdox-ai-models @ git+https://github.com/montymobile1/devdox-ai-models.git@DV-46-update-models-for-rag-compatibility-with-mongo-db",
 
     # git
-    "devdox-ai-git @ git+https://github.com/montymobile1/devdox-ai-git@e36ee1a",
+    "devdox-ai-git @ git+https://github.com/montymobile1/devdox-ai-git@DEV-37-fix-an-issue-with-dependencies-on-devdox-ai-git",
 
     # Encryption package
     "devdox-ai-encryption @ git+https://github.com/montymobile1/devdox-ai-encryption.git@4eefae1",
