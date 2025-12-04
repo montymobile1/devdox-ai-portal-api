@@ -169,7 +169,7 @@ class TestRevokeApiKeyService:
         service = RevokeApiKeyService(api_key_repository=fake_label_store)
 
         claims = UserClaims(sub=user_id)
-        result = await service.revoke_api_key(claims, api_key_id=generated_api_key_id)
+        result = await service.revoke_api_key(claims, api_key_id=saved_rec.id)
 
         assert result == 1
         assert not saved_rec.is_active

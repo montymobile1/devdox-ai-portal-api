@@ -37,7 +37,7 @@ class TestRevokeApiKeyRouter:
 
         app.dependency_overrides[RevokeApiKeyService.with_dependency] = _override
         try:
-            yield fake, saved_rec.api_key
+            yield fake, saved_rec
         finally:
             app.dependency_overrides.clear()
 
@@ -59,8 +59,8 @@ class TestRevokeApiKeyRouter:
     async def test_successful_revoke(
         self, test_client, override_auth_user, override_revoke_service_success
     ):
-        _, fake_key_id = override_revoke_service_success
-        response = test_client.delete(f"{self.route_url}{fake_key_id}")
+        _, saved_rec = override_revoke_service_success
+        response = test_client.delete(f"{self.route_url}{saved_rec.id}")
         assert response.status_code == status.HTTP_200_OK
         assert response.json()["success"] is True
         assert response.json()["message"] == API_KEY_REVOKED_SUCCESSFULLY
@@ -77,8 +77,8 @@ class TestRevokeApiKeyRouter:
         override_auth_user_unauthorized,
         override_revoke_service_success,
     ):
-        _, fake_key_id = override_revoke_service_success
-        response = test_client.delete(f"{self.route_url}{fake_key_id}")
+        _, saved_rec = override_revoke_service_success
+        response = test_client.delete(f"{self.route_url}{saved_rec.id}")
         assert response.status_code == status.HTTP_401_UNAUTHORIZED
 
     def test_invalid_uuid_path(
