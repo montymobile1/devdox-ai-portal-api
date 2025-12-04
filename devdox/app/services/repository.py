@@ -25,7 +25,7 @@ from app.schemas.repo import AddRepositoryRequest, GitRepoResponse, RepoResponse
 from app.utils.auth import UserClaims
 from app.utils.encryption import get_encryption_helper, FernetEncryptionHelper
 from app.utils.git_managers import retrieve_git_fetcher_or_die
-from models_src import (StatusTypes, QueueJobType, RepoRequestDTO, DevDoxModelsException, RepoErrors, ILabelStore, get_active_git_label_store, get_active_repo_store, IRepoStore,
+from models_src import (StatusTypes, RepoRequestDTO, DevDoxModelsException, RepoErrors, ILabelStore, get_active_git_label_store, get_active_repo_store, IRepoStore,
                         get_active_user_store, IUserStore, ProcessingJobType, ProcessingQPayload, ProcessingQPayloadMeta, ProcessingPriority, processing_queue_name)
 
 class RepoQueryService:
@@ -252,7 +252,7 @@ class RepoManipulationService:
             total_embeddings=repo_info.total_embeddings,
         )
     
-    async def register_processing_job(self, job_type, user_claims, repo_info, token_info):
+    async def register_processing_job(self, job_type: ProcessingJobType, user_claims, repo_info, token_info):
         payload = ProcessingQPayload(
             job_type=job_type,
             payload=ProcessingQPayloadMeta(
@@ -293,7 +293,7 @@ class RepoManipulationService:
         
         await self._update_job_metadata(current_repo_status=StatusTypes.ANALYSIS_PENDING.value, repo_info=repo_info)
         
-        await self.register_processing_job(QueueJobType.ANALYZE.value, user_claims, repo_info, token_info)
+        await self.register_processing_job(ProcessingJobType.ANALYZE, user_claims, repo_info, token_info)
     
     async def reanalyze_repo(self, user_claims: UserClaims, id: str | UUID) -> None:
         
@@ -308,4 +308,4 @@ class RepoManipulationService:
         
         await self._update_job_metadata(current_repo_status=StatusTypes.REANALYSIS_PENDING.value, repo_info=repo_info)
         
-        await self.register_processing_job(QueueJobType.REANALYZE.value, user_claims, repo_info, token_info)
+        await self.register_processing_job(ProcessingJobType.REANALYZE, user_claims, repo_info, token_info)
